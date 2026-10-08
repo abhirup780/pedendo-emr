@@ -10,4 +10,4 @@ Commons:
 The originals, as supplied by the owner, are in `reference-data/tanner/`. They were only cropped
 (`scripts/build-tanner.py`, then svgo to shrink the files): no line was redrawn. Left out: the
 coloured background panels, the Roman numerals, the front view of the chest and the orchidometer
-column. These files stay under CC BY-SA 3.0, and the credit line on the staging screen must stay.
+column. These files stay under CC BY-SA 3.0, and the credit line at the foot of the Settings screen must stay (the owner wants it there only).

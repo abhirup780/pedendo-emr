@@ -122,7 +122,6 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
         </div>
         {value && <button type="button" className="btn small" onClick={() => onChange(null)}>Clear staging</button>}
       </div>
-      <div className="muted" style={{ fontSize: 12 }}>Stage drawings: Michał Komorniczak, Wikimedia Commons, CC BY-SA 3.0 (cropped).</div>
     </div>
   )
 }

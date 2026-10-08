@@ -535,6 +535,10 @@ export default function Settings() {
         ))}
       </div>
       {TABS.find((t) => t.key === tab)?.el}
+      {/* Required by the drawings' licence; shown here only, on every Settings tab. */}
+      <p className="muted" style={{ fontSize: 12.5, margin: '4px 2px 0' }}>
+        Credits. Tanner stage drawings: Michał Komorniczak, Wikimedia Commons, CC BY-SA 3.0 (cropped).
+      </p>
     </main>
   )
 }

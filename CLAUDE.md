@@ -102,8 +102,8 @@ the single source of truth — commit and push finished work.
 - The tile pictures are crops of the Wikimedia Commons Tanner scale diagrams by Michał
   Komorniczak (CC BY-SA 3.0), supplied by the owner: originals in `reference-data/tanner/`,
   per-stage files in `src/assets/tanner/` (see its README), cut by `scripts/build-tanner.py`.
-  They are cropped only, never redrawn, and the credit line under the staging section must
-  stay. Boys' pubic hair tiles show the upper part of the genital drawing (CSS crop). A child
+  They are cropped only, never redrawn, and the credit line stays, but only at the foot of
+  the Settings screen (owner's choice). Boys' pubic hair tiles show the upper part of the genital drawing (CSS crop). A child
   with sex not assigned keeps a neutral pictogram for pubic hair.
 
 ## Stage 7 notes
