@@ -49,7 +49,15 @@ echo "Applied $(ls "$ROOT"/supabase/migrations/*.sql | wc -l) migrations."
 PGRST_DB_URI="postgres://authenticator:authenticator@localhost:$PGPORT/postgres" PGRST_DB_SCHEMAS=public PGRST_DB_ANON_ROLE=anon \
   PGRST_JWT_SECRET=$SECRET PGRST_SERVER_PORT=$APIPORT "$POSTGREST" >"$WORK/postgrest.log" 2>&1 &
 API_PID=$!
-for _ in $(seq 1 40); do curl -s -o /dev/null "http://localhost:$APIPORT/" && break; sleep 0.25; done
+# Wait until PostgREST has read the database layout, not merely opened its port: while it is
+# still loading it answers 503 ("Could not query the database for the schema cache"), and
+# tests started then fail at random. Up to 30 seconds, then stop with its log.
+ready=""
+for _ in $(seq 1 120); do
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$APIPORT/")" = "200" ]; then ready=1; break; fi
+  sleep 0.25
+done
+if [ -z "$ready" ]; then echo "PostgREST did not become ready:"; cat "$WORK/postgrest.log"; exit 1; fi
 
 cd "$ROOT"
 TEST_PGRST_URL="http://localhost:$APIPORT" TEST_JWT_SECRET=$SECRET TEST_PSQL="$PSQL" npx vitest run tests/db "$@"
