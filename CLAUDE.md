@@ -104,7 +104,8 @@ the single source of truth — commit and push finished work.
   per-stage files in `src/assets/tanner/` (see its README), cut by `scripts/build-tanner.py`.
   They are cropped only, never redrawn, and the credit line stays, but only at the foot of
   the Settings screen (owner's choice). Boys' pubic hair tiles show the upper part of the genital drawing (CSS crop). A child
-  with sex not assigned keeps a neutral pictogram for pubic hair.
+  with sex not assigned never sees the boy or girl drawings: genital and breast tiles are text
+  only and pubic hair keeps a neutral pictogram.
 
 ## Stage 7 notes
 

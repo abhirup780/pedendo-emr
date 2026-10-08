@@ -252,6 +252,7 @@ main.narrow { max-width: 860px; }
 .t-title { margin: 0; font-size: 14px; font-weight: 600; }
 .t-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; }
 .t-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px; min-height: 164px; border-radius: 10px; border: 2px solid var(--line); background: #fff; }
+.t-tile.plain { min-height: 84px; justify-content: center; }
 .t-tile:hover { border-color: #8a979c; }
 .t-tile[aria-pressed='true'] { border-color: var(--primary); background: var(--primary-tint); }
 .t-icon { height: 88px; width: 100%; display: flex; align-items: center; justify-content: center; }
@@ -448,6 +449,7 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
 
   .t-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .t-tile { min-height: 154px; padding: 8px 4px; }
+  .t-tile.plain { min-height: 84px; }
   .t-cap { font-size: 12px; }
   .bead { min-width: 40px; }
   .ph-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

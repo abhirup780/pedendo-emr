@@ -16,7 +16,7 @@ const P_ICON = [
   { w: 62, h: 46, d: 4, tint: true },
 ]
 
-function Scale(props: { title: string; hint?: string; code: string; value: number | null; onPick: (n: number | null) => void; caps: { cap: string; text: string }[]; icon: (i: number) => ReactNode }) {
+function Scale(props: { title: string; hint?: string; code: string; value: number | null; onPick: (n: number | null) => void; caps: { cap: string; text: string }[]; icon?: (i: number) => ReactNode }) {
   return (
     <div>
       <div className="row" style={{ gap: '2px 10px', marginBottom: 8 }}>
@@ -27,8 +27,8 @@ function Scale(props: { title: string; hint?: string; code: string; value: numbe
         {props.caps.map((c, i) => {
           const on = props.value === i + 1
           return (
-            <button type="button" key={i} className="t-tile" aria-pressed={on} title={c.text} onClick={() => props.onPick(on ? null : i + 1)}>
-              <span className="t-icon" aria-hidden="true">{props.icon(i)}</span>
+            <button type="button" key={i} className={props.icon ? 't-tile' : 't-tile plain'} aria-pressed={on} title={c.text} onClick={() => props.onPick(on ? null : i + 1)}>
+              {props.icon && <span className="t-icon" aria-hidden="true">{props.icon(i)}</span>}
               <span className="t-code">{props.code}{i + 1}</span>
               <span className="t-cap">{c.cap}</span>
             </button>
@@ -51,11 +51,16 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {sex === 'U' && (
+        <div className="muted" style={{ fontSize: 13 }}>Sex is not yet assigned, so the stages are listed without the boy and girl drawings.</div>
+      )}
       {sex !== 'F' && (
-        <Scale title="Genital stage" code="G" value={t.g} onPick={(n) => set({ g: n })} caps={GENITAL} icon={(i) => <img className="t-pic" src={pic(`g${i + 1}`)} alt="" />} />
+        // The drawings are of a boy or of a girl, so a child whose sex is not assigned gets the
+        // stage names and descriptions without a picture.
+        <Scale title="Genital stage" code="G" value={t.g} onPick={(n) => set({ g: n })} caps={GENITAL} icon={sex === 'M' ? (i) => <img className="t-pic" src={pic(`g${i + 1}`)} alt="" /> : undefined} />
       )}
       {sex !== 'M' && (
-        <Scale title="Breast stage" hint="Side profile" code="B" value={t.b} onPick={(n) => set({ b: n })} caps={BREAST} icon={(i) => <img className="t-pic" src={pic(`b${i + 1}`)} alt="" />} />
+        <Scale title="Breast stage" hint={sex === 'F' ? 'Side profile' : undefined} code="B" value={t.b} onPick={(n) => set({ b: n })} caps={BREAST} icon={sex === 'F' ? (i) => <img className="t-pic" src={pic(`b${i + 1}`)} alt="" /> : undefined} />
       )}
 
       <Scale
