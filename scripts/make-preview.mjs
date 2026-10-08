@@ -6,6 +6,8 @@ const dir = 'dist-preview/assets'
 const files = readdirSync(dir)
 const read = (ext) => files.filter((f) => f.endsWith(ext)).map((f) => readFileSync(`${dir}/${f}`, 'utf8')).join('\n')
 const css = read('.css')
+const scripts = files.filter((f) => f.endsWith('.js'))
+if (scripts.length !== 1) throw new Error(`Expected one script in the preview build, found ${scripts.length}. Code splitting must be off.`)
 const js = read('.js').replaceAll('</script', '<\\/script')
 if (/supabase\.co/.test(js.replace(/YOUR-PROJECT\.supabase\.co/g, ''))) throw new Error('Preview build contains a real Supabase address; refusing to write it.')
 
