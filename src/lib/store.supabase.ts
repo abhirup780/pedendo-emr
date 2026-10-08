@@ -1,7 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
 import type { User } from '@supabase/supabase-js'
-import type { Condition, Patient, PatientInput, SessionUser } from './types'
+import type { Clinic, Condition, Medicine, Patient, PatientInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import type { ListOptions, Store } from './store'
+
+const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, complaint, history, assessment, plan, advice, review_date, medicines, created_at'
+const MED_COLS = 'id, name, dose, frequency, route, duration, instructions'
+const CLINIC_COLS = 'doctor_name, qualifications, reg_no, clinic_name, address, phone, email'
+const BLANK_CLINIC: Clinic = { doctor_name: '', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '' }
+
+function toVisit(r: Visit): Visit {
+  return {
+    ...r,
+    height_cm: r.height_cm == null ? null : Number(r.height_cm),
+    weight_kg: r.weight_kg == null ? null : Number(r.weight_kg),
+    medicines: Array.isArray(r.medicines) ? r.medicines : [],
+  }
+}
 
 const PATIENT_COLS =
   'id, mrn, name, dob, sex, phone, guardian_name, guardian_relation, address, allergies, notes, father_height_cm, mother_height_cm, created_at'
@@ -127,6 +141,80 @@ export function createSupabaseStore(url: string, key: string): Store {
     async deletePatient(id) {
       const { error } = await sb.from('patients').delete().eq('id', id)
       fail(error)
+    },
+
+    async listVisits(patientId) {
+      const { data, error } = await sb
+        .from('visits')
+        .select(VISIT_COLS)
+        .eq('patient_id', patientId)
+        .order('visit_date', { ascending: false })
+        .order('created_at', { ascending: false })
+      fail(error)
+      return ((data ?? []) as unknown as Visit[]).map(toVisit)
+    },
+    async getVisit(id) {
+      const { data, error } = await sb.from('visits').select(VISIT_COLS).eq('id', id).maybeSingle()
+      fail(error)
+      return data ? toVisit(data as unknown as Visit) : null
+    },
+    async saveVisit(input: VisitInput, id?: string) {
+      const q = id ? sb.from('visits').update(input).eq('id', id) : sb.from('visits').insert(input)
+      const { data, error } = await q.select(VISIT_COLS).single()
+      fail(error)
+      return toVisit(data as unknown as Visit)
+    },
+    async deleteVisit(id) {
+      const { error } = await sb.from('visits').delete().eq('id', id)
+      fail(error)
+    },
+
+    async listMedicines() {
+      const { data, error } = await sb.from('medicines').select(MED_COLS).order('name')
+      fail(error)
+      return (data ?? []) as Medicine[]
+    },
+    async saveMedicine(m: RxItem & { id?: string }) {
+      const { id, ...body } = m
+      body.name = body.name.trim()
+      const q = id ? sb.from('medicines').update(body).eq('id', id) : sb.from('medicines').insert(body)
+      const { data, error } = await q.select(MED_COLS).single()
+      fail(error)
+      return data as Medicine
+    },
+    async deleteMedicine(id) {
+      const { error } = await sb.from('medicines').delete().eq('id', id)
+      fail(error)
+    },
+
+    async listTemplates() {
+      const { data, error } = await sb.from('rx_templates').select('id, name, medicines, advice').order('name')
+      fail(error)
+      return (data ?? []) as RxTemplate[]
+    },
+    async saveTemplate(t) {
+      const { id, ...body } = t
+      body.name = body.name.trim()
+      const q = id ? sb.from('rx_templates').update(body).eq('id', id) : sb.from('rx_templates').insert(body)
+      const { data, error } = await q.select('id, name, medicines, advice').single()
+      fail(error)
+      return data as RxTemplate
+    },
+    async deleteTemplate(id) {
+      const { error } = await sb.from('rx_templates').delete().eq('id', id)
+      fail(error)
+    },
+
+    async getClinic() {
+      const { data, error } = await sb.from('clinic_settings').select(CLINIC_COLS).maybeSingle()
+      fail(error)
+      return (data as Clinic | null) ?? BLANK_CLINIC
+    },
+    async saveClinic(c: Clinic) {
+      // One row per account: the owner is filled in by the database, so a second save updates it.
+      const { data, error } = await sb.from('clinic_settings').upsert(c, { onConflict: 'owner_id' }).select(CLINIC_COLS).single()
+      fail(error)
+      return data as Clinic
     },
   }
 }

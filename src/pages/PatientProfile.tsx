@@ -3,22 +3,25 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { initials } from '../components/Shell'
 import { Tag } from '../components/Tag'
 import { formatAge, formatDate, midParentalHeight } from '../lib/age'
+import { bmi } from '../lib/clinical'
 import { store } from '../lib/store'
-import type { Condition, Patient } from '../lib/types'
+import type { Condition, Patient, Visit } from '../lib/types'
 
 export default function PatientProfile() {
   const { id = '' } = useParams()
   const nav = useNavigate()
   const [p, setP] = useState<Patient | null | undefined>(undefined)
   const [conditions, setConditions] = useState<Condition[]>([])
+  const [visits, setVisits] = useState<Visit[]>([])
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    Promise.all([store.getPatient(id), store.listConditions()]).then(
-      ([pt, cs]) => {
+    Promise.all([store.getPatient(id), store.listConditions(), store.listVisits(id)]).then(
+      ([pt, cs, vs]) => {
         setP(pt)
         setConditions(cs)
+        setVisits(vs)
       },
       (e: Error) => {
         setError(e.message)
@@ -71,7 +74,53 @@ export default function PatientProfile() {
           <Link to={`/patients/${p.id}/edit`} className="btn outline">
             Edit
           </Link>
+          <Link to={`/patients/${p.id}/visits/new`} className="btn primary">
+            + New visit
+          </Link>
         </div>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h2 className="grow">Visits</h2>
+          <span className="muted">{visits.length === 0 ? 'None yet' : `${visits.length} recorded`}</span>
+        </div>
+        {visits.length === 0 ? (
+          <div className="empty">No visits yet. Start the first one with "New visit".</div>
+        ) : (
+          <div className="table-wrap">
+            <div className="vtable">
+              <div className="vrow head">
+                <div>Date</div>
+                <div>Age</div>
+                <div>Height</div>
+                <div>Weight</div>
+                <div>BMI</div>
+                <div>Assessment</div>
+                <div>℞</div>
+              </div>
+              {visits.map((v) => (
+                <div className="vrow" key={v.id}>
+                  <div>
+                    <Link to={`/patients/${p.id}/visits/${v.id}`} style={{ fontWeight: 600, textDecoration: 'none', display: 'inline-block', padding: '4px 0' }}>
+                      {formatDate(v.visit_date)}
+                    </Link>
+                  </div>
+                  <div>{formatAge(p.dob, v.visit_date)}</div>
+                  <div className="mono">{v.height_cm == null ? '—' : `${v.height_cm} cm`}</div>
+                  <div className="mono">{v.weight_kg == null ? '—' : `${v.weight_kg} kg`}</div>
+                  <div className="mono">{bmi(v.height_cm, v.weight_kg) ?? '—'}</div>
+                  <div className="clip" title={v.assessment}>{v.assessment || '—'}</div>
+                  <div>
+                    <Link to={`/patients/${p.id}/visits/${v.id}/print`} style={{ display: 'inline-block', padding: '4px 0' }}>
+                      {v.medicines.length === 0 ? 'Open' : `${v.medicines.length} ${v.medicines.length === 1 ? 'item' : 'items'}`}
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="card pad">

@@ -25,6 +25,8 @@ the single source of truth — commit and push finished work.
   `VITE_SUPABASE_*` variables are missing; shows a warning banner).
 - `src/lib/age.ts` — dates, age, mid-parental height (unit-tested).
 - `src/lib/tags.ts` — tag colours and the starter condition list.
+- `src/lib/clinical.ts` — BMI, height velocity, dose per kg, BP check, review dates, printed
+  directions (unit-tested). `src/lib/medicines.ts` — starter medicine list.
 - `src/pages/` — one file per screen. `src/components/` — shell, tags.
 - `supabase/migrations/` — SQL, numbered, run in order. Add a new file per stage; never edit one
   that has been applied.
@@ -45,10 +47,22 @@ the single source of truth — commit and push finished work.
   Stage 1's database code was tested against a local Postgres + PostgREST, including that a
   second account can neither read nor change the first account's rows.
 
+## Stage 2 notes
+
+- A visit's prescription is a JSON array on the `visits` row (`medicines`), saved with the visit
+  in one write. Stage 7's export flattens it in the browser.
+- Height velocity uses the most recent earlier height at least 85 days old; shorter gaps are
+  skipped. Dose per kg is per dose, and only when the dose reads as one number and a unit.
+- Starter medicines leave weight-based doses blank on purpose; the doctor fills them in.
+- Row-level security checks both ends of a link: a visit or tag link must point at the signed-in
+  doctor's own patient. Keep that pattern for every new child table.
+- Printing uses `window.print()` with `@page` A4 and the `.sheet` layout in `styles.css`; the
+  artifact preview cannot print, so `PrintRx` hides the button when `VITE_PREVIEW` is set.
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)
-2. Visit and prescription: measurements, notes, medicines, templates, A4 print
+2. ~~Visit and prescription: measurements, notes, medicines, templates, A4 print~~ (done)
 3. Investigations: grouped master list, one-click panels, result entry
 4. Growth: reference tables, SDS and velocity, chart
 5. Tanner staging per visit

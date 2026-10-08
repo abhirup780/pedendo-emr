@@ -116,3 +116,62 @@ main.narrow { max-width: 860px; }
 
 .login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .login .card { max-width: 420px; width: 100%; padding: 32px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Stage 2: visit, prescription, print */
+.cols { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.cols > .main { flex: 3 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.cols > .side { flex: 2 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.field input.num { font-family: var(--mono); font-size: 17px; }
+.calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; margin-top: 14px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.calc > div { background: #f7f9f8; padding: 10px 12px; }
+.calc .k { font-size: 12px; color: var(--muted); }
+.calc .v { font-family: var(--mono); font-size: 18px; font-weight: 500; }
+.note { padding: 8px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-fg); font-size: 13px; font-weight: 500; }
+.med { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.med-head { display: flex; align-items: flex-start; gap: 10px; }
+.med-no { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; margin-top: 9px; }
+.med-head input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 8px; font-weight: 600; font-size: 15px; }
+.med-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.med-grid .field { font-size: 12px; color: var(--muted); }
+.med-grid .field input { min-height: 40px; font-size: 14px; padding: 6px 10px; }
+.icon-btn { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+.icon-btn:hover { background: var(--bg); color: var(--ink); }
+.suggest { display: flex; flex-wrap: wrap; gap: 6px; }
+.suggest button { min-height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: #f7f9f8; font-size: 13px; text-align: left; }
+.suggest button:hover { border-color: var(--primary); }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+.tabs button { min-height: 44px; padding: 0 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: #44545b; }
+.tabs button[aria-selected='true'] { color: var(--primary); font-weight: 600; border-bottom-color: var(--primary); }
+.vrow { display: grid; grid-template-columns: 120px 80px 90px 90px 70px minmax(160px, 1fr) 90px; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #edf0ef; }
+.vrow.head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
+.vtable { min-width: 760px; }
+.clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sheet-wrap { padding: 24px 16px 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.sheet-tools { width: 100%; max-width: 210mm; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.sheet { width: 100%; max-width: 210mm; min-height: 297mm; background: #fff; color: #14242b; border: 1px solid var(--line); padding: 14mm 16mm; font-size: 12pt; line-height: 1.4; display: flex; flex-direction: column; gap: 5mm; }
+.sheet .letterhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6mm; padding-bottom: 4mm; border-bottom: 2px solid var(--primary); }
+.sheet .doctor { font-size: 19pt; font-weight: 600; color: var(--primary); letter-spacing: -0.01em; }
+.sheet .right { text-align: right; }
+.sheet .who-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2mm 8mm; }
+.sheet .vitals { display: flex; flex-wrap: wrap; border: 1px solid #8a979c; border-radius: 6px; }
+.sheet .vitals > div { flex: 1 1 28mm; padding: 2mm 3mm; border-right: 1px solid #c9d2cf; }
+.sheet .vitals > div:last-child { border-right: 0; }
+.sheet .vitals .k { color: #44545b; font-size: 10pt; }
+.sheet .rx { display: flex; gap: 6mm; }
+.sheet .rx-mark { font-size: 36pt; line-height: 1; color: var(--primary); flex: 0 0 14mm; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'Arial Unicode MS', serif; }
+.sheet .rx-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4mm; margin: 0; padding: 0; list-style: none; }
+.sheet .rx-list li { break-inside: avoid; }
+.sheet .block { border-top: 1px solid #c9d2cf; padding-top: 3mm; white-space: pre-wrap; }
+.sheet .bottom { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8mm; break-inside: avoid; }
+.sheet .review { padding: 2.5mm 4mm; border: 1.5px solid var(--primary); border-radius: 6px; }
+.sheet .sign { text-align: center; min-width: 55mm; }
+.sheet .sign .line { height: 16mm; border-bottom: 1px solid #14242b; }
+
+@page { size: A4; margin: 0; }
+@media print {
+  body { background: #fff; }
+  .topbar, .demo-banner, .no-print { display: none !important; }
+  .sheet-wrap { padding: 0; }
+  .sheet { border: 0; max-width: none; width: 210mm; min-height: 297mm; }
+}
