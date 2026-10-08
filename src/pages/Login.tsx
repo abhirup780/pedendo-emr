@@ -5,6 +5,7 @@ import { clearNotice, peekNotice } from '../lib/device'
 import { store } from '../lib/store'
 import { Curves, Mark, Wordmark } from '../components/Brand'
 import PasswordInput from '../components/PasswordInput'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -53,6 +54,14 @@ export default function Login() {
     setCode('')
     setError('')
   }
+
+  // The sign-in screen is always at the home address, however it was reached: Sign out, the
+  // idle sign-out, or opening an old link. Signing in then opens the patient list.
+  const navigate = useNavigate()
+  const { pathname, search } = useLocation()
+  useEffect(() => {
+    if (pathname !== '/' || search) navigate('/', { replace: true })
+  }, [pathname, search, navigate])
 
   const demo = store.mode === 'demo'
   return (

@@ -49,9 +49,8 @@ function useIdleSignOut() {
 export default function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
   useIdleSignOut()
   const navigate = useNavigate()
-  // A deliberate sign-out also leaves the page: the address of a patient or a visit is not
-  // left in the address bar for whoever uses the browser next. (The idle sign-out keeps it, so
-  // signing in again returns to the visit that was being written.)
+  // Leave the page before signing out, so a patient's or visit's address is never left in the
+  // address bar. (The sign-in screen does the same for every other way of being signed out.)
   const signOut = () => {
     dropAllDrafts()
     navigate('/', { replace: true })
