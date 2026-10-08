@@ -71,7 +71,8 @@ where user_id = (select id from auth.users where email = 'clinic@example.com');
 
 ## 5. First run in the app
 
-The patient list shows a "Still to set up" card until these are done:
+The patient list shows a "Still to set up" card until these are done. The cross beside a line
+hides that reminder on this device for good, the backup reminder included:
 
 - **Settings → Letterhead**: doctor and clinic details, optional logo and signature.
 - **Settings → Print layouts**: one layout for each paper or pre-printed pad. Measure the pad's

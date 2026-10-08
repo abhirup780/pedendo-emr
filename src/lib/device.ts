@@ -24,6 +24,24 @@ export function setIdleMinutes(n: number): void {
   }
 }
 
+const HIDDEN_KEY = 'pedendo-setup-hidden'
+/** "Still to set up" reminders the doctor has crossed off on this device. */
+export function hiddenReminders(): string[] {
+  try {
+    const list: unknown = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')
+    return Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+export function hideReminder(id: string): void {
+  try {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify([...new Set([...hiddenReminders(), id])]))
+  } catch {
+    /* comes back on the next visit */
+  }
+}
+
 const NOTICE_KEY = 'pedendo-signin-notice'
 /** A sentence to show once on the sign-in screen, e.g. why the doctor was signed out. */
 export function leaveNotice(text: string): void {
