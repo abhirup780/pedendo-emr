@@ -1,6 +1,6 @@
 import { ageInDays } from './age'
 import { bmi } from './clinical'
-import { DAYS_PER_YEAR, Z_CENTILE, IAP_BMI_CUTOFFS, IAP_FROM_YEARS, IAP_HEIGHT_WEIGHT_LINES, IAP_TO_YEARS, iapAt, iapBmiLines, referenceAt, WHO_LAST_LENGTH_DAY, WHO_SD_LINES, whoHeightAt } from './growth-reference'
+import { BMI_LINE, DAYS_PER_YEAR, IAP_BMI_LINES, IAP_FROM_YEARS, IAP_HEIGHT_WEIGHT_LINES, IAP_TO_YEARS, iapAt, iapBmiPrintedAt, iapYears, referenceAt, WHO_LAST_LENGTH_DAY, WHO_SD_LINES, whoHeightAt } from './growth-reference'
 import type { ChartLine, Measure, RefId, RefPoint } from './growth-reference'
 import type { Sex, Visit } from './types'
 
@@ -19,8 +19,8 @@ export interface GrowthPoint {
   date: string
   /** Filled in when the child's sex is given and a reference covers this age. Two decimals. */
   sds: number | null
-  /** The same before rounding, for comparing with cut-offs. */
-  sdsRaw: number | null
+  /** The measurement before rounding (BMI is shown to one decimal), for comparing with cut-offs. */
+  raw: number
 }
 
 type Measured = Pick<Visit, 'visit_date' | 'height_cm' | 'weight_kg'>
@@ -45,8 +45,8 @@ export function growthPoints(visits: Measured[], dob: string, measure: Measure, 
     const value = measure === 'bmi' ? bmi(v.height_cm, v.weight_kg) : measureValue(v, measure)
     const days = ageInDays(dob, v.visit_date)
     if (value == null || days == null) continue
-    const raw = sex ? sdsExact(measureValue(v, measure)!, sex, measure, days) : null
-    out.push({ age: days / DAYS_PER_YEAR, ageDays: days, value, date: v.visit_date, sds: round2(raw), sdsRaw: raw != null && Number.isFinite(raw) ? raw : null })
+    const raw = measureValue(v, measure)!
+    out.push({ age: days / DAYS_PER_YEAR, ageDays: days, value, date: v.visit_date, sds: sex ? sds(raw, sex, measure, days) : null, raw })
   }
   return out.sort((a, b) => a.ageDays - b.ageDays)
 }
@@ -88,14 +88,17 @@ export function visitSds(v: Measured, dob: string, sex: Sex): Record<Measure, nu
 }
 
 /**
- * Where a BMI SDS falls against the IAP 2015 cut-offs (5 to 18 years only). Give it the
- * unrounded SDS: +0.553 is over the boys' overweight line although it displays as +0.55.
+ * Where a BMI falls against the lines printed on the IAP 2015 BMI chart (5 to 18 years):
+ * at or above the adult-equivalent 23 line is the overweight range, at or above the 27 line the
+ * obese range; below the 3rd centile line is named too. Give it the unrounded BMI. Null in
+ * between, and outside 5 to 18 years.
  */
-export function bmiBand(z: number, sex: Sex): 'below the 3rd centile' | 'overweight range' | 'obese range' | null {
-  const c = IAP_BMI_CUTOFFS[sex]
-  if (z > c.obese) return 'obese range'
-  if (z > c.overweight) return 'overweight range'
-  if (z < Z_CENTILE[3]) return 'below the 3rd centile'
+export function bmiBand(bmiValue: number, sex: Sex, ageDays: number): 'below the 3rd centile' | 'overweight range' | 'obese range' | null {
+  const at = iapBmiPrintedAt(sex, iapYears(ageDays))
+  if (!at || !(bmiValue > 0)) return null
+  if (bmiValue >= at[BMI_LINE.obese]) return 'obese range'
+  if (bmiValue >= at[BMI_LINE.overweight]) return 'overweight range'
+  if (bmiValue < at[BMI_LINE.third]) return 'below the 3rd centile'
   return null
 }
 
@@ -124,7 +127,7 @@ function segment(points: { age: number; at: RefPoint }[], lines: ChartLine[]): C
     ref: points[0].at.ref,
     posture: points[0].at.posture,
     ages: points.map((p) => p.age),
-    values: lines.map((l) => points.map((p) => valueFromLms(l.z, p.at.L, p.at.M, p.at.S))),
+    values: lines.map((l) => points.map((p) => valueFromLms(l.z ?? 0, p.at.L, p.at.M, p.at.S))),
   }
 }
 
@@ -157,7 +160,7 @@ export function chartReference(sex: Sex, measure: Measure, ages: number[]): Char
   const to = iap ? Math.max(IAP_TO_YEARS, Math.ceil(max)) : max < 2 ? 2 : IAP_FROM_YEARS
   // On a chart that carries both, the WHO part is drawn at the same SDS as the IAP lines so
   // each line can be followed across; on its own it uses WHO's whole-SD lines.
-  const lines = iap ? (measure === 'bmi' ? iapBmiLines(sex) : IAP_HEIGHT_WEIGHT_LINES) : WHO_SD_LINES
+  const lines = iap ? (measure === 'bmi' ? IAP_BMI_LINES : IAP_HEIGHT_WEIGHT_LINES) : WHO_SD_LINES
   const segments: CurveSegment[] = []
   if (who) {
     const lastDay = Math.min(Math.floor(to * DAYS_PER_YEAR), Math.floor(IAP_FROM_YEARS * DAYS_PER_YEAR))
@@ -165,7 +168,12 @@ export function chartReference(sex: Sex, measure: Measure, ages: number[]): Char
     segments.push(part(0, Math.min(WHO_LAST_LENGTH_DAY, lastDay)))
     if (lastDay > WHO_LAST_LENGTH_DAY) segments.push(part(WHO_LAST_LENGTH_DAY + 1, lastDay))
   }
-  if (iap) {
+  if (iap && measure === 'bmi') {
+    // The BMI lines are the paper's printed table itself, half-yearly.
+    const ages = Array.from({ length: (IAP_TO_YEARS - IAP_FROM_YEARS) * 2 + 1 }, (_, i) => IAP_FROM_YEARS + i / 2)
+    const rows = ages.map((a) => iapBmiPrintedAt(sex, a)!)
+    segments.push({ ref: 'iap2015', ages, values: lines.map((_, j) => rows.map((r) => r[j])) })
+  } else if (iap) {
     const months = (IAP_TO_YEARS - IAP_FROM_YEARS) * 12
     segments.push(segment(Array.from({ length: months + 1 }, (_, i) => ({ age: IAP_FROM_YEARS + i / 12, at: iapAt(sex, measure, IAP_FROM_YEARS + i / 12)! })), lines))
   }

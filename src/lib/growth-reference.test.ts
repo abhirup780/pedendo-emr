@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { sdsFromLms, valueFromLms } from './growth'
-import { IAP_LMS, WHO_LHFA } from './growth-data'
-import { IAP_BMI_CUTOFFS, IAP_HEIGHT_WEIGHT_LINES, iapAt, iapBmiLines, referenceAt, WHO_SD_LINES, whoHeightAt, Z_CENTILE } from './growth-reference'
+import { IAP_BMI_PRINTED, IAP_LMS, WHO_LHFA } from './growth-data'
+import { BMI_LINE, IAP_BMI_LINES, IAP_HEIGHT_WEIGHT_LINES, iapAt, iapBmiPrintedAt, referenceAt, WHO_SD_LINES, whoHeightAt } from './growth-reference'
 import type { Measure } from './growth-reference'
 import type { Sex } from './types'
 import { ageInDays } from './age'
@@ -23,6 +23,8 @@ const csv = (file: string): Record<string, number>[] => text(file).map((row) => 
 const WHO = { boys: whoBoysCsv, girls: whoGirlsCsv }
 const SEXES: [Sex, 'boys' | 'girls'][] = [['M', 'boys'], ['F', 'girls']]
 const MEASURES: Measure[] = ['height', 'weight', 'bmi']
+/** SDS of the exact 3rd centile of a normal distribution. */
+const Z3 = -1.8807936
 
 /** Normal distribution function (Abramowitz and Stegun 7.1.26, error below 1.5e-7). */
 function phi(z: number): number {
@@ -160,7 +162,7 @@ describe('IAP 2015, 5 to 18 years', () => {
         const p = at(r)
         cells(r).forEach((printed, i) => {
           n++
-          expect(Math.abs(valueFromLms(IAP_HEIGHT_WEIGHT_LINES[i].z, p.L, p.M, p.S) - printed), `${r.measure} ${r.sex} ${r.age_years} column ${i + 1}`).toBeLessThan(0.052)
+          expect(Math.abs(valueFromLms(IAP_HEIGHT_WEIGHT_LINES[i].z!, p.L, p.M, p.S) - printed), `${r.measure} ${r.sex} ${r.age_years} column ${i + 1}`).toBeLessThan(0.052)
         })
       }
       expect(n).toBe(756)
@@ -171,39 +173,57 @@ describe('IAP 2015, 5 to 18 years', () => {
       // stops agreeing with the published one by up to a centimetre.
       const boys18 = paper.find((r) => r.measure === 'height' && r.sex === 'boys' && r.age_years === '18.0')!
       const p = at(boys18)
-      expect(Math.abs(valueFromLms(Z_CENTILE[3], p.L, p.M, p.S) - Number(boys18.c1))).toBeGreaterThan(0.9)
+      expect(Math.abs(valueFromLms(Z3, p.L, p.M, p.S) - Number(boys18.c1))).toBeGreaterThan(0.9)
       expect(Math.abs(valueFromLms(-2, p.L, p.M, p.S) - Number(boys18.c1))).toBeLessThan(0.052)
     })
 
-    it('BMI: the printed centile columns agree within a quarter of a BMI unit', () => {
-      // Columns 1, 3, 4, 5 are the 3rd, 10th, 25th and 50th centiles (column 2, the 5th, is not
-      // drawn). The calculator's BMI L, M, S follow the printed table closely but not to the
-      // last digit: the largest gap is 0.22 kg/m², at the 3rd centile in boys.
+    it('BMI: the chart lines ARE the printed table, value for value', () => {
+      for (const r of paper.filter((x) => x.measure === 'bmi')) {
+        const sex = r.sex === 'boys' ? 'M' : 'F'
+        expect(iapBmiPrintedAt(sex, Number(r.age_years)), `${r.sex} ${r.age_years}`).toEqual(cells(r))
+      }
+      expect(IAP_BMI_PRINTED.M.length).toBe(27)
+      expect(IAP_BMI_PRINTED.F.length).toBe(27)
+      expect(IAP_BMI_LINES.length).toBe(7)
+    })
+
+    it('BMI: printed lines rise across the columns and never fall with age', () => {
+      for (const sex of ['M', 'F'] as const)
+        IAP_BMI_PRINTED[sex].forEach((row, i) => {
+          expect(row.every((v, j) => j === 0 || v > row[j - 1])).toBe(true)
+          if (i > 0) expect(row.every((v, j) => v >= IAP_BMI_PRINTED[sex][i - 1][j])).toBe(true)
+        })
+    })
+
+    it('BMI: between half years the lines lie in proportion, and stop at 5 and 18', () => {
+      const a = IAP_BMI_PRINTED.M[4]
+      const b = IAP_BMI_PRINTED.M[5]
+      const mid = iapBmiPrintedAt('M', 7.25)!
+      mid.forEach((v, j) => expect(v).toBeCloseTo((a[j] + b[j]) / 2, 9))
+      expect(iapBmiPrintedAt('M', 4.99)).toBeNull()
+      expect(iapBmiPrintedAt('M', 18.01)).toBeNull()
+      expect(iapBmiPrintedAt('F', 18)).toEqual(IAP_BMI_PRINTED.F[26])
+    })
+
+    it('BMI: the calculator L, M, S (used for BMI SDS) follow the printed centile columns within a quarter unit', () => {
+      // Columns 1 to 5 are the 3rd, 5th, 10th, 25th and 50th centiles. The SDS comes from the
+      // calculator's L, M, S; this records how closely those follow the printed table
+      // (largest gap 0.22 kg/m², 3rd centile in boys at 18 years).
+      const z = [Z3, -1.6448536, -1.2815516, -0.6744898, 0]
       for (const r of paper.filter((x) => x.measure === 'bmi')) {
         const p = at(r)
-        const lines = iapBmiLines(r.sex === 'boys' ? 'M' : 'F')
         const printed = cells(r)
-        ;[0, 2, 3, 4].forEach((col, i) => {
-          expect(Math.abs(valueFromLms(lines[i].z, p.L, p.M, p.S) - printed[col]), `${r.sex} ${r.age_years} column ${col + 1}`).toBeLessThan(0.25)
+        z.forEach((zi, col) => {
+          expect(Math.abs(valueFromLms(zi, p.L, p.M, p.S) - printed[col]), `${r.sex} ${r.age_years} column ${col + 1}`).toBeLessThan(0.25)
         })
       }
     })
 
-    it('BMI: the overweight and obesity lines sit on the printed adult-equivalent columns within 0.2 and 0.65', () => {
-      for (const r of paper.filter((x) => x.measure === 'bmi')) {
-        const p = at(r)
-        const [, , , , , ow, ob] = cells(r)
-        const cut = IAP_BMI_CUTOFFS[r.sex === 'boys' ? 'M' : 'F']
-        expect(Math.abs(valueFromLms(cut.overweight, p.L, p.M, p.S) - ow)).toBeLessThan(0.2)
-        expect(Math.abs(valueFromLms(cut.obese, p.L, p.M, p.S) - ob)).toBeLessThan(0.65)
-      }
-    })
-
-    it('BMI: the two lines arrive near 23 and 27 at 18 years, which is what "adult equivalent" means', () => {
-      for (const [sex] of SEXES) {
-        const p = iapAt(sex, 'bmi', 18)!
-        expect(Math.abs(valueFromLms(IAP_BMI_CUTOFFS[sex].overweight, p.L, p.M, p.S) - 23)).toBeLessThan(0.5)
-        expect(Math.abs(valueFromLms(IAP_BMI_CUTOFFS[sex].obese, p.L, p.M, p.S) - 27)).toBeLessThan(0.5)
+    it('BMI: the overweight and obesity lines reach about 23 and 27 at 18 years', () => {
+      for (const sex of ['M', 'F'] as const) {
+        const last = iapBmiPrintedAt(sex, 18)!
+        expect(Math.abs(last[BMI_LINE.overweight] - 23)).toBeLessThan(0.25)
+        expect(Math.abs(last[BMI_LINE.obese] - 27)).toBeLessThan(0.45)
       }
     })
   })
@@ -243,22 +263,23 @@ describe('choosing the reference by age', () => {
 
 describe('chart line positions', () => {
   it('centile SDS constants are the normal quantiles they claim to be', () => {
-    expect(phi(Z_CENTILE[3])).toBeCloseTo(0.03, 6)
-    expect(phi(Z_CENTILE[10])).toBeCloseTo(0.1, 6)
-    expect(phi(Z_CENTILE[25])).toBeCloseTo(0.25, 6)
+    expect(phi(Z3)).toBeCloseTo(0.03, 6)
+    expect(phi(-1.6448536)).toBeCloseTo(0.05, 6)
+    expect(phi(-1.2815516)).toBeCloseTo(0.1, 6)
+    expect(phi(-0.6744898)).toBeCloseTo(0.25, 6)
   })
   it('lines are in increasing order with unique labels', () => {
-    for (const lines of [IAP_HEIGHT_WEIGHT_LINES, WHO_SD_LINES, iapBmiLines('M'), iapBmiLines('F')]) {
-      expect(lines.every((l, i) => i === 0 || l.z > lines[i - 1].z)).toBe(true)
+    for (const lines of [IAP_HEIGHT_WEIGHT_LINES, WHO_SD_LINES, IAP_BMI_LINES]) {
+      if (lines !== IAP_BMI_LINES) expect(lines.every((l, i) => i === 0 || l.z! > lines[i - 1].z!)).toBe(true)
       expect(new Set(lines.map((l) => l.label)).size).toBe(lines.length)
     }
   })
   it('every line is defined and increasing at every age it is drawn', () => {
     for (const [sex] of SEXES)
-      for (const m of MEASURES)
+      for (const m of ['height', 'weight'] as const)
         for (let i = 0; i <= 156; i++) {
           const p = iapAt(sex, m, 5 + i / 12)!
-          const values = (m === 'bmi' ? iapBmiLines(sex) : IAP_HEIGHT_WEIGHT_LINES).map((l) => valueFromLms(l.z, p.L, p.M, p.S))
+          const values = IAP_HEIGHT_WEIGHT_LINES.map((l) => valueFromLms(l.z!, p.L, p.M, p.S))
           expect(values.every((v, j) => Number.isFinite(v) && v > 0 && (j === 0 || v > values[j - 1])), `${m} ${sex} month ${60 + i}`).toBe(true)
         }
   })

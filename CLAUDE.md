@@ -122,8 +122,11 @@ the single source of truth — commit and push finished work.
   after 18: screens then say "no reference", they never extrapolate.
 - IAP height and weight chart lines are at 0, ±⅔, ±1⅓ and ±2 SD and are labelled 3…97 as the
   IAP chart prints them (that is what reproduces the paper's tables; the exact centiles do
-  not). BMI lines are true centiles plus the overweight/obesity SDS cut-offs from the IAP
-  calculator. A WHO-only chart uses whole-SD lines. Do not "correct" any of this without
+  not). The owner's rule for BMI: follow the paper; SDS from the calculator is genuine. So
+  the BMI chart lines and the overweight/obese wording (`bmiBand`) come from the paper's
+  printed table (`IAP_BMI_PRINTED`, half-yearly, straight lines between), while BMI SDS comes
+  from the calculator's L, M, S; the calculator's SDS cut-offs are not used. A WHO-only chart
+  uses whole-SD lines. Do not "correct" any of this without
   re-reading `reference-data/README.md`.
 - `src/lib/growth.ts`: `sds` (two decimals), `visitSds`, `chartReference` (axis 0–2, 0–5, 5–18
   or 0–18 years; WHO length, WHO height and IAP are separate segments, never joined). BMI SDS

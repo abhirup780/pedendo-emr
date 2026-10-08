@@ -64,20 +64,27 @@ describe('visitSds and BMI', () => {
     const at = iapAt('M', 'bmi', days / 365.25)!
     expect(visitSds({ visit_date: '2026-10-08', height_cm: 121, weight_kg: 24.2 }, '2017-05-12', 'M').bmi).toBe(Math.round(sdsFromLms(bmiExact(121, 24.2)!, at.L, at.M, at.S) * 100) / 100)
   })
-  it('names the IAP BMI ranges by the calculator cut-offs', () => {
-    expect(bmiBand(0.5, 'M')).toBeNull()
-    expect(bmiBand(0.6, 'M')).toBe('overweight range')
-    expect(bmiBand(0.6, 'F')).toBeNull()
-    expect(bmiBand(0.7, 'F')).toBe('overweight range')
-    expect(bmiBand(1.4, 'M')).toBe('obese range')
-    expect(bmiBand(1.4, 'F')).toBe('overweight range')
-    expect(bmiBand(1.7, 'F')).toBe('obese range')
-    expect(bmiBand(-1.9, 'F')).toBe('below the 3rd centile')
-    // Decided before rounding: these all display as the cut-off itself.
-    expect(bmiBand(0.553, 'M')).toBe('overweight range')
-    expect(bmiBand(0.548, 'M')).toBeNull()
-    expect(bmiBand(1.344, 'M')).toBe('obese range')
-    expect(bmiBand(-1.8, 'F')).toBeNull()
+  it('names the BMI ranges by the lines printed in the IAP paper', () => {
+    // Boys, 8.0 years (2922 days): printed 3rd 12.5, overweight 16.7, obese 18.8.
+    expect(bmiBand(16.69, 'M', 2922)).toBeNull()
+    expect(bmiBand(16.7, 'M', 2922)).toBe('overweight range')
+    expect(bmiBand(18.79, 'M', 2922)).toBe('overweight range')
+    expect(bmiBand(18.8, 'M', 2922)).toBe('obese range')
+    expect(bmiBand(12.49, 'M', 2922)).toBe('below the 3rd centile')
+    expect(bmiBand(12.5, 'M', 2922)).toBeNull()
+    // Girls at the same age have their own lines: overweight 16.9, obese 20.1.
+    expect(bmiBand(16.8, 'F', 2922)).toBeNull()
+    expect(bmiBand(19, 'F', 2922)).toBe('overweight range')
+    expect(bmiBand(20.1, 'F', 2922)).toBe('obese range')
+  })
+  it('between half years reads the line in proportion, and says nothing outside 5 to 18 years', () => {
+    // Boys 8.25 years (3013 days is 8.249 y): overweight line between 16.7 and 17.0.
+    expect(bmiBand(16.84, 'M', 3013)).toBeNull()
+    expect(bmiBand(16.86, 'M', 3013)).toBe('overweight range')
+    expect(bmiBand(30, 'M', 1500)).toBeNull()
+    expect(bmiBand(30, 'M', 6576)).toBeNull()
+    expect(bmiBand(30, 'M', 6575)).toBe('obese range')
+    expect(bmiBand(0, 'M', 2922)).toBeNull()
   })
 })
 
@@ -100,7 +107,8 @@ describe('growthPoints', () => {
     const h = growthPoints(visits, '2017-05-12', 'height', 'M')
     expect(h[1].sds).toBe(sds(121, 'M', 'height', 3436))
     expect(h[1].sds).not.toBeNull()
-    expect(h[1].sdsRaw).toBe(sdsExact(121, 'M', 'height', 3436))
+    expect(h[1].raw).toBe(121)
+    expect(growthPoints(visits, '2017-05-12', 'bmi', 'M')[0].raw).toBeCloseTo(16.529, 3)
   })
 })
 
@@ -153,7 +161,12 @@ describe('chartReference', () => {
     expect(chartReference('M', 'weight', [3.2, 7])).toMatchObject({ from: 3, to: 18, refs: ['iap2015'] })
     const b = chartReference('F', 'bmi', [12, 18.6])!
     expect(b.to).toBe(19)
-    expect(b.lines.map((l) => l.label)).toEqual(['3', '10', '25', '50', 'OW', 'OB'])
+    expect(b.lines.map((l) => l.label)).toEqual(['3', '5', '10', '25', '50', 'OW', 'OB'])
+    // The BMI lines are the paper's printed values, half-yearly: boys at 5.0 and 18.0 years.
+    const boys = chartReference('M', 'bmi', [9])!
+    expect(boys.segments[0].ages.length).toBe(27)
+    expect(boys.segments[0].values.map((v) => v[0])).toEqual([12.1, 12.4, 12.8, 13.6, 14.7, 15.7, 17.5])
+    expect(boys.segments[0].values.map((v) => v.at(-1))).toEqual([15.6, 16.2, 17.1, 18.9, 21.1, 23.2, 26.6])
   })
 })
 

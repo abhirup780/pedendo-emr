@@ -1,4 +1,4 @@
-import { IAP_LMS, WHO_LHFA } from './growth-data'
+import { IAP_BMI_PRINTED, IAP_LMS, WHO_LHFA } from './growth-data'
 import type { Sex } from './types'
 
 /**
@@ -98,7 +98,8 @@ export function noReferenceReason(measure: Measure, ageDays: number): string {
 export interface ChartLine {
   /** What is printed beside the line. */
   label: string
-  z: number
+  /** Where the line sits, in SDS. Absent for lines drawn from a printed table (IAP BMI). */
+  z?: number
   kind: 'mid' | 'edge' | 'inner' | 'outer' | 'cut'
 }
 
@@ -118,28 +119,32 @@ export const IAP_HEIGHT_WEIGHT_LINES: ChartLine[] = [
   { label: '97', z: 2, kind: 'edge' },
 ]
 
-/** SDS of the exact 3rd, 10th and 25th centiles of a normal distribution. */
-export const Z_CENTILE = { 3: -1.8807936, 10: -1.2815516, 25: -0.6744898 } as const
-
 /**
- * IAP 2015 BMI cut-offs as SDS, from the interpretation sheet of the IAP growth and SDS
- * calculator: the lines that reach an adult BMI of 23 (overweight) and 27 (obesity).
+ * IAP 2015 BMI chart. These seven lines are not worked out from L, M and S: they are the
+ * values printed in the paper's BMI tables (Tables VI and VII), half-yearly, joined by straight
+ * lines. The last two are the paper's overweight and obesity cut-offs, the lines that reach an
+ * adult BMI of 23 and 27. Overweight and obesity are read against these printed lines, as the
+ * paper recommends, not against an SDS.
  */
-export const IAP_BMI_CUTOFFS: Record<Sex, { overweight: number; obese: number }> = {
-  M: { overweight: 0.55, obese: 1.34 },
-  F: { overweight: 0.67, obese: 1.64 },
-}
+export const IAP_BMI_LINES: ChartLine[] = [
+  { label: '3', kind: 'edge' },
+  { label: '5', kind: 'inner' },
+  { label: '10', kind: 'inner' },
+  { label: '25', kind: 'inner' },
+  { label: '50', kind: 'mid' },
+  { label: 'OW', kind: 'cut' },
+  { label: 'OB', kind: 'cut' },
+]
+export const BMI_LINE = { third: 0, median: 4, overweight: 5, obese: 6 } as const
 
-/** IAP 2015 BMI chart: the 3rd, 10th, 25th and 50th centiles and the two adult-equivalent lines. */
-export function iapBmiLines(sex: Sex): ChartLine[] {
-  return [
-    { label: '3', z: Z_CENTILE[3], kind: 'edge' },
-    { label: '10', z: Z_CENTILE[10], kind: 'inner' },
-    { label: '25', z: Z_CENTILE[25], kind: 'inner' },
-    { label: '50', z: 0, kind: 'mid' },
-    { label: 'OW', z: IAP_BMI_CUTOFFS[sex].overweight, kind: 'cut' },
-    { label: 'OB', z: IAP_BMI_CUTOFFS[sex].obese, kind: 'cut' },
-  ]
+/** The seven printed BMI lines at an age in years (5 to 18), in proportion between half years. */
+export function iapBmiPrintedAt(sex: Sex, years: number): number[] | null {
+  const t = IAP_BMI_PRINTED[sex]
+  const h = Math.round((years - IAP_FROM_YEARS) * 2 * 1e9) / 1e9
+  if (!(h >= 0) || h > t.length - 1) return null
+  const i = Math.min(Math.floor(h), t.length - 2)
+  const k = h - i
+  return t[i].map((v, j) => v + (t[i + 1][j] - v) * k)
 }
 
 /** WHO charts are read in whole SDs. */

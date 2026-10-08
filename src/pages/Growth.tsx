@@ -49,13 +49,13 @@ export default function Growth() {
   const reference = chartReference(patient.sex, measure, points.map((p) => p.age))
   const lastRef = last ? referenceAt(patient.sex, measure, last.ageDays) : null
   const lastSds = last?.sds ?? null
-  const band = measure === 'bmi' && last?.sdsRaw != null ? bmiBand(last.sdsRaw, patient.sex) : null
+  const band = measure === 'bmi' && last ? bmiBand(last.raw, patient.sex, last.ageDays) : null
   const refNames = reference ? reference.refs.map((r) => REFS[r].short).join(' · ') : ''
   const lineNote = !reference
     ? ''
     : reference.refs.includes('iap2015')
       ? measure === 'bmi'
-        ? 'Lines: 3rd, 10th, 25th and 50th centiles; OW and OB are the IAP overweight and obesity lines (adult-equivalent BMI 23 and 27).'
+        ? 'Lines are those printed in the IAP 2015 paper: the 3rd, 5th, 10th, 25th and 50th centiles; OW and OB are its overweight and obesity lines (adult-equivalent BMI 23 and 27).'
         : 'Lines are the seven on the IAP chart, labelled 3 to 97 as printed there: the median, and ⅔, 1⅓ and 2 SD either side.'
       : 'Lines are the WHO median and 1, 2 and 3 SD either side.'
   const latestHeight = visits.find((v) => v.height_cm != null)

@@ -9,7 +9,7 @@ hold the app to them.
 | --- | --- | --- |
 | `who2006-lhfa-boys.csv`, `who2006-lhfa-girls.csv` | WHO Child Growth Standards 2006, length/height-for-age, one row per day of age from 0 to 1856, with L, M, S and WHO's own SD columns (−4 to +4) | WHO expanded z-score tables (`lhfa-boys/girls-zscore-expanded-tables.xlsx`) |
 | `iap2015-lms.csv` | IAP 2015 L, M, S for height, weight and BMI, boys and girls, one row per month from 5 to 18 years | Sheet `IAP15` of the IAP growth and SDS calculator workbook (Khadilkar group) |
-| `iap2015-paper-tables.csv` | The centile tables printed in the paper (Tables II–VII), half-yearly. Used only to check the above. `c1…c7` are the seven printed columns in order | Khadilkar V et al. Revised IAP growth charts for height, weight and body mass index for 5- to 18-year-old Indian children. Indian Pediatrics 2015;52:47-55 (indianpediatrics.net/jan2015/jan-47-55.htm) |
+| `iap2015-paper-tables.csv` | The centile tables printed in the paper (Tables II–VII), half-yearly. `c1…c7` are the seven printed columns in order. Height and weight rows check the L, M, S above; the BMI rows are what the BMI chart draws | Khadilkar V et al. Revised IAP growth charts for height, weight and body mass index for 5- to 18-year-old Indian children. Indian Pediatrics 2015;52:47-55 (indianpediatrics.net/jan2015/jan-47-55.htm) |
 
 The three workbooks were copied from `growth-source/` in the owner's repository
 `abhirup780/drsayan-web` (commit `13c7f9f`). SHA-256 of the workbooks they were read from:
@@ -39,17 +39,21 @@ printed charts head those columns 3, 10, 25, 50, 75, 90 and 97. The exact 3rd an
 (±1.88 SD) would be up to 1 cm and 2.4 kg away from the printed lines. So on the IAP chart the
 "3rd centile" line is the −2 SD line, and the app draws it there and labels it as IAP does.
 
-**IAP BMI.** The paper's BMI columns are the true 3rd, 5th, 10th, 25th and 50th centiles plus
-the adult-equivalent 23 and 27 lines. The calculator's BMI L, M, S follow the printed table
-closely but not digit for digit: within 0.23 kg/m² on the centile lines. The overweight and
-obesity lines use the SDS cut-offs written on the calculator's interpretation sheet (boys 0.55
-and 1.34, girls 0.67 and 1.64). The overweight line is within 0.18 kg/m² of the printed
-"23 adult equivalent" column; the obesity line is up to 0.62 kg/m² from the printed "27 adult
-equivalent" column in boys (0.51 in girls), and in boys it runs above the printed line at most
-ages, so the calculator and the app call slightly fewer boys obese than the paper chart would (the paper describes those columns as the 71st/90th centiles in boys and
-75th/95th in girls, which is not quite the same line as the calculator's cut-off). BMI SDS in
-the app is therefore exactly what the IAP calculator gives; the BMI chart lines can differ
-from the printed chart by those amounts.
+**IAP BMI.** The owner's instruction: follow the paper as closely as possible; the SDS from
+the calculator are genuine. So the two are kept apart:
+
+- *Chart lines and overweight/obesity* come straight from the paper's printed BMI tables
+  (Tables VI and VII): the 3rd, 5th, 10th, 25th and 50th centiles and the "23 adult equivalent"
+  and "27 adult equivalent" lines, half-yearly, joined by straight lines. A BMI at or above
+  the 23 line is shown as "overweight range", at or above the 27 line as "obese range", as the
+  paper recommends. The tables were transcribed from the journal's web page twice,
+  independently, and the two copies were identical.
+- *BMI SDS* comes from the calculator's L, M, S, exactly as the IAP calculator gives it.
+
+The two are close but not the same fit: the calculator's L, M, S put the centile lines within
+0.22 kg/m² of the printed ones. The calculator's own SDS cut-offs for overweight and obesity
+(boys 0.55 and 1.34, girls 0.67 and 1.64) are not used: its boys' obesity cut-off runs up to
+0.62 kg/m² above the paper's printed 27 line.
 
 ## Choices that are the app's, not the tables'
 
