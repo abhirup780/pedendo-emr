@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useUser } from './auth'
 import Shell from './components/Shell'
+import Growth from './pages/Growth'
 import Login from './pages/Login'
 import Patients from './pages/Patients'
 import PatientForm from './pages/PatientForm'
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/patients/new" element={<PatientForm />} />
         <Route path="/patients/:id" element={<PatientProfile />} />
         <Route path="/patients/:id/edit" element={<PatientForm />} />
+        <Route path="/patients/:id/growth" element={<Growth />} />
         <Route path="/patients/:id/photos" element={<Photos />} />
         <Route path="/patients/:id/visits/new" element={<VisitPage />} />
         <Route path="/patients/:id/visits/:vid" element={<VisitPage />} />

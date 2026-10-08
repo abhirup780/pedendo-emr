@@ -103,12 +103,22 @@ the single source of truth — commit and push finished work.
   leaves the Drive files; nothing cleans those up yet.
 - Demo photos and consent are memory-only and vanish on reload.
 
+## Growth chart notes
+
+- `src/lib/growth-reference.ts` is EMPTY on purpose; its header documents the table format.
+  Fill it only from numbers the owner supplies from the published sources. Never from memory.
+- `src/lib/growth.ts`: `sds()` returns null until a table with L, M, S covers the age, and the
+  UI then shows "needs the reference tables". `checkReference` runs in the tests on every table.
+- `components/GrowthChart.tsx` draws centile curves when a table is present. That path has only
+  been exercised by unit tests on the maths, not by eye: look at it when the first table lands.
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)
 2. ~~Visit and prescription: measurements, notes, medicines, templates, A4 print~~ (done)
 3. ~~Investigations: grouped master list, one-click panels, result entry~~ (done)
-4. Growth: reference tables, SDS and velocity, chart
+4. Growth: chart frame done (child's own points, velocity, MPH). STILL WAITING for the owner to
+   supply the published reference tables; then fill `src/lib/growth-reference.ts`
 5. ~~Tanner staging per visit~~ (done)
 6. ~~Photographs on Google Drive, compare view~~ (done; Drive calls unit-tested with a stand-in, never run against Google)
 7. ~~Excel export per condition group; backup~~ (done; backup is a downloaded file, not yet sent to Drive)

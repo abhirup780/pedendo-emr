@@ -267,3 +267,20 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid #edf0ef; white-sp
 .ph-msg { display: flex; align-items: center; justify-content: center; padding: 10px; text-align: center; color: #44545b; font-size: 12.5px; }
 .ph-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 760px; }
 .btn[aria-pressed='true'] { border-color: var(--primary); background: var(--primary-tint); color: var(--primary-dark); }
+
+/* Growth chart */
+.gc { position: relative; }
+.gc svg { display: block; width: 100%; height: auto; font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+.gc-grid { stroke: #e6eae9; stroke-width: 1; }
+.gc-grid.faint { stroke: #eef1f0; }
+.gc-axis { fill: none; stroke: #8a979c; stroke-width: 1; }
+.gc-tick { fill: #55656c; font-size: 11px; }
+.gc-centile { fill: none; stroke: #b4c0bf; stroke-width: 1; }
+.gc-centile.edge { stroke: #6f8083; stroke-width: 1.4; }
+.gc-centile.mid { stroke: #44545b; stroke-width: 1.8; }
+.gc-line { fill: none; stroke: #b4500b; stroke-width: 2; stroke-linejoin: round; }
+.gc-dot { fill: #b4500b; stroke: #fff; stroke-width: 2; }
+.gc-hit { fill: transparent; cursor: pointer; outline: none; }
+.gc-hit:focus-visible { stroke: var(--primary); stroke-width: 2; }
+.gc-label { fill: #14242b; font-size: 12px; font-weight: 600; }
+.gc-tip { position: absolute; transform: translate(-50%, calc(-100% - 12px)); padding: 6px 10px; border-radius: 6px; background: #14242b; color: #fff; font-size: 12.5px; white-space: nowrap; pointer-events: none; z-index: 2; }

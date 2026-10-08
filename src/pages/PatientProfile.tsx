@@ -78,6 +78,9 @@ export default function PatientProfile() {
           <Link to={`/patients/${p.id}/edit`} className="btn outline">
             Edit
           </Link>
+          <Link to={`/patients/${p.id}/growth`} className="btn outline">
+            Growth chart
+          </Link>
           <Link to={`/patients/${p.id}/photos`} className="btn outline">
             Photos
           </Link>
