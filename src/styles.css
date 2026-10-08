@@ -371,8 +371,12 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
 .narrow-only { display: none; }
 .tap { display: inline-block; padding: 10px 0; }
 .actions { flex: 1 1 100%; display: flex; flex-direction: column; gap: 10px; }
-.cols > .actions .row { justify-content: flex-end; }
-.cols > .actions .row .btn { flex: 0 1 auto !important; min-width: 180px; }
+/* The visit screen's bar stays at the foot of the window while the long form scrolls. */
+.cols > .actions { position: sticky; bottom: 0; z-index: 5; align-self: stretch; margin-bottom: -24px; padding: 12px 0 14px; background: rgb(243 245 244 / 0.96); border-top: 1px solid var(--line); backdrop-filter: blur(6px); }
+.vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.vbar .save { display: flex; gap: 10px; margin-left: auto; order: 2; }
+.vbar .save .btn { min-width: 150px; }
+.vbar .del { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; order: 1; }
 .pl-mobile-bar { display: none; }
 .topbar { padding-top: calc(6px + env(safe-area-inset-top, 0px)); }
 
@@ -460,8 +464,13 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
 
   /* Save buttons stay within reach at the foot of long forms. */
   .actions { position: sticky; bottom: 0; z-index: 5; margin: 0 -16px -28px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: rgb(243 245 244 / 0.96); border-top: 1px solid var(--line); backdrop-filter: blur(6px); }
-  .cols > .actions { flex-basis: auto; width: auto; align-self: stretch; }
-  .cols > .actions .row .btn { flex: 1 1 0 !important; min-width: 0; }
+  .cols > .actions { flex-basis: auto; width: auto; align-self: stretch; margin: 0 -16px -28px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  /* On a phone everything is one short line; only the "are you sure" question takes its own. */
+  .vbar { gap: 8px; }
+  .vbar .save { flex: 1 1 0; min-width: 0; gap: 8px; }
+  .vbar .save .btn { flex: 1 1 auto; min-width: 0; padding: 0 10px; }
+  .vbar .del .btn { padding: 0 12px; }
+  .vbar .del.asking { flex: 1 1 100%; justify-content: flex-end; font-size: 13.5px; }
   .actions .alert { padding: 8px 12px; font-size: 13px; }
 
   /* Print layout editor: the preview opens over the form. */

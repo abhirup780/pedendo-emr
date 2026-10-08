@@ -203,7 +203,8 @@ the single source of truth — commit and push finished work.
 - On a phone: the header is one row; the patient list and visit history turn from table rows
   into cards by CSS grid areas (cell order in the markup matters: check `nth-child` rules
   before adding a column); chip rows and tabs scroll sideways; `.actions` bars stick to the
-  foot of long forms; the investigation list starts folded; the print layout editor's preview
+  foot of long forms (the visit screen's bar, `.vbar`, sticks on every screen size: delete on
+  the left, the two save buttons on the right, short labels on a phone); the investigation list starts folded; the print layout editor's preview
   opens as a full-screen panel.
 - `components/FitSheet.tsx` shrinks a prescription sheet as a whole to fit the screen (CSS
   `zoom`), so the phone preview is the true layout; `@media print` cancels the shrink. A PDF

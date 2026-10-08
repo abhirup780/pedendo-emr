@@ -539,27 +539,30 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
 
         <div className="actions">
           {tried && invalid && <div className="alert">Some entries need correcting before this visit can be saved.</div>}
-          <div className="row">
-            <button type="submit" className="btn outline" style={{ flex: '1 1 120px' }} disabled={busy}>
-              {busy ? 'Saving…' : 'Save visit'}
-            </button>
-            <button type="button" className="btn primary" style={{ flex: '2 1 180px' }} disabled={busy} onClick={() => void save(true)}>
-              Save and open prescription
-            </button>
-          </div>
-          {vid && (
-            <div className="row end">
-              {confirming ? (
-                <>
-                  <span>Delete this visit and its prescription?</span>
-                  <button type="button" className="btn small" onClick={() => setConfirming(false)}>Keep</button>
-                  <button type="button" className="btn danger small" onClick={remove}>Delete visit</button>
-                </>
-              ) : (
-                <button type="button" className="btn danger small" onClick={() => setConfirming(true)}>Delete visit</button>
-              )}
+          {/* One bar: delete on the left, away from the two save buttons on the right. */}
+          <div className="vbar">
+            <div className="save">
+              <button type="submit" className="btn outline" disabled={busy}>
+                {busy ? 'Saving…' : <><span className="wide-only">Save visit</span><span className="narrow-only">Save</span></>}
+              </button>
+              <button type="button" className="btn primary" disabled={busy} onClick={() => void save(true)}>
+                <span className="wide-only">Save and open prescription</span><span className="narrow-only">Save and open ℞</span>
+              </button>
             </div>
-          )}
+            {vid && (
+              <div className={confirming ? 'del asking' : 'del'}>
+                {confirming ? (
+                  <>
+                    <span>Delete this visit and its prescription?</span>
+                    <button type="button" className="btn" onClick={() => setConfirming(false)}>Keep</button>
+                    <button type="button" className="btn danger" onClick={remove}>Delete visit</button>
+                  </>
+                ) : (
+                  <button type="button" className="btn danger" onClick={() => setConfirming(true)}><span className="wide-only">Delete visit</span><span className="narrow-only">Delete</span></button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </form>
     </main>
