@@ -1,6 +1,6 @@
 {
-  "name": "Pediatric Endocrinology EMR",
-  "short_name": "PedEndo EMR",
+  "name": "AuxoEMR",
+  "short_name": "AuxoEMR",
   "description": "Patient records and prescriptions for a pediatric endocrinology clinic.",
   "start_url": "/",
   "scope": "/",

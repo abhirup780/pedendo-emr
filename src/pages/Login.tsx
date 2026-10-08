@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { DemoBanner } from '../components/Shell'
 import { clearNotice, peekNotice } from '../lib/device'
 import { store } from '../lib/store'
+import { Curves, Mark, Wordmark } from '../components/Brand'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -56,11 +57,20 @@ export default function Login() {
   return (
     <>
       <DemoBanner />
-      <main className="login">
+      <main className="signin">
+        <div className="signin-art">
+          <h1>
+            <Mark size={38} />
+            <Wordmark />
+          </h1>
+          <p>Patient records, growth charts and prescriptions for the pediatric endocrinology clinic.</p>
+          <Curves />
+        </div>
+        <div className="signin-form">
         <form className="card" onSubmit={(e) => void go(e)}>
-          <h1>Pediatric Endocrinology</h1>
+          <h2>{demo ? 'Demo' : step === 'code' ? 'Second step' : 'Sign in'}</h2>
           <div className="muted">
-            {demo ? 'Patient records and prescriptions. This is the demo: no sign-in is needed.' : step === 'code' ? 'Enter the six-digit code from the authenticator app on your phone.' : 'Patient records and prescriptions. Sign in with the clinic email and password.'}
+            {demo ? 'This is the demo: no sign-in is needed.' : step === 'code' ? 'Enter the six-digit code from the authenticator app on your phone.' : 'Use the clinic email and password.'}
           </div>
           {notice && <div className="note" role="status">{notice}</div>}
           {error && <div className="alert" role="alert">{error}</div>}
@@ -92,6 +102,7 @@ export default function Login() {
             <div className="muted" style={{ fontSize: 13 }}>Forgotten the password? It is reset from the Supabase dashboard, under Authentication, Users.</div>
           )}
         </form>
+        </div>
       </main>
     </>
   )

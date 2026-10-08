@@ -5,6 +5,7 @@ import { dropAllDrafts, idleMinutes, leaveNotice } from '../lib/device'
 import { store } from '../lib/store'
 import ErrorBoundary from './ErrorBoundary'
 import type { SessionUser } from '../lib/types'
+import { Mark, Wordmark } from './Brand'
 
 export function DemoBanner() {
   if (store.mode !== 'demo') return null
@@ -51,11 +52,9 @@ export default function Shell({ user, children }: { user: SessionUser; children:
     <>
       <DemoBanner />
       <header className="topbar">
-        <Link to="/" className="brand" aria-label="Pediatric Endocrinology, patient list">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7FD1C9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />
-          </svg>
-          <span className="brand-text">Pediatric Endocrinology</span>
+        <Link to="/" className="brand" aria-label="AuxoEMR, patient list">
+          <span className="brand-mark"><Mark /></span>
+          <span className="brand-text"><Wordmark /></span>
         </Link>
         <nav className="topnav">
           <NavLink to="/" end>

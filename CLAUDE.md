@@ -1,5 +1,8 @@
 # Project notes
 
+The app is called **AuxoEMR** (auxology: the study of growth); the mark, the name and the
+sign-in art are in `src/components/Brand.tsx`. The repository and file names keep `pedendo`.
+
 EMR and prescription-writing web app for ONE pediatric endocrinologist (about 500 patients a
 month). Everything must stay on free tiers. Owner works from different devices, so the repo is
 the single source of truth — commit and push finished work.

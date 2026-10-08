@@ -1,4 +1,4 @@
-# Pediatric Endocrinology EMR
+# AuxoEMR
 
 Patient records and prescription writing for a single pediatric endocrinologist.
 A web app: the doctor signs in from any browser with an email, a password and (optionally) an
