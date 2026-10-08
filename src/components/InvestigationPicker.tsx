@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { bestMatch, categoryOrder } from '../lib/investigations'
+import { bestMatch, categoryOrder, rankedMatches } from '../lib/investigations'
 import type { Investigation, Panel } from '../lib/types'
 
 interface Props {
@@ -12,30 +12,30 @@ interface Props {
   onSavePanel: (name: string) => Promise<string>
 }
 
+const Tick = ({ on }: { on: boolean }) => <span className="box" aria-hidden="true">{on ? '✓' : ''}</span>
+
+/**
+ * Investigations advised at a visit. On the visit screen this stays small: one-tap panels, the
+ * chosen tests, and a search box that suggests as you type. The whole list, however long it
+ * grows, is browsed in a window of its own ("Browse all").
+ */
 export default function InvestigationPicker({ catalog, panels, value, onChange, onSavePanel }: Props) {
   const [q, setQ] = useState('')
-  // The full list is long, so it starts folded away: panels and search cover most visits, and
-  // the list opens like a dropdown (typing in the search box opens it too).
-  const [open, setOpen] = useState(false)
+  const [browsing, setBrowsing] = useState(false)
   const [panelName, setPanelName] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
 
   const has = (n: string) => value.includes(n)
   const toggle = (n: string) => onChange(has(n) ? value.filter((x) => x !== n) : [...value, n])
-
-  const groups = useMemo(() => {
-    const t = q.trim().toLowerCase()
-    const shown = catalog.filter((i) => !t || i.name.toLowerCase().includes(t))
-    return categoryOrder(shown.map((i) => i.category)).map((c) => ({ category: c, items: shown.filter((i) => i.category === c) }))
-  }, [catalog, q])
-  const matches = groups.reduce((n, g) => n + g.items.length, 0)
+  const names = useMemo(() => catalog.map((i) => i.name), [catalog])
 
   // What Enter will add: the best match from the list, or the typed text when nothing matches.
-  const enterAdds = bestMatch(catalog.map((i) => i.name), q) ?? q.trim()
+  const enterAdds = bestMatch(names, q) ?? q.trim()
+  const suggestions = useMemo(() => rankedMatches(names, q).slice(0, 7), [names, q])
 
-  function addTyped() {
-    if (!enterAdds) return
-    if (!has(enterAdds)) onChange([...value, enterAdds])
+  function add(name: string) {
+    if (!name) return
+    if (!has(name)) onChange([...value, name])
     setQ('')
   }
 
@@ -82,55 +82,197 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
           <input
             type="search"
             aria-label="Search or add an investigation"
-            placeholder={value.length ? 'Search or add another…' : 'Search IGF-1, TSH, bone age… or type a new one and press Enter'}
+            placeholder={value.length ? 'Type to add another…' : 'Type to add: IGF-1, TSH, bone age…'}
             value={q}
-            onChange={(e) => { setQ(e.target.value); setOpen(true) }}
+            onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
-                addTyped()
+                add(enterAdds)
               }
+              if (e.key === 'Escape') setQ('')
             }}
           />
-          <button type="button" className="btn small list-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-            {open ? 'Hide list' : 'Browse list'}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : undefined }}><path d="m6 9 6 6 6-6" /></svg>
-          </button>
         </div>
-        {open && (
-          <div className="picker-list" role="group" aria-label="All investigations">
-            {groups.map((g) => (
-              <div key={g.category}>
-                <div className="cat">{g.category}</div>
-                {g.items.map((i) => (
-                  <button type="button" key={i.id} className="opt" aria-pressed={has(i.name)} onClick={() => toggle(i.name)}>
-                    <span className="box" aria-hidden="true">{has(i.name) ? '✓' : ''}</span>
-                    {i.name}
-                  </button>
-                ))}
-              </div>
+        {q.trim() && (
+          <div className="quick" role="group" aria-label="Matching investigations">
+            {suggestions.map((n, i) => (
+              <button type="button" key={n} className="opt" aria-pressed={has(n)} onClick={() => (has(n) ? toggle(n) : add(n))}>
+                <Tick on={has(n)} />
+                <span className="grow">{n}</span>
+                {i === 0 && <span className="key">Enter</span>}
+              </button>
             ))}
-            {catalog.length === 0 && <div className="muted">Your investigation list is empty. Build it under <Link to="/settings">Settings</Link>, or type a name above and press Enter.</div>}
-            {catalog.length > 0 && matches === 0 && <div className="muted">Nothing in your list matches.</div>}
+            {suggestions.length === 0 && (
+              <button type="button" className="opt" onClick={() => add(q.trim())}>
+                <span className="grow">Add "{q.trim()}" as a new investigation for this visit</span>
+                <span className="key">Enter</span>
+              </button>
+            )}
           </div>
         )}
-        {q.trim() && <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>Enter adds "{enterAdds}"{matches === 0 ? ' as a new investigation for this visit' : ''}.</div>}
+      </div>
+
+      <div className="row" style={{ gap: 8 }}>
+        <button type="button" className="btn small outline" onClick={() => setBrowsing(true)}>
+          Browse all{catalog.length > 0 && ` (${catalog.length})`}
+        </button>
+        {panelName === null && value.length > 1 && (
+          <button type="button" className="btn small" onClick={() => { setPanelName(''); setMsg('') }}>
+            Save this selection as a panel
+          </button>
+        )}
       </div>
 
       {msg && <div className="pill ok" role="status">{msg}</div>}
-      {panelName === null ? (
-        value.length > 1 && (
-          <button type="button" className="btn small" style={{ alignSelf: 'flex-start' }} onClick={() => { setPanelName(''); setMsg('') }}>
-            Save this selection as a panel
-          </button>
-        )
-      ) : (
+      {panelName !== null && (
         <div className="row" style={{ gap: 8 }}>
           <input aria-label="Panel name" placeholder="Panel name" value={panelName} onChange={(e) => setPanelName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); void savePanel() } }} style={{ flex: '1 1 180px', minHeight: 40, padding: '6px 10px', border: '1px solid var(--line-strong)', borderRadius: 8 }} />
           <button type="button" className="btn small primary" disabled={!panelName.trim()} onClick={savePanel}>Save panel</button>
           <button type="button" className="btn small" onClick={() => setPanelName(null)}>Cancel</button>
         </div>
       )}
+
+      {browsing && <BrowseDialog catalog={catalog} panels={panels} value={value} onChange={onChange} onClose={() => setBrowsing(false)} />}
     </section>
+  )
+}
+
+/** The whole investigation list in its own window: groups down the side, search across all. */
+function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props, 'onSavePanel'> & { onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  const search = useRef<HTMLInputElement>(null)
+  const [q, setQ] = useState('')
+  const [group, setGroup] = useState<string | null>(null)
+
+  useEffect(() => {
+    const d = ref.current
+    if (d && !d.open) d.showModal()
+    // With a keyboard, start in the search box. On a touch screen that would bring up the
+    // on-screen keyboard over the list, so the list is left in view instead.
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) search.current?.focus()
+    else d?.focus()
+  }, [])
+
+  const has = (n: string) => value.includes(n)
+  const toggle = (n: string) => onChange(has(n) ? value.filter((x) => x !== n) : [...value, n])
+  const categories = useMemo(() => categoryOrder(catalog.map((i) => i.category)), [catalog])
+  const t = q.trim().toLowerCase()
+  // Searching looks through every group; otherwise the chosen group (or all of them) is shown.
+  const shown = catalog.filter((i) => (t ? i.name.toLowerCase().includes(t) : group == null || i.category === group))
+  const groups = categories.map((c) => ({ category: c, items: shown.filter((i) => i.category === c) })).filter((g) => g.items.length > 0)
+  const chosenIn = (c: string) => catalog.filter((i) => i.category === c && has(i.name)).length
+  const exact = catalog.some((i) => i.name.toLowerCase() === t)
+  const extra = value.filter((n) => !catalog.some((i) => i.name === n))
+
+  return (
+    <dialog
+      ref={ref}
+      className="inv-dialog"
+      tabIndex={-1}
+      aria-labelledby="inv-title"
+      onClose={onClose}
+      // A click on the dimmed area around the window closes it.
+      onClick={(e) => { if (e.target === ref.current) ref.current?.close() }}
+    >
+      <div className="inv-head">
+        <div className="grow">
+          <h2 id="inv-title">Investigations</h2>
+          <div className="muted" style={{ fontSize: 13 }}>Tick what to advise at this visit. Changes apply straight away.</div>
+        </div>
+        <button type="button" className="icon-btn" aria-label="Close" onClick={() => ref.current?.close()}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+
+      <div className="inv-search">
+        <input
+          type="search"
+          aria-label="Search all investigations"
+          placeholder="Search all investigations"
+          value={q}
+          ref={search}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter must not save the visit form behind this window.
+            if (e.key === 'Enter') e.preventDefault()
+          }}
+        />
+      </div>
+
+      <div className="inv-body">
+        <div className="inv-groups" role="group" aria-label="Groups">
+          <button type="button" aria-pressed={!t && group == null} onClick={() => { setGroup(null); setQ('') }}>
+            <span className="grow">All</span>
+            <span className="n">{catalog.length}</span>
+          </button>
+          {categories.map((c) => (
+            <button type="button" key={c} aria-pressed={!t && group === c} onClick={() => { setGroup(c); setQ('') }}>
+              <span className="grow">{c}</span>
+              {chosenIn(c) > 0 && <span className="n on">{chosenIn(c)}</span>}
+              <span className="n">{catalog.filter((i) => i.category === c).length}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="inv-list" tabIndex={0} role="region" aria-label="Investigation list">
+          {panels.length > 0 && !t && group == null && (
+            <div className="inv-group">
+              <div className="cat">Panels</div>
+              <div className="suggest">
+                {panels.map((p) => (
+                  <button type="button" key={p.id} className="panel-btn" onClick={() => onChange([...value, ...p.items.filter((n) => !has(n))])}>
+                    + {p.name} <span className="muted">({p.items.length})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {groups.map((g) => (
+            <div className="inv-group" key={g.category}>
+              <div className="cat">{g.category}</div>
+              <div className="inv-grid">
+                {g.items.map((i) => (
+                  <button type="button" key={i.id} className="opt" aria-pressed={has(i.name)} onClick={() => toggle(i.name)}>
+                    <Tick on={has(i.name)} />
+                    {i.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {t && !exact && (
+            <button type="button" className="opt add" onClick={() => { if (!has(q.trim())) onChange([...value, q.trim()]); setQ('') }}>
+              + Add "{q.trim()}" as a new investigation for this visit
+            </button>
+          )}
+          {catalog.length === 0 && <div className="muted">Your investigation list is empty. Build it under <Link to="/settings?tab=tests">Settings</Link>, or type a name above to add it for this visit.</div>}
+          {catalog.length > 0 && groups.length === 0 && t && <div className="muted">Nothing in your list matches "{q.trim()}".</div>}
+        </div>
+      </div>
+
+      <div className="inv-foot">
+        <div className="inv-chosen" aria-live="polite">
+          {value.length === 0 ? (
+            <span className="muted">Nothing advised yet</span>
+          ) : (
+            <>
+              <span className="muted">{value.length} advised:</span>
+              {value.map((n) => (
+                <span className="picked" key={n}>
+                  {n}
+                  <button type="button" aria-label={`Remove ${n}`} onClick={() => toggle(n)}>×</button>
+                </span>
+              ))}
+            </>
+          )}
+          {extra.length > 0 && <span className="muted" style={{ fontSize: 12.5 }}>({extra.length} not in your list)</span>}
+        </div>
+        <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+          {value.length > 0 && <button type="button" className="btn" onClick={() => onChange([])}>Clear all</button>}
+          <button type="button" className="btn primary" onClick={() => ref.current?.close()}>Done</button>
+        </div>
+      </div>
+    </dialog>
   )
 }

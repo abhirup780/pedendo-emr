@@ -125,8 +125,13 @@ export function latestPerTest<T extends { test: string; result_date: string; cre
  * then any name containing it. Null when nothing contains it.
  */
 export function bestMatch(names: string[], typed: string): string | null {
+  return rankedMatches(names, typed)[0] ?? null
+}
+
+/** Every name containing what was typed, best first (same order of preference as bestMatch). */
+export function rankedMatches(names: string[], typed: string): string[] {
   const t = typed.trim().toLowerCase()
-  if (!t) return null
+  if (!t) return []
   const rank = (name: string): number => {
     const n = name.toLowerCase()
     if (n === t) return 0
@@ -136,5 +141,5 @@ export function bestMatch(names: string[], typed: string): string | null {
   }
   const scored = names.map((name) => ({ name, r: rank(name) })).filter((x) => x.r < 9)
   scored.sort((a, b) => a.r - b.r || a.name.length - b.name.length || a.name.localeCompare(b.name))
-  return scored[0]?.name ?? null
+  return scored.map((x) => x.name)
 }

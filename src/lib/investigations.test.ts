@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestMatch, categoryOrder, latestPerTest, STARTER_INVESTIGATIONS, STARTER_PANELS } from './investigations'
+import { bestMatch, categoryOrder, latestPerTest, rankedMatches, STARTER_INVESTIGATIONS, STARTER_PANELS } from './investigations'
 
 describe('starter investigations', () => {
   const names = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map((i) => i[0]))
@@ -25,6 +25,20 @@ describe('latestPerTest', () => {
     expect(out[0].latest.value).toBe('2.4')
     expect(out[0].previous?.value).toBe('3.1')
     expect(out[1].previous).toBeNull()
+  })
+})
+
+describe('rankedMatches', () => {
+  const list = ['TSH', 'Free T4', 'Free T3', 'Anti-TPO antibodies', 'Thyroid ultrasound', 'Testosterone (total)']
+  it('lists every match, best first', () => {
+    expect(rankedMatches(list, 't')).toEqual(['TSH', 'Thyroid ultrasound', 'Testosterone (total)', 'Free T3', 'Free T4', 'Anti-TPO antibodies'])
+    expect(rankedMatches(list, 'free')).toEqual(['Free T3', 'Free T4'])
+    expect(rankedMatches(list, 'sound')).toEqual(['Thyroid ultrasound'])
+  })
+  it('is empty for nothing typed or no match, and agrees with bestMatch', () => {
+    expect(rankedMatches(list, '  ')).toEqual([])
+    expect(rankedMatches(list, 'zzz')).toEqual([])
+    expect(bestMatch(list, 'thy')).toBe(rankedMatches(list, 'thy')[0])
   })
 })
 
