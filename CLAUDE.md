@@ -99,7 +99,12 @@ the single source of truth — commit and push finished work.
   `src/lib/tanner.ts`: onset is genital stage 2 or a testis of 4 mL in boys, breast stage 2 in
   girls; pubic hair alone never decides. The early/late prompt uses 8/13 years (girls) and
   9/14 years (boys) and is worded as "consider", never as a diagnosis.
-- The tiles are schematic pictograms built from plain shapes in CSS (`TannerPicker.tsx`).
+- The tile pictures are crops of the Wikimedia Commons Tanner scale diagrams by Michał
+  Komorniczak (CC BY-SA 3.0), supplied by the owner: originals in `reference-data/tanner/`,
+  per-stage files in `src/assets/tanner/` (see its README), cut by `scripts/build-tanner.py`.
+  They are cropped only, never redrawn, and the credit line under the staging section must
+  stay. Boys' pubic hair tiles show the upper part of the genital drawing (CSS crop). A child
+  with sex not assigned keeps a neutral pictogram for pubic hair.
 
 ## Stage 7 notes
 

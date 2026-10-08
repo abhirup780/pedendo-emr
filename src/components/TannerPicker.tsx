@@ -2,21 +2,12 @@ import type { CSSProperties, ReactNode } from 'react'
 import { BREAST, EMPTY_TANNER, GENITAL, isBlank, ORCHIDOMETER, OTHER_SIGNS, PUBIC, pubertyFlag, tannerSummary } from '../lib/tanner'
 import type { Sex, Tanner } from '../lib/types'
 
-// Schematic pictograms drawn with plain shapes; sizes per stage 1 to 5.
-const G_ICON = [
-  { bw: 9, bh: 16, ow: 10, oh: 13 },
-  { bw: 9, bh: 17, ow: 13, oh: 17 },
-  { bw: 10, bh: 24, ow: 15, oh: 20 },
-  { bw: 13, bh: 28, ow: 18, oh: 24 },
-  { bw: 15, bh: 32, ow: 21, oh: 28 },
-]
-const B_ICON = [
-  { w: 3, h: 10, mw: 0, mh: 0 },
-  { w: 9, h: 24, mw: 0, mh: 0 },
-  { w: 17, h: 38, mw: 0, mh: 0 },
-  { w: 21, h: 46, mw: 7, mh: 16 },
-  { w: 27, h: 54, mw: 4, mh: 9 },
-]
+// Stage drawings: crops of the Tanner scale diagrams by Michał Komorniczak on Wikimedia
+// Commons (CC BY-SA 3.0). See src/assets/tanner/README.md; they are cut by scripts/build-tanner.py.
+const PICS = import.meta.glob<string>('../assets/tanner/*.svg', { eager: true, query: '?url', import: 'default' })
+const pic = (name: string) => PICS[`../assets/tanner/${name}.svg`]
+
+// Only for a child whose sex is not assigned: a neutral pubic hair pictogram from plain shapes.
 const P_ICON = [
   { w: 0, h: 0, d: 6, tint: false },
   { w: 14, h: 14, d: 6, tint: false },
@@ -61,40 +52,27 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {sex !== 'F' && (
-        <Scale
-          title="Genital stage" code="G" value={t.g} onPick={(n) => set({ g: n })} caps={GENITAL}
-          icon={(i) => (
-            <span className="g-icon">
-              <span className="bar" style={{ width: G_ICON[i].bw, height: G_ICON[i].bh }} />
-              <span className="pair">
-                <span style={{ width: G_ICON[i].ow, height: G_ICON[i].oh }} />
-                <span style={{ width: G_ICON[i].ow, height: G_ICON[i].oh }} />
-              </span>
-            </span>
-          )}
-        />
+        <Scale title="Genital stage" code="G" value={t.g} onPick={(n) => set({ g: n })} caps={GENITAL} icon={(i) => <img className="t-pic" src={pic(`g${i + 1}`)} alt="" />} />
       )}
       {sex !== 'M' && (
-        <Scale
-          title="Breast stage" hint="Side-profile outline" code="B" value={t.b} onPick={(n) => set({ b: n })} caps={BREAST}
-          icon={(i) => (
-            <span className="b-icon">
-              <span className="wall" />
-              <span className="mound" style={{ width: B_ICON[i].w, height: B_ICON[i].h }} />
-              {B_ICON[i].mw > 0 && <span className="mound second" style={{ width: B_ICON[i].mw, height: B_ICON[i].mh }} />}
-            </span>
-          )}
-        />
+        <Scale title="Breast stage" hint="Side profile" code="B" value={t.b} onPick={(n) => set({ b: n })} caps={BREAST} icon={(i) => <img className="t-pic" src={pic(`b${i + 1}`)} alt="" />} />
       )}
 
       <Scale
         title="Pubic hair stage" code="P" value={t.p} onPick={(n) => set({ p: n })} caps={PUBIC}
-        icon={(i) => (
-          <span className="p-icon">
-            <span className="field-shape" />
-            <span className={P_ICON[i].tint ? 'hair tint' : 'hair'} style={{ width: P_ICON[i].w, height: P_ICON[i].h, '--d': `${P_ICON[i].d}px` } as CSSProperties} />
-          </span>
-        )}
+        icon={(i) =>
+          sex === 'F' ? (
+            <img className="t-pic" src={pic(`pf${i + 1}`)} alt="" />
+          ) : sex === 'M' ? (
+            // The upper part of the same drawing as the genital stage.
+            <span className="t-crop"><img src={pic(`g${i + 1}`)} alt="" /></span>
+          ) : (
+            <span className="p-icon">
+              <span className="field-shape" />
+              <span className={P_ICON[i].tint ? 'hair tint' : 'hair'} style={{ width: P_ICON[i].w, height: P_ICON[i].h, '--d': `${P_ICON[i].d}px` } as CSSProperties} />
+            </span>
+          )
+        }
       />
 
       {sex !== 'F' && (
@@ -144,6 +122,7 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
         </div>
         {value && <button type="button" className="btn small" onClick={() => onChange(null)}>Clear staging</button>}
       </div>
+      <div className="muted" style={{ fontSize: 12 }}>Stage drawings: Michał Komorniczak, Wikimedia Commons, CC BY-SA 3.0 (cropped).</div>
     </div>
   )
 }
