@@ -32,6 +32,7 @@ export default function Shell({ user, children }: { user: SessionUser; children:
           <NavLink to="/" end>
             Patients
           </NavLink>
+          <NavLink to="/registry">Registry &amp; export</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
         <div className="who">

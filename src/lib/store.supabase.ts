@@ -266,6 +266,27 @@ export function createSupabaseStore(url: string, key: string): Store {
       fail(error)
     },
 
+    async dump() {
+      // Supabase returns at most 1,000 rows per request, so read in pages until a short one.
+      const PAGE = 1000
+      async function all<T>(table: string, cols: string, orderBy: string): Promise<T[]> {
+        const out: T[] = []
+        for (let from = 0; ; from += PAGE) {
+          const { data, error } = await sb.from(table).select(cols).order(orderBy).order('id').range(from, from + PAGE - 1)
+          fail(error)
+          const rows = (data ?? []) as unknown as T[]
+          out.push(...rows)
+          if (rows.length < PAGE) return out
+        }
+      }
+      const [patients, visits, results] = await Promise.all([
+        all<Row>('patients', `${PATIENT_COLS}, tags:patient_conditions(condition_id)`, 'mrn'),
+        all<Visit>('visits', VISIT_COLS, 'visit_date'),
+        all<Result>('results', RESULT_COLS, 'result_date'),
+      ])
+      return { patients: patients.map(toPatient), visits: visits.map(toVisit), results }
+    },
+
     async getClinic() {
       const { data, error } = await sb.from('clinic_settings').select(CLINIC_COLS).maybeSingle()
       fail(error)

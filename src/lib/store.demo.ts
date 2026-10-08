@@ -331,6 +331,10 @@ export function createDemoStore(): Store {
       save()
     },
 
+    async dump() {
+      return { patients: [...db.patients], visits: [...db.visits], results: [...db.results] }
+    },
+
     async getClinic() {
       return db.clinic
     },

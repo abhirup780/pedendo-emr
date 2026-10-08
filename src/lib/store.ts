@@ -52,6 +52,9 @@ export interface Store {
   saveResult(input: ResultInput): Promise<Result>
   deleteResult(id: string): Promise<void>
 
+  /** Every patient, visit and result of this account, for export and backup. */
+  dump(): Promise<{ patients: Patient[]; visits: Visit[]; results: Result[] }>
+
   getClinic(): Promise<Clinic>
   saveClinic(c: Clinic): Promise<Clinic>
 }

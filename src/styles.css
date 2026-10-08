@@ -238,3 +238,21 @@ main.narrow { max-width: 860px; }
 .chip.sign { border-color: var(--line-strong); background: #fff; color: var(--ink); min-height: 40px; }
 .chip.sign[aria-pressed='true'] { border-color: var(--primary); background: var(--primary); color: #fff; }
 .t-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; border-radius: 8px; background: #f7f9f8; border: 1px solid var(--line); }
+
+/* Stage 7: registry and export */
+.cohort { display: block; width: 100%; min-height: 48px; padding: 8px 10px; margin-top: 4px; border-radius: 8px; border: 2px solid transparent; background: #fff; text-align: left; }
+.cohort:hover { background: #f7f9f8; }
+.cohort[aria-pressed='true'] { border-color: var(--primary); background: #f1f8f8; }
+.cohort .dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 10px; }
+.cohort .bar { display: block; height: 5px; margin-top: 6px; border-radius: 3px; background: #eceFee; }
+.cohort .bar span { display: block; height: 5px; border-radius: 3px; }
+.chip.plain { border-color: var(--line-strong); background: #fff; color: var(--ink); }
+.chip.plain[aria-pressed='true'] { border-color: var(--ink); background: var(--ink); color: #fff; }
+.sheet-picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+.sheet-pick { display: flex; align-items: flex-start; gap: 10px; min-height: 60px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; text-align: left; }
+.sheet-pick[aria-pressed='true'] { border-color: var(--primary); background: #f1f8f8; }
+.sheet-pick .box { flex: 0 0 18px; width: 18px; height: 18px; margin-top: 1px; border-radius: 4px; border: 1.5px solid #8a979c; background: #fff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+.sheet-pick[aria-pressed='true'] .box { background: var(--primary); border-color: var(--primary); }
+table.preview { border-collapse: collapse; font-size: 13.5px; min-width: 100%; }
+table.preview th { text-align: left; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg); border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.preview td { padding: 8px 12px; border-bottom: 1px solid #edf0ef; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }

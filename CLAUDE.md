@@ -78,6 +78,18 @@ the single source of truth — commit and push finished work.
   9/14 years (boys) and is worded as "consider", never as a diagnosis.
 - The tiles are schematic pictograms built from plain shapes in CSS (`TannerPicker.tsx`).
 
+## Stage 7 notes
+
+- `src/lib/export.ts`: `buildSheets` is pure and unit-tested; `toWorkbook` writes the .xlsx with
+  `write-excel-file` (loaded on demand). Dates are written as midnight UTC, otherwise Excel
+  shows them a day early in India. Run the tests under `TZ=Asia/Kolkata` after touching dates.
+- De-identified exports replace name and MRN with a study ID (MRN order within that export) and
+  drop date of birth, guardian, phone and address. Visit dates are kept.
+- `store.dump()` pages through Supabase 1,000 rows at a time (tested with 2,300 visits).
+- Backup (`src/lib/backup.ts`) is one JSON file of everything except photographs. There is no
+  restore screen yet; the "last backup" note is per browser, a reminder only.
+- The artifact preview cannot download files, so the Registry builds the file and says so.
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)
@@ -86,7 +98,7 @@ the single source of truth — commit and push finished work.
 4. Growth: reference tables, SDS and velocity, chart
 5. ~~Tanner staging per visit~~ (done)
 6. Photographs on Google Drive, compare view
-7. Excel export per condition group; backup
+7. ~~Excel export per condition group; backup~~ (done; backup is a downloaded file, not yet sent to Drive)
 8. Trial run alongside the current system
 
 The clickable design for all screens is a Claude design canvas titled "Pediatric Endocrine EMR".
