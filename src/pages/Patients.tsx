@@ -41,7 +41,6 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
         })}
         {p.condition_ids.length === 0 && <span className="muted">—</span>}
       </div>
-      <div className="mono">{p.phone ? <a href={`tel:${p.phone}`} className="tel">{p.phone}</a> : '—'}</div>
       <div className="muted">{p.last_visit_on ? formatDate(p.last_visit_on) : 'No visit yet'}</div>
       <div><Due on={p.next_review_on} /></div>
     </div>
@@ -202,7 +201,6 @@ export default function Patients() {
               <div>Patient</div>
               <div>Age · sex</div>
               <div>Conditions</div>
-              <div>Phone</div>
               <div>Last visit</div>
               <div>Review due</div>
             </div>

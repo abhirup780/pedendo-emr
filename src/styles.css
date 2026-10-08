@@ -85,7 +85,7 @@ main.narrow { max-width: 860px; }
 .table-wrap { overflow-x: auto; }
 .table-wrap:focus-visible { outline-offset: -2px; }
 .table { min-width: 960px; }
-.tr { display: grid; grid-template-columns: 76px minmax(180px, 1.5fr) 96px minmax(200px, 1.7fr) 120px 112px 112px; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #edf0ef; }
+.tr { display: grid; grid-template-columns: 76px minmax(180px, 1.5fr) 110px minmax(200px, 1.7fr) 112px 112px; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #edf0ef; }
 .tr.head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
 .tr a.name { font-weight: 600; text-decoration: none; display: inline-block; padding: 4px 0; }
 .group-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font-weight: 600; }
@@ -373,7 +373,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 a, button, input, select, textarea, label, [role='switch'] { touch-action: manipulation; }
 .narrow-only { display: none; }
 .tap { display: inline-block; padding: 10px 0; }
-a.tel { color: inherit; text-decoration: none; }
 .actions { flex: 1 1 100%; display: flex; flex-direction: column; gap: 10px; }
 .cols > .actions .row { justify-content: flex-end; }
 .cols > .actions .row .btn { flex: 0 1 auto !important; min-width: 180px; }
@@ -424,16 +423,14 @@ a.tel { color: inherit; text-decoration: none; }
   /* Patient list: each row becomes a card. */
   .table { min-width: 0; }
   .tr.head { display: none; }
-  .tr { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name due' 'age last' 'tags tags' 'phone phone'; gap: 2px 12px; padding: 10px 14px; align-items: start; }
+  .tr { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name due' 'age last' 'tags tags'; gap: 2px 12px; padding: 10px 14px; align-items: start; }
   .tr > :nth-child(1) { display: none; }
   .tr > :nth-child(2) { grid-area: name; }
   .tr > :nth-child(3) { grid-area: age; color: var(--muted); }
   .tr > :nth-child(4) { grid-area: tags; padding-top: 4px; }
-  .tr > :nth-child(5) { grid-area: phone; }
-  .tr > :nth-child(6) { grid-area: last; text-align: right; }
-  .tr > :nth-child(7) { grid-area: due; text-align: right; padding-top: 8px; }
+  .tr > :nth-child(5) { grid-area: last; text-align: right; }
+  .tr > :nth-child(6) { grid-area: due; text-align: right; padding-top: 8px; }
   .tr a.name { display: block; padding: 12px 0 8px; font-size: 15.5px; }
-  .tr a.tel { display: inline-block; padding: 8px 0; color: var(--primary); text-decoration: underline; }
   .sort { flex: 1 1 auto; }
   .sort select { flex: 1; }
 
