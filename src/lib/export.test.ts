@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSheets, exportFileName, toWorkbook } from './export'
+import { sds } from './growth'
 import type { ExportData, ExportOptions } from './export'
 import type { Patient, Visit } from './types'
 
@@ -55,6 +56,14 @@ describe('buildSheets', () => {
     expect(col(g, 'Height velocity (cm/yr)')).toEqual([9.8])
     expect(sheet(o, 'Results').rows).toHaveLength(0)
     expect(col(sheet(o, 'Patients'), 'Visits')).toEqual([2, 1])
+  })
+  it('adds SDS to the growth sheet from the reference that applies at that age', () => {
+    const g = sheet({}, 'Growth')
+    expect(col(g, 'Height SDS')).toEqual([sds(118.7, 'M', 'height', 3350), sds(121, 'M', 'height', 3436), null])
+    expect(col(g, 'Weight SDS')).toEqual([sds(23.1, 'M', 'weight', 3350), sds(24.2, 'M', 'weight', 3436), sds(41, 'F', 'weight', 4440)])
+    expect(col(g, 'BMI SDS')[2]).toBeNull()
+    expect(col(g, 'Height SDS').slice(0, 2).every((z) => typeof z === 'number')).toBe(true)
+    expect(col(g, 'SDS reference')).toEqual(['IAP 2015', 'IAP 2015', 'IAP 2015'])
   })
   it('gives growth, Tanner and prescription rows', () => {
     expect(col(sheet({}, 'Growth'), 'BMI')).toEqual([16.4, 16.5, null])

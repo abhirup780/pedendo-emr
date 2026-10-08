@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ageParts, decimalAge, formatAge, midParentalHeight, parseISODate } from './age'
+import { ageInDays, ageParts, decimalAge, formatAge, midParentalHeight, parseISODate } from './age'
 
 describe('age', () => {
   it('counts completed years and months', () => {
@@ -20,6 +20,19 @@ describe('age', () => {
   })
   it('gives decimal age', () => {
     expect(decimalAge('2017-05-12', '2026-10-08')).toBeCloseTo(9.41, 2)
+    expect(decimalAge('2017-05-12', '2026-10-08')).toBe(3436 / 365.25)
+  })
+  it('counts whole days, across leap days and clock changes', () => {
+    expect(ageInDays('2024-02-28', '2024-03-01')).toBe(2)
+    expect(ageInDays('2023-02-28', '2023-03-01')).toBe(1)
+    expect(ageInDays('2020-06-05', '2020-06-05')).toBe(0)
+    expect(ageInDays('2021-03-01', '2026-03-01')).toBe(1826)
+    expect(ageInDays('2020-03-01', '2025-03-01')).toBe(1826)
+    expect(ageInDays('2019-03-01', '2024-03-01')).toBe(1827)
+    // Across the European clock change, where local midnights are 23 hours apart.
+    expect(ageInDays('2026-03-28', '2026-03-30')).toBe(2)
+    expect(ageInDays('2026-10-08', '2026-10-07')).toBeNull()
+    expect(ageInDays('nonsense', '2026-10-07')).toBeNull()
   })
   it('computes mid-parental height by sex', () => {
     expect(midParentalHeight(168, 155, 'M')).toBe(168)

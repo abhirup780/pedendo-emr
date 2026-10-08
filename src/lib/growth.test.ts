@@ -1,36 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { checkReference, findReference, growthPoints, lmsAt, niceAxis, sds, sdsFromLms } from './growth'
-import { REFERENCES } from './growth-reference'
-import type { ReferenceTable } from './growth-reference'
-
-// A made-up table for testing the mechanics only. Not clinical data.
-const toy: ReferenceTable = {
-  id: 'toy', label: 'Toy', source: 'test', sex: 'M', measure: 'height', centiles: [3, 50, 97],
-  rows: [{ age: 5, values: [100, 110, 120] }, { age: 10, values: [125, 137, 149] }],
-  lms: [{ age: 5, L: 1, M: 110, S: 0.05 }, { age: 10, L: 1, M: 140, S: 0.05 }],
-}
-
-describe('every reference table added to the app', () => {
-  it('is well formed', () => {
-    for (const t of REFERENCES) expect(checkReference(t), t.id).toEqual([])
-  })
-  it('has a unique id', () => {
-    expect(new Set(REFERENCES.map((t) => t.id)).size).toBe(REFERENCES.length)
-  })
-})
-
-describe('checkReference', () => {
-  it('accepts a well formed table', () => {
-    expect(checkReference(toy)).toEqual([])
-  })
-  it('reports rows that do not match the centiles or go backwards', () => {
-    const bad: ReferenceTable = { ...toy, rows: [{ age: 5, values: [100, 110] }, { age: 4, values: [120, 110, 130] }], lms: undefined }
-    const problems = checkReference(bad)
-    expect(problems).toContain('age 5: 2 values for 3 centiles')
-    expect(problems).toContain('age 4: values do not increase across centiles')
-    expect(problems).toContain('age 4: ages are not in increasing order')
-  })
-})
+import { bmiBand, bmiExact, chartReference, growthPoints, niceAxis, sds, sdsExact, sdsFromLms, valueFromLms, visitSds } from './growth'
+import { iapAt, whoHeightAt } from './growth-reference'
 
 describe('sdsFromLms', () => {
   it('is 0 at the median and ±1 one S away when L is 1', () => {
@@ -44,29 +14,70 @@ describe('sdsFromLms', () => {
   it('follows the Box-Cox form for other L', () => {
     expect(sdsFromLms(20, -2, 16, 0.1)).toBeCloseTo((Math.pow(20 / 16, -2) - 1) / (-2 * 0.1), 10)
   })
+  it('and valueFromLms undoes it', () => {
+    for (const [L, M, S] of [[1, 110, 0.05], [0, 30, 0.2], [-1.9, 14.2, 0.1], [2.9, 170, 0.04]])
+      for (const z of [-3, -2, -0.67, 0, 1.34, 2, 3]) expect(sdsFromLms(valueFromLms(z, L, M, S), L, M, S)).toBeCloseTo(z, 9)
+  })
 })
 
-describe('lmsAt and sds', () => {
-  it('interpolates between ages', () => {
-    expect(lmsAt(toy.lms!, 7.5)).toEqual({ L: 1, M: 125, S: 0.05 })
-    expect(lmsAt(toy.lms!, 5)?.M).toBe(110)
-    expect(lmsAt(toy.lms!, 10)?.M).toBe(140)
+describe('sds', () => {
+  it('is 0 for a child at the published median, on either reference', () => {
+    expect(sds(whoHeightAt('F', 400)!.M, 'F', 'height', 400)).toBe(0)
+    const days = Math.round(9 * 365.25)
+    expect(sds(iapAt('M', 'height', days / 365.25)!.M, 'M', 'height', days)).toBe(0)
+    expect(sds(iapAt('F', 'weight', days / 365.25)!.M, 'F', 'weight', days)).toBe(0)
   })
-  it('gives nothing outside the table', () => {
-    expect(lmsAt(toy.lms!, 4.9)).toBeNull()
-    expect(lmsAt(toy.lms!, 10.1)).toBeNull()
+  it('is rounded to two decimals; sdsExact is not', () => {
+    const z = sdsExact(120, 'M', 'height', 3000)!
+    expect(sds(120, 'M', 'height', 3000)).toBe(Math.round(z * 100) / 100)
+    expect(z).not.toBe(sds(120, 'M', 'height', 3000))
   })
-  it('computes SDS only when a matching table has LMS', () => {
-    expect(sds(125, 'M', 'height', 7.5, [toy])).toBe(0)
-    expect(sds(118.75, 'M', 'height', 7.5, [toy])).toBe(-1)
-    expect(sds(125, 'F', 'height', 7.5, [toy])).toBeNull()
-    expect(sds(125, 'M', 'weight', 7.5, [toy])).toBeNull()
-    expect(sds(125, 'M', 'height', 7.5, [{ ...toy, lms: undefined }])).toBeNull()
-    expect(sds(125, 'M', 'height', 7.5, [])).toBeNull()
+  it('is null where there is no reference, and for values that cannot be', () => {
+    expect(sds(15, 'M', 'weight', 1000)).toBeNull()
+    expect(sds(170, 'M', 'height', 7000)).toBeNull()
+    expect(sds(170, 'M', 'height', 6575)).not.toBeNull()
+    expect(sds(170, 'M', 'height', 6576)).toBeNull()
+    expect(sds(0, 'M', 'height', 3000)).toBeNull()
+    expect(sds(-5, 'M', 'height', 3000)).toBeNull()
   })
-  it('finds the table by sex, measure and age', () => {
-    expect(findReference('M', 'height', 9, [toy])?.id).toBe('toy')
-    expect(findReference('M', 'height', 12, [toy])).toBeNull()
+  it('falls as a child of the same height gets older', () => {
+    expect(sds(120, 'M', 'height', 2600)!).toBeGreaterThan(sds(120, 'M', 'height', 2700)!)
+  })
+})
+
+describe('visitSds and BMI', () => {
+  it('gives all three SDS for a visit, each only where a reference applies', () => {
+    const z = visitSds({ visit_date: '2026-10-08', height_cm: 121, weight_kg: 24.2 }, '2017-05-12', 'M')
+    expect(z.height).not.toBeNull()
+    expect(z.weight).not.toBeNull()
+    expect(z.bmi).not.toBeNull()
+    const infant = visitSds({ visit_date: '2026-10-08', height_cm: 70, weight_kg: 8 }, '2026-01-08', 'F')
+    expect(infant.height).not.toBeNull()
+    expect(infant.weight).toBeNull()
+    expect(infant.bmi).toBeNull()
+    expect(visitSds({ visit_date: '2026-10-08', height_cm: null, weight_kg: 24 }, '2017-05-12', 'M')).toMatchObject({ height: null, bmi: null })
+  })
+  it('works BMI SDS from the unrounded BMI', () => {
+    expect(bmiExact(121, 24.2)).toBeCloseTo(16.529, 3)
+    expect(bmiExact(null, 24.2)).toBeNull()
+    const days = 3436
+    const at = iapAt('M', 'bmi', days / 365.25)!
+    expect(visitSds({ visit_date: '2026-10-08', height_cm: 121, weight_kg: 24.2 }, '2017-05-12', 'M').bmi).toBe(Math.round(sdsFromLms(bmiExact(121, 24.2)!, at.L, at.M, at.S) * 100) / 100)
+  })
+  it('names the IAP BMI ranges by the calculator cut-offs', () => {
+    expect(bmiBand(0.5, 'M')).toBeNull()
+    expect(bmiBand(0.6, 'M')).toBe('overweight range')
+    expect(bmiBand(0.6, 'F')).toBeNull()
+    expect(bmiBand(0.7, 'F')).toBe('overweight range')
+    expect(bmiBand(1.4, 'M')).toBe('obese range')
+    expect(bmiBand(1.4, 'F')).toBe('overweight range')
+    expect(bmiBand(1.7, 'F')).toBe('obese range')
+    expect(bmiBand(-1.9, 'F')).toBe('below the 3rd centile')
+    // Decided before rounding: these all display as the cut-off itself.
+    expect(bmiBand(0.553, 'M')).toBe('overweight range')
+    expect(bmiBand(0.548, 'M')).toBeNull()
+    expect(bmiBand(1.344, 'M')).toBe('obese range')
+    expect(bmiBand(-1.8, 'F')).toBeNull()
   })
 })
 
@@ -80,8 +91,69 @@ describe('growthPoints', () => {
     const h = growthPoints(visits, '2017-05-12', 'height')
     expect(h.map((p) => p.value)).toEqual([114.2, 121])
     expect(h[0].age).toBeCloseTo(8.67, 2)
+    expect(h[1].ageDays).toBe(3436)
+    expect(h[1].sds).toBeNull()
     expect(growthPoints(visits, '2017-05-12', 'weight').map((p) => p.date)).toEqual(['2026-07-14', '2026-10-08'])
     expect(growthPoints(visits, '2017-05-12', 'bmi').map((p) => p.value)).toEqual([16.5])
+  })
+  it('adds the SDS when the sex is given', () => {
+    const h = growthPoints(visits, '2017-05-12', 'height', 'M')
+    expect(h[1].sds).toBe(sds(121, 'M', 'height', 3436))
+    expect(h[1].sds).not.toBeNull()
+    expect(h[1].sdsRaw).toBe(sdsExact(121, 'M', 'height', 3436))
+  })
+})
+
+describe('chartReference', () => {
+  it('has nothing to draw without points or outside the references', () => {
+    expect(chartReference('M', 'height', [])).toBeNull()
+    expect(chartReference('M', 'height', [18.5, 19])).toBeNull()
+    expect(chartReference('M', 'weight', [1, 3])).toBeNull()
+  })
+  it('an infant gets the WHO chart to 2 years, in whole SDs, length only', () => {
+    const c = chartReference('F', 'height', [0.3, 0.9])!
+    expect([c.from, c.to]).toEqual([0, 2])
+    expect(c.refs).toEqual(['who2006'])
+    expect(c.lines.map((l) => l.z)).toEqual([-3, -2, -1, 0, 1, 2, 3])
+    expect(c.segments.map((s) => s.posture)).toEqual(['length'])
+    expect(c.segments[0].ages[0]).toBe(0)
+    expect(c.segments[0].ages.at(-1)).toBeCloseTo(730 / 365.25, 9)
+    expect(c.segments[0].values[3][0]).toBe(whoHeightAt('F', 0)!.M)
+  })
+  it('a child under 5 gets WHO to 5 years, with length and height as separate lines', () => {
+    const c = chartReference('M', 'height', [1.5, 3.2])!
+    expect([c.from, c.to]).toEqual([0, 5])
+    expect(c.segments.map((s) => s.posture)).toEqual(['length', 'height'])
+    expect(c.segments[1].ages[0]).toBeCloseTo(731 / 365.25, 9)
+    expect(c.segments[1].ages.at(-1)).toBeCloseTo(1826 / 365.25, 9)
+  })
+  it('from 5 years gets the IAP chart with its own seven lines', () => {
+    const c = chartReference('M', 'height', [8.7, 9.4])!
+    expect([c.from, c.to]).toEqual([5, 18])
+    expect(c.refs).toEqual(['iap2015'])
+    expect(c.lines.map((l) => l.label)).toEqual(['3', '10', '25', '50', '75', '90', '97'])
+    expect(c.segments.length).toBe(1)
+    expect(c.segments[0].ages.length).toBe(157)
+    expect(c.segments[0].values[3][0]).toBeCloseTo(iapAt('M', 'height', 5)!.M, 9)
+    expect(c.segments[0].values[3].at(-1)).toBeCloseTo(iapAt('M', 'height', 18)!.M, 9)
+  })
+  it('seen on both sides of 5 years: one chart, three separate parts, the same lines throughout', () => {
+    const c = chartReference('F', 'height', [3.5, 6.2])!
+    expect([c.from, c.to]).toEqual([0, 18])
+    expect(c.refs).toEqual(['who2006', 'iap2015'])
+    expect(c.segments.map((s) => s.ref)).toEqual(['who2006', 'who2006', 'iap2015'])
+    expect(c.lines.map((l) => l.label)).toEqual(['3', '10', '25', '50', '75', '90', '97'])
+    for (const s of c.segments) {
+      expect(s.values.length).toBe(7)
+      expect(s.values.every((v) => v.length === s.ages.length)).toBe(true)
+      expect(s.ages.every((a, i) => i === 0 || a > s.ages[i - 1])).toBe(true)
+    }
+  })
+  it('weight and BMI: IAP from 5 years, and room on the axis for earlier or later points', () => {
+    expect(chartReference('M', 'weight', [3.2, 7])).toMatchObject({ from: 3, to: 18, refs: ['iap2015'] })
+    const b = chartReference('F', 'bmi', [12, 18.6])!
+    expect(b.to).toBe(19)
+    expect(b.lines.map((l) => l.label)).toEqual(['3', '10', '25', '50', 'OW', 'OB'])
   })
 })
 

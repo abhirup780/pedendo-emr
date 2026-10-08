@@ -1,5 +1,7 @@
-import { decimalAge, localDate, midParentalHeight, parseISODate, todayISO } from './age'
+import { ageInDays, decimalAge, localDate, midParentalHeight, parseISODate, todayISO } from './age'
 import { bmi, dosePerKg, heightVelocity } from './clinical'
+import { visitSds } from './growth'
+import { referenceAt, REFS } from './growth-reference'
 import { tannerSummary } from './tanner'
 import type { Condition, Patient, Result, Visit } from './types'
 
@@ -13,7 +15,7 @@ export interface Sheet {
 export const SHEETS = [
   { key: 'patients', label: 'Patients', hint: 'One row per patient: demographics, tags, parents’ heights' },
   { key: 'visits', label: 'Visits', hint: 'One row per visit: notes, assessment, plan' },
-  { key: 'growth', label: 'Growth', hint: 'Height, weight, BMI and height velocity at each visit' },
+  { key: 'growth', label: 'Growth', hint: 'Height, weight, BMI, their SDS and height velocity at each visit' },
   { key: 'tanner', label: 'Tanner staging', hint: 'Stage and testicular volume at each staged visit' },
   { key: 'results', label: 'Results', hint: 'One row per test result with value, unit and date' },
   { key: 'prescriptions', label: 'Prescriptions', hint: 'One row per medicine, with dose per kg' },
@@ -134,12 +136,16 @@ export function buildSheets(data: ExportData, opts: ExportOptions): Sheet[] {
   if (opts.sheets.includes('growth')) {
     out.push({
       name: 'Growth',
-      columns: [...visitCols, { header: 'Height (cm)', width: 11 }, { header: 'Weight (kg)', width: 11 }, { header: 'BMI', width: 7 }, { header: 'Height velocity (cm/yr)', width: 20 }, { header: 'Velocity from', width: 13, date: true }, { header: 'Mid-parental height (cm)', width: 20 }],
+      columns: [...visitCols, { header: 'Height (cm)', width: 11 }, { header: 'Weight (kg)', width: 11 }, { header: 'BMI', width: 7 }, { header: 'Height SDS', width: 11 }, { header: 'Weight SDS', width: 11 }, { header: 'BMI SDS', width: 9 }, { header: 'SDS reference', width: 14 }, { header: 'Height velocity (cm/yr)', width: 20 }, { header: 'Velocity from', width: 13, date: true }, { header: 'Mid-parental height (cm)', width: 20 }],
       rows: order(visits.filter((v) => v.height_cm != null || v.weight_kg != null)).map((v) => {
         const p = byId.get(v.patient_id)!
         // Velocity looks back through every earlier visit, including ones before the date range.
         const vel = heightVelocity(v.height_cm, v.visit_date, allVisits.filter((x) => x.patient_id === v.patient_id && x.visit_date < v.visit_date))
-        return [...visitCells(v), v.height_cm, v.weight_kg, bmi(v.height_cm, v.weight_kg), vel?.cmPerYear ?? null, date(vel?.fromDate ?? null), round(midParentalHeight(p.father_height_cm, p.mother_height_cm, p.sex), 1)]
+        // SDS against WHO 2006 (height under 5 years) or IAP 2015 (5 to 18 years); blank where neither applies.
+        const z = visitSds(v, p.dob, p.sex)
+        const days = ageInDays(p.dob, v.visit_date)
+        const ref = days == null ? null : (referenceAt(p.sex, 'height', days) ?? referenceAt(p.sex, 'weight', days))
+        return [...visitCells(v), v.height_cm, v.weight_kg, bmi(v.height_cm, v.weight_kg), z.height, z.weight, z.bmi, ref ? REFS[ref.ref].short : null, vel?.cmPerYear ?? null, date(vel?.fromDate ?? null), round(midParentalHeight(p.father_height_cm, p.mother_height_cm, p.sex), 1)]
       }),
     })
   }

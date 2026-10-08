@@ -11,7 +11,7 @@ import { STARTER_CONDITIONS } from './tags'
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v7'
+const KEY = 'pedendo-demo-v8'
 
 interface Db {
   signedIn: boolean
@@ -106,6 +106,31 @@ function seed(): Db {
     investigations: ['HbA1c'],
     tanner: null,
   })
+  // Two more children with a few visits each, so the growth screen has something to show on
+  // both sides of the fifth birthday (WHO, then IAP) and on the BMI chart. Made-up measurements.
+  const plain = (patient_id: string, date: string, h: number, w: number, complaint: string, assessment: string): Visit => ({
+    ...v(date, h, w, '', assessment),
+    patient_id,
+    complaint,
+    history: '',
+    plan: '',
+    advice: '',
+    medicines: [],
+    investigations: [],
+    tanner: null,
+  })
+  const vivaan = patients[4].id
+  const kabir = patients[6].id
+  visits.push(
+    plain(vivaan, '2024-09-18', 94.6, 13.9, 'Routine CAH review.', 'Classical CAH on hydrocortisone and fludrocortisone.'),
+    plain(vivaan, '2025-03-25', 98.4, 14.8, 'Routine CAH review.', 'CAH, well controlled.'),
+    plain(vivaan, '2025-09-30', 102.3, 15.9, 'Routine CAH review.', 'CAH, well controlled.'),
+    plain(vivaan, '2026-04-06', 106.1, 17.2, 'Routine CAH review.', 'CAH, well controlled.'),
+    plain(vivaan, '2026-09-22', 109.4, 18.3, 'Routine CAH review.', 'CAH, well controlled.'),
+    plain(kabir, '2025-08-12', 124.5, 31.8, 'Weight gain.', 'Obesity. Lifestyle advice given.'),
+    plain(kabir, '2026-02-17', 127.6, 33.9, 'Follow-up for weight.', 'Obesity, weight gain slowing.'),
+    plain(kabir, '2026-08-25', 130.9, 35.2, 'Follow-up for weight.', 'Obesity, BMI improving.'),
+  )
   const templates: RxTemplate[] = [
     { id: uid(), name: 'GH therapy follow-up', medicines: [gh('')], advice: 'Store the cartridge in the refrigerator (2–8 °C). Bring the injection diary to the next visit.' },
   ]

@@ -24,6 +24,7 @@ the single source of truth — commit and push finished work.
   `store.supabase.ts` (real) and `store.demo.ts` (localStorage sample data, used only when the
   `VITE_SUPABASE_*` variables are missing; shows a warning banner).
 - `src/lib/age.ts` — dates, age, mid-parental height (unit-tested).
+- `src/lib/growth*.ts` + `reference-data/` — growth references, SDS, chart lines (see below).
 - `src/lib/tags.ts` — tag colours and the starter condition list.
 - `src/lib/clinical.ts` — BMI, height velocity, dose per kg, BP check, review dates, printed
   directions (unit-tested). `src/lib/medicines.ts` — starter medicine list.
@@ -41,7 +42,8 @@ the single source of truth — commit and push finished work.
   loading every patient.
 - Calculated clinical values (SDS, velocity, mg/kg/day) must come from published reference
   tables (IAP 2015 for 5–18 y, WHO for under 5), each with a unit test. The design mockup's
-  centile curves were approximations and must not be copied.
+  centile curves were approximations and must not be copied. Reference numbers enter the repo
+  only as a CSV in `reference-data/` from a source the owner supplied; never typed from memory.
 - Touch targets at least 44 px; every screen must work at phone width without sideways scroll.
 - Verify before pushing: `npm run lint`, `npm run build`, `TZ=Asia/Kolkata npm test`,
   `npm run test:db`, and click through the changed screens (Playwright + the built app).
@@ -109,12 +111,27 @@ the single source of truth — commit and push finished work.
 
 ## Growth chart notes
 
-- `src/lib/growth-reference.ts` is EMPTY on purpose; its header documents the table format.
-  Fill it only from numbers the owner supplies from the published sources. Never from memory.
-- `src/lib/growth.ts`: `sds()` returns null until a table with L, M, S covers the age, and the
-  UI then shows "needs the reference tables". `checkReference` runs in the tests on every table.
-- `components/GrowthChart.tsx` draws centile curves when a table is present. That path has only
-  been exercised by unit tests on the maths, not by eye: look at it when the first table lands.
+- Numbers: `reference-data/*.csv` (WHO 2006 length/height-for-age by day; IAP 2015 L, M, S by
+  month for height, weight, BMI; the paper's printed tables as a cross-check). Its README
+  records the sources and what was verified. `npm run build:growth` writes
+  `src/lib/growth-data.ts` from them, digit for digit; `growth-reference.test.ts` re-reads the
+  CSVs and checks every row, so a hand edit to either side fails the tests.
+- `src/lib/growth-reference.ts`: `referenceAt(sex, measure, ageDays)`. WHO under 5.0 years,
+  looked up by whole day (no interpolation; length to day 730, height from 731); IAP from 5 to
+  18 years, L, M, S in proportion between months. Null for weight/BMI under 5 and for anything
+  after 18: screens then say "no reference", they never extrapolate.
+- IAP height and weight chart lines are at 0, ±⅔, ±1⅓ and ±2 SD and are labelled 3…97 as the
+  IAP chart prints them (that is what reproduces the paper's tables; the exact centiles do
+  not). BMI lines are true centiles plus the overweight/obesity SDS cut-offs from the IAP
+  calculator. A WHO-only chart uses whole-SD lines. Do not "correct" any of this without
+  re-reading `reference-data/README.md`.
+- `src/lib/growth.ts`: `sds` (two decimals), `visitSds`, `chartReference` (axis 0–2, 0–5, 5–18
+  or 0–18 years; WHO length, WHO height and IAP are separate segments, never joined). BMI SDS
+  uses the unrounded BMI. Ages for references are whole days (`ageInDays`), not calendar parts.
+- SDS appears on the growth screen (tiles, table, chart tooltip), live on the visit screen, and
+  in the Growth sheet of the Excel export. It is not printed on prescriptions.
+- Not held: WHO weight and BMI under 5; prematurity correction; a lying/standing flag per
+  visit (under 2 the app assumes length, from 2 standing height).
 
 ## Audit round (after stage 7)
 
@@ -176,8 +193,7 @@ the single source of truth — commit and push finished work.
 1. ~~Sign-in, patients, condition tags, search~~ (done)
 2. ~~Visit and prescription: measurements, notes, medicines, templates, A4 print~~ (done)
 3. ~~Investigations: grouped master list, one-click panels, result entry~~ (done)
-4. Growth: chart frame done (child's own points, velocity, MPH). STILL WAITING for the owner to
-   supply the published reference tables; then fill `src/lib/growth-reference.ts`
+4. ~~Growth: chart, velocity, MPH, WHO 2006 + IAP 2015 reference lines and SDS~~ (done; WHO weight/BMI under 5 not supplied)
 5. ~~Tanner staging per visit~~ (done)
 6. ~~Photographs on Google Drive, compare view~~ (done; Drive calls unit-tested with a stand-in, never run against Google)
 7. ~~Excel export per condition group; backup~~ (done, with restore; backup is a downloaded file, not yet sent to Drive)

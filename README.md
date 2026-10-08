@@ -5,8 +5,8 @@ A web app: the doctor signs in with a dedicated Google account from any browser.
 
 **Status** — built: sign-in, patients with follow-up tracking, condition tags, visits with draft
 recovery, prescriptions with customisable print layouts (any paper, pre-printed pads), investigations and results, Tanner staging, photographs
-on Google Drive, Excel export, backup and restore. Waiting: growth chart reference tables (the
-chart plots the child's own points). Not yet tried against the real services: Google sign-in
+on Google Drive, Excel export, backup and restore, growth charts and SDS (WHO 2006 under 5 years,
+IAP 2015 from 5 to 18 years; sources and checks in `reference-data/README.md`). Not yet tried against the real services: Google sign-in
 and Google Drive.
 
 ## Run it

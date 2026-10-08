@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import GrowthChart from '../components/GrowthChart'
-import { decimalAge, formatAge, formatDate, midParentalHeight, targetRange } from '../lib/age'
+import { formatAge, formatDate, midParentalHeight, targetRange } from '../lib/age'
 import { bmi, heightVelocity } from '../lib/clinical'
-import { findReference, growthPoints, MEASURES, sds } from '../lib/growth'
+import { bmiBand, chartReference, growthPoints, MEASURES, visitSds } from '../lib/growth'
+import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
 import type { Measure } from '../lib/growth-reference'
 import { store } from '../lib/store'
 import type { Patient, Visit } from '../lib/types'
 
-const signed = (n: number | null) => (n == null ? '—' : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(1)}`)
+const signed = (n: number | null) => (n == null ? '—' : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`)
 
 export default function Growth() {
   const { id = '' } = useParams()
@@ -30,7 +31,7 @@ export default function Growth() {
     )
   }, [id])
 
-  const points = useMemo(() => (patient ? growthPoints(visits, patient.dob, measure) : []), [visits, patient, measure])
+  const points = useMemo(() => (patient ? growthPoints(visits, patient.dob, measure, patient.sex) : []), [visits, patient, measure])
   const measured = useMemo(() => visits.filter((v) => v.height_cm != null || v.weight_kg != null), [visits])
 
   if (patient === undefined) return <main className="page muted">Loading…</main>
@@ -43,13 +44,24 @@ export default function Growth() {
     )
 
   const info = MEASURES.find((m) => m.key === measure)!
+  const lower = measure === 'bmi' ? 'BMI' : info.label.toLowerCase()
   const last = points[points.length - 1]
-  const reference = last ? findReference(patient.sex, measure, last.age) : null
+  const reference = chartReference(patient.sex, measure, points.map((p) => p.age))
+  const lastRef = last ? referenceAt(patient.sex, measure, last.ageDays) : null
+  const lastSds = last?.sds ?? null
+  const band = measure === 'bmi' && last?.sdsRaw != null ? bmiBand(last.sdsRaw, patient.sex) : null
+  const refNames = reference ? reference.refs.map((r) => REFS[r].short).join(' · ') : ''
+  const lineNote = !reference
+    ? ''
+    : reference.refs.includes('iap2015')
+      ? measure === 'bmi'
+        ? 'Lines: 3rd, 10th, 25th and 50th centiles; OW and OB are the IAP overweight and obesity lines (adult-equivalent BMI 23 and 27).'
+        : 'Lines are the seven on the IAP chart, labelled 3 to 97 as printed there: the median, and ⅔, 1⅓ and 2 SD either side.'
+      : 'Lines are the WHO median and 1, 2 and 3 SD either side.'
   const latestHeight = visits.find((v) => v.height_cm != null)
   const velocity = latestHeight ? heightVelocity(latestHeight.height_cm, latestHeight.visit_date, visits.filter((v) => v.visit_date < latestHeight.visit_date)) : null
   const mph = midParentalHeight(patient.father_height_cm, patient.mother_height_cm, patient.sex)
-  const lastSds = last ? sds(last.value, patient.sex, measure, last.age) : null
-  const anySds = measured.some((v) => v.height_cm != null && sds(v.height_cm, patient.sex, 'height', decimalAge(patient.dob, v.visit_date) ?? -1) != null)
+  const rows = measured.map((v) => ({ v, z: visitSds(v, patient.dob, patient.sex) }))
 
   return (
     <main className="page">
@@ -64,14 +76,14 @@ export default function Growth() {
 
       <div className="calc" style={{ marginTop: 0 }}>
         <div>
-          <div className="k">Latest {info.label.toLowerCase()}</div>
+          <div className="k">Latest {lower}</div>
           <div className="v">{last ? `${last.value} ${info.unit}` : '—'}</div>
           <div className="k">{last ? `${formatDate(last.date)} · ${formatAge(patient.dob, last.date)}` : 'not recorded'}</div>
         </div>
         <div>
           <div className="k">{info.label} SDS</div>
           <div className="v">{signed(lastSds)}</div>
-          <div className="k">{lastSds == null ? 'needs the reference tables' : (reference?.label ?? '')}</div>
+          <div className="k">{!last ? 'not recorded' : !lastRef || lastSds == null ? noReferenceReason(measure, last.ageDays) : `${REFS[lastRef.ref].short}${lastRef.posture === 'length' ? ' · length' : ''}${band ? ` · ${band}` : ''}`}</div>
         </div>
         <div>
           <div className="k">Height velocity</div>
@@ -93,12 +105,20 @@ export default function Growth() {
             ))}
           </div>
           <span className="grow" />
-          <span className="muted" style={{ fontSize: 13 }}>{reference ? reference.label : 'The child’s own measurements'}</span>
+          <span className="muted" style={{ fontSize: 13 }}>{reference ? refNames : 'The child’s own measurements'}</span>
         </div>
         <GrowthChart points={points} reference={reference} label={info.label} unit={info.unit} />
+        {reference && (
+          <div className="muted" style={{ fontSize: 13 }}>
+            {lineNote}
+            {reference.refs.length > 1 && ' WHO (under 5 years) and IAP (from 5 years) are separate references, so the lines step at 5 years.'}
+            {measure === 'height' && points.some((p) => p.age < 2) && ' Under 2 years the WHO standard is for length measured lying down; from 2 years, standing height.'}
+            {measure !== 'height' && points.some((p) => p.age < 5) && ` No ${lower} reference is held for under 5 years.`}
+          </div>
+        )}
         {!reference && points.length > 0 && (
           <div className="note" style={{ background: '#eceFee', color: '#44545b', fontWeight: 400 }}>
-            Centile curves and SDS are not shown yet: the published reference tables have not been added to the app.
+            No reference lines or SDS: {noReferenceReason(measure, last.ageDays)}. The app holds WHO 2006 length/height for under 5 years and IAP 2015 height, weight and BMI for 5 to 18 years.
           </div>
         )}
       </section>
@@ -110,20 +130,21 @@ export default function Growth() {
         ) : (
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Measurements">
             <table className="preview">
-              <thead><tr><th>Date</th><th>Age</th><th>Height (cm)</th>{anySds && <th>Height SDS</th>}<th>Velocity (cm/yr)</th><th>Weight (kg)</th><th>BMI</th></tr></thead>
+              <thead><tr><th>Date</th><th>Age</th><th>Height (cm)</th><th>Height SDS</th><th>Velocity (cm/yr)</th><th>Weight (kg)</th><th>Weight SDS</th><th>BMI</th><th>BMI SDS</th></tr></thead>
               <tbody>
-                {measured.map((v) => {
+                {rows.map(({ v, z }) => {
                   const vel = heightVelocity(v.height_cm, v.visit_date, visits.filter((x) => x.visit_date < v.visit_date))
-                  const z = v.height_cm == null ? null : sds(v.height_cm, patient.sex, 'height', decimalAge(patient.dob, v.visit_date) ?? -1)
                   return (
                     <tr key={v.id}>
                       <td><Link to={`/patients/${id}/visits/${v.id}`}>{formatDate(v.visit_date)}</Link></td>
                       <td>{formatAge(patient.dob, v.visit_date)}</td>
                       <td className="mono">{v.height_cm ?? '—'}</td>
-                      {anySds && <td className="mono">{signed(z)}</td>}
+                      <td className="mono">{signed(z.height)}</td>
                       <td className="mono">{vel ? vel.cmPerYear.toFixed(1) : '—'}</td>
                       <td className="mono">{v.weight_kg ?? '—'}</td>
+                      <td className="mono">{signed(z.weight)}</td>
                       <td className="mono">{bmi(v.height_cm, v.weight_kg) ?? '—'}</td>
+                      <td className="mono">{signed(z.bmi)}</td>
                     </tr>
                   )
                 })}

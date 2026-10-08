@@ -89,7 +89,17 @@ not be tried during development and need a look on the live site:
       the above. If it is clean, rename `Content-Security-Policy-Report-Only` to
       `Content-Security-Policy` in `public/_headers` to switch that protection on.
 
-## Still waiting
+## Growth chart and SDS
 
-Growth centile curves and SDS stay off until the published reference tables (IAP 2015 for
-5–18 years, WHO for under 5) are added to `src/lib/growth-reference.ts`.
+Built in: WHO 2006 length/height-for-age under 5 years and IAP 2015 height, weight and BMI
+from 5 to 18 years. Where the numbers came from and how they were checked is written up in
+`reference-data/README.md`. During the trial, please also check by hand:
+
+- [ ] Three or four children aged 5–18: height, weight and BMI SDS against the IAP calculator
+      you already use. Expect agreement within about 0.1 SDS, the app equal or slightly
+      lower (it uses the exact age; the calculator uses the last whole month).
+- [ ] One child under 5: height SDS against WHO Anthro or the WHO chart.
+- [ ] A child plotted on the paper IAP chart sits in the same place on the screen.
+
+Not included: WHO weight and BMI under 5 years (send the WHO weight-for-age and BMI-for-age
+expanded tables to add them), and correction for prematurity.

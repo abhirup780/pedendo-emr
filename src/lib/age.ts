@@ -34,12 +34,19 @@ export function formatAge(dobISO: string, onISO: string = todayISO()): string {
   return `${a.years}y ${a.months}m`
 }
 
-/** Decimal age in years, for growth calculations in later stages. */
-export function decimalAge(dobISO: string, onISO: string = todayISO()): number | null {
+/** Whole days between two calendar dates, whatever the time zone or daylight saving. */
+export function ageInDays(dobISO: string, onISO: string = todayISO()): number | null {
   const dob = parseISODate(dobISO)
   const on = parseISODate(onISO)
   if (!dob || !on || on < dob) return null
-  return (on.getTime() - dob.getTime()) / (365.25 * 86400000)
+  const utc = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+  return Math.round((utc(on) - utc(dob)) / 86400000)
+}
+
+/** Decimal age in years: whole days divided by 365.25, the convention the growth references use. */
+export function decimalAge(dobISO: string, onISO: string = todayISO()): number | null {
+  const days = ageInDays(dobISO, onISO)
+  return days == null ? null : days / 365.25
 }
 
 /** Mid-parental height (Tanner): mean of parents, +6.5 cm for boys, −6.5 cm for girls. */

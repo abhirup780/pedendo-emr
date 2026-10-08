@@ -4,7 +4,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import InvestigationPicker from '../components/InvestigationPicker'
 import Results from '../components/Results'
 import TannerPicker from '../components/TannerPicker'
-import { decimalAge, formatAge, formatDate, todayISO } from '../lib/age'
+import { ageInDays, decimalAge, formatAge, formatDate, todayISO } from '../lib/age'
+import { visitSds } from '../lib/growth'
+import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
 import { addMonths, bmi, dosePerKg, EMPTY_RX, heightVelocity, validBp } from '../lib/clinical'
 import { dropDraft, readDraft, saveDraft } from '../lib/device'
 import { store } from '../lib/store'
@@ -274,6 +276,11 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
     )
 
   const b = bmi(h, w)
+  // Live SDS against the published reference for the child's age on the visit date.
+  const ageDays = ageInDays(patient.dob, f.date)
+  const z = visitSds({ visit_date: f.date, height_cm: h, weight_kg: w }, patient.dob, patient.sex)
+  const heightRef = ageDays == null ? null : referenceAt(patient.sex, 'height', ageDays)
+  const sdsText = (n: number | null) => (n == null ? '—' : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`)
   const sameDay = visits.find((v) => v.id !== vid && v.visit_date === f.date)
   const lastStaged = earlier.find((v) => v.tanner)
   const dH = h != null && lastWithHeight?.height_cm != null ? h - lastWithHeight.height_cm : null
@@ -344,9 +351,14 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             </div>
             <div className="calc">
               <div>
+                <div className="k">Height SDS · calculated</div>
+                <div className="v">{sdsText(z.height)}</div>
+                <div className="k">{h == null ? 'enter a height' : heightRef ? `${REFS[heightRef.ref].short}${heightRef.posture === 'length' ? ' · length, lying down' : ''}` : ageDays == null ? 'check the visit date' : noReferenceReason('height', ageDays)}</div>
+              </div>
+              <div>
                 <div className="k">BMI · calculated</div>
                 <div className="v">{b ?? '—'}</div>
-                <div className="k">kg/m²</div>
+                <div className="k">kg/m²{z.bmi == null ? '' : ` · SDS ${sdsText(z.bmi)}`}</div>
               </div>
               <div>
                 <div className="k">Height velocity · calculated</div>
