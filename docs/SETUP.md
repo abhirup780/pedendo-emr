@@ -101,12 +101,5 @@ from 5 to 18 years. Where the numbers came from and how they were checked is wri
 - [ ] One child under 5: height SDS against WHO Anthro or the WHO chart.
 - [ ] A child plotted on the paper IAP chart sits in the same place on the screen.
 
-## Guideline suggestions (draft)
-
-Patients tagged with a thyroid condition are offered investigations, medicines and advice lines
-taken from ISPAE, IAP and European guidelines. This content is a draft: read it under
-Settings, Protocols and check it against the sources before relying on it. The app never
-fills in a dose.
-
 Not included: WHO weight and BMI under 5 years (send the WHO weight-for-age and BMI-for-age
 expanded tables to add them), and correction for prematurity.

@@ -42,23 +42,6 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       expect((await s.getPatient(p.id))!.condition_ids).toEqual([ghd.id])
     })
 
-    it('condition tags: protocol links are kept through a rename and can be changed', async () => {
-      const { store: s } = await make()
-      await wipe(s)
-      const plain = await s.saveCondition({ name: 'Hypothyroidism', color: 'blue' })
-      expect(plain.protocols).toEqual([])
-      const linked = await s.saveCondition({ id: plain.id, name: 'Hypothyroidism', color: 'blue', protocols: ['congenital-hypothyroidism', 'acquired-hypothyroidism'] })
-      expect(linked.protocols).toEqual(['congenital-hypothyroidism', 'acquired-hypothyroidism'])
-      // A rename or recolour that does not mention protocols leaves them alone.
-      const renamed = await s.saveCondition({ id: plain.id, name: 'Thyroid, under-active', color: 'teal' })
-      expect(renamed.protocols).toEqual(['congenital-hypothyroidism', 'acquired-hypothyroidism'])
-      expect((await s.listConditions()).find((c) => c.id === plain.id)!.protocols).toEqual(['congenital-hypothyroidism', 'acquired-hypothyroidism'])
-      const cleared = await s.saveCondition({ id: plain.id, name: 'Thyroid, under-active', color: 'teal', protocols: [] })
-      expect(cleared.protocols).toEqual([])
-      const fresh = await s.saveCondition({ name: 'Graves', color: 'pink', protocols: ['graves-disease-hyperthyroidism'] })
-      expect(fresh.protocols).toEqual(['graves-disease-hyperthyroidism'])
-    })
-
     it('patients: a newborn can be saved with sex not yet assigned, and assigned later', async () => {
       const { store: s } = await make()
       await wipe(s)

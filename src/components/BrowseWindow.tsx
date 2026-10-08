@@ -1,23 +1,5 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import type { Protocol } from '../lib/protocols'
-
-/** Where a protocol's suggestions come from, and that they are a draft until the doctor has checked them. */
-export function ProtocolNote({ protocol }: { protocol: Protocol }) {
-  return (
-    <div className="proto-note">
-      <strong>Draft, not yet checked by you.</strong> Taken from:{' '}
-      {/* Two papers from one body in one year read the same here; the full list is in Settings. */}
-      {protocol.sources.filter((s, i, all) => all.findIndex((x) => x.org === s.org && x.year === s.year) === i).map((s, i) => (
-        <span key={s.id}>
-          {i > 0 && '; '}
-          <a href={s.url} target="_blank" rel="noreferrer">{s.org} {s.year}</a>
-        </span>
-      ))}
-      . Full details under Settings, Protocols.
-    </div>
-  )
-}
 
 export interface BrowseGroup {
   /** null is "All". */

@@ -43,7 +43,8 @@ describe('rankedMatches', () => {
 })
 
 describe('bestMatch', () => {
-  const names = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map((i) => i[0]))
+  // A fixed list, so the examples do not change when the starter list grows.
+  const names = ['25-OH vitamin D', 'Plasma renin activity', 'Bone age X-ray (left hand and wrist)', 'Alkaline phosphatase', '8 am cortisol', 'ACTH', 'ACTH stimulation test', 'TSH', 'Free T4', 'Free T3', 'Thyroid ultrasound']
   it('prefers a word that starts with the typed text', () => {
     expect(bestMatch(names, 'vit')).toBe('25-OH vitamin D')
     expect(bestMatch(names, 'bone')).toBe('Bone age X-ray (left hand and wrist)')

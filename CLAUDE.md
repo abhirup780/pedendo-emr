@@ -77,6 +77,10 @@ the single source of truth — commit and push finished work.
 - Height velocity uses the most recent earlier height at least 85 days old; shorter gaps are
   skipped. Dose per kg is per dose, and only when the dose reads as one number and a unit.
 - Starter medicines leave weight-based doses blank on purpose; the doctor fills them in.
+- The starter medicine and investigation lists are long master lists written from general
+  knowledge at the owner's request (names, routes, usual intervals, common units), not from a
+  guideline review. Doses stay blank. The owner tried and rejected a "guideline protocols per
+  condition tag" feature; do not bring it back unless asked.
 - Row-level security checks both ends of a link: a visit or tag link must point at the signed-in
   doctor's own patient. Keep that pattern for every new child table.
 - Printing uses `window.print()` with `@page` A4 and the `.sheet` layout in `styles.css`; the
@@ -107,22 +111,6 @@ the single source of truth — commit and push finished work.
   filled an empty box) and shown as a strip with "Remove template". Medicines the doctor then
   removes or renames by hand are forgotten by the template (`forget`), so removing the template
   can never take away something added by hand. Saved templates are deleted in Settings.
-
-## Guideline protocols
-
-- `reference-data/protocols/*.json` (see its README) -> `npm run build:protocols` ->
-  `src/lib/protocol-data.ts`; logic in `src/lib/protocols.ts`. Thyroid only so far; the content
-  is a DRAFT until the doctor has checked it, and the screens say so.
-- Hard rules: a protocol medicine is added with the dose blank; the guideline dose wording is
-  shown as a guide only (`doseGuides`), only when `verified`, never printed, never computed.
-  Never add a drug, dose or interval from memory: it goes into the JSON with its source,
-  quote and URL, or not at all.
-- Tags pick protocols: `Condition.protocols` (migration 0012) when set, otherwise by tag name
-  or alias (`protocolsForTags`). Linking is under Settings, Condition tags; the read-only
-  review page is Settings, Protocols.
-- On a visit the protocols feed `InvestigationPicker` (suggested sets, a "For <condition>"
-  group that the browse window opens on), `MedicinePicker` (suggestions, a "For <condition>"
-  group with dose guides) and the advice lines under Advice.
 
 ## Stage 3 notes
 
