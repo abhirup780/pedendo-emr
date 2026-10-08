@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "build:preview": "VITE_PREVIEW=1 VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= VITE_GOOGLE_CLIENT_ID= vite build --config vite.preview.config.ts && node scripts/make-preview.mjs",
+    "build:preview": "VITE_PREVIEW=1 VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= vite build --config vite.preview.config.ts && node scripts/make-preview.mjs",
     "test:db": "bash scripts/test-db.sh",
     "build:growth": "node scripts/build-growth-data.mjs"
   },

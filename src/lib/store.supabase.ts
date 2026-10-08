@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
-import type { User } from '@supabase/supabase-js'
+import type { Session, SupabaseClient, User } from '@supabase/supabase-js'
 import type { Backup, Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { addDays } from './clinical'
+import { leaveNotice } from './device'
 import { normalize } from './printlayout'
 import type { PrintLayout } from './printlayout'
 import type { ListOptions, Store } from './store'
@@ -46,6 +46,44 @@ function toUser(u: User | null | undefined): SessionUser | null {
   return { email: u.email ?? '', name: meta?.full_name ?? meta?.name ?? u.email ?? 'Doctor' }
 }
 
+/** The sign-in level written in a session's token: 'aal2' once an authenticator code was given. */
+function levelOf(token: string): string {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return (JSON.parse(atob(part)) as { aal?: string }).aal ?? 'aal1'
+  } catch {
+    return 'aal1'
+  }
+}
+/**
+ * The password was accepted but the account has an authenticator app and its code has not been
+ * given yet. Such a session counts as signed out everywhere in the app (and the database
+ * refuses it too, by migration 0013).
+ */
+function awaitingCode(session: Session | null | undefined): boolean {
+  if (!session) return false
+  const hasApp = (session.user.factors ?? []).some((f) => f.status === 'verified')
+  return hasApp && levelOf(session.access_token) !== 'aal2'
+}
+function sessionUser(session: Session | null | undefined): SessionUser | null {
+  return awaitingCode(session) ? null : toUser(session?.user)
+}
+
+/** Sign-in errors in plain words. */
+function friendlyAuth(error: { message: string; code?: string; status?: number }): string {
+  const m = error.message ?? ''
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(m)) return 'No connection. Check the internet and try again.'
+  if (error.code === 'invalid_credentials' || /invalid login credentials/i.test(m)) return 'The email or password is not right.'
+  if (error.code === 'mfa_verification_failed' || /invalid totp code/i.test(m)) return 'That code was not accepted. Wait for the next code in the app and try again.'
+  if (error.code === 'weak_password' || /password should be/i.test(m)) return 'That password is too short or too simple for the sign-in service. Choose a longer one.'
+  if (error.code === 'same_password') return 'That is the password already in use.'
+  if (error.code === 'over_request_rate_limit' || error.status === 429) return 'Too many tries. Wait a minute, then try again.'
+  if (error.code === 'reauthentication_needed' || /reauthentication/i.test(m)) return 'This sign-in is too old for a password change. Sign out, sign in again, then change it.'
+  if (error.code === 'session_not_found' || /session missing|session.*not.*exist/i.test(m)) return 'The sign-in has ended. Sign in again.'
+  if (error.code === 'insufficient_aal') return 'Sign out, sign in again with the authenticator code, then repeat this.'
+  return m || 'The sign-in service returned an error.'
+}
+
 /** Quote a search term so commas, brackets and quotes in it cannot alter the filter. */
 function pattern(q: string): string {
   return '"%' + q.replace(/[%*]/g, ' ').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '%"'
@@ -62,11 +100,26 @@ export function friendly(error: { message: string; code?: string }): string {
   return m || 'The database returned an error.'
 }
 
-export function createSupabaseStore(url: string, key: string): Store {
-  const sb = createClient(url, key)
-
+export function createSupabaseStore(sb: SupabaseClient): Store {
   function fail(error: { message: string; code?: string } | null): void {
     if (error) throw new Error(friendly(error))
+  }
+
+  /**
+   * This browser remembers who signed in, including whether they had an authenticator app
+   * then. If one has been set up since, on another device, that memory is out of date: the
+   * database already refuses this session, and every list would simply look empty. So ask the
+   * database; if it says no, end the session here and say why. No connection counts as "yes":
+   * nothing can be read without one anyway.
+   */
+  async function stillGood(): Promise<boolean> {
+    const { data: s } = await sb.auth.getSession()
+    if (!s.session || awaitingCode(s.session)) return true
+    const { data, error } = await sb.rpc('second_step_ok')
+    if (error || data !== false) return true
+    leaveNotice('An authenticator app has been set up for this account on another device. Sign in again; you will be asked for its code.')
+    await sb.auth.signOut({ scope: 'local' })
+    return false
   }
 
   return {
@@ -74,22 +127,81 @@ export function createSupabaseStore(url: string, key: string): Store {
 
     async getUser() {
       const { data } = await sb.auth.getSession()
-      return toUser(data.session?.user)
+      const user = sessionUser(data.session)
+      return user && (await stillGood()) ? user : null
     },
     onAuthChange(cb) {
-      const { data } = sb.auth.onAuthStateChange((_event, session) => cb(toUser(session?.user)))
-      return () => data.subscription.unsubscribe()
+      const { data } = sb.auth.onAuthStateChange((_event, session) => cb(sessionUser(session)))
+      // Coming back to the app (a phone unlocked, a tab picked again) is when another device
+      // is most likely to have changed things.
+      const recheck = () => {
+        if (document.visibilityState === 'visible') void stillGood()
+      }
+      const page = typeof document === 'undefined' ? null : document
+      page?.addEventListener('visibilitychange', recheck)
+      return () => {
+        data.subscription.unsubscribe()
+        page?.removeEventListener('visibilitychange', recheck)
+      }
     },
-    async signIn() {
-      const { error } = await sb.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin },
-      })
-      fail(error)
+    async signIn(email, password) {
+      const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password })
+      if (error) throw new Error(friendlyAuth(error))
+      return awaitingCode(data.session) ? 'code' : 'ok'
+    },
+    async verifyCode(code) {
+      const { data: list, error: e1 } = await sb.auth.mfa.listFactors()
+      if (e1) throw new Error(friendlyAuth(e1))
+      const factor = list.totp[0]
+      if (!factor) throw new Error('No authenticator app is set up for this account.')
+      const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: factor.id, code: code.trim() })
+      if (error) throw new Error(friendlyAuth(error))
     },
     async signOut() {
-      const { error } = await sb.auth.signOut()
+      // This device only: signing out on the clinic PC must not sign the doctor's phone out.
+      const { error } = await sb.auth.signOut({ scope: 'local' })
       fail(error)
+    },
+    async changePassword(next) {
+      const { error } = await sb.auth.updateUser({ password: next })
+      if (error) throw new Error(friendlyAuth(error))
+    },
+    async twoStep() {
+      const { data: list, error: e1 } = await sb.auth.mfa.listFactors()
+      if (e1) throw new Error(friendlyAuth(e1))
+      const on = list.totp.length > 0
+      // Asks the database whether it sees the authenticator app; without migration 0013 the
+      // function is missing and the answer is "not enforced".
+      const { data, error } = await sb.rpc('second_step_required')
+      // "No such function" is an answer (not enforced); any other failure is not.
+      if (error && error.code !== 'PGRST202') throw new Error(friendly(error))
+      return { on, enforced: data === true }
+    },
+    async startTwoStep() {
+      // A set-up that was begun and abandoned would block a new one, so clear those first.
+      const { data: list, error: e1 } = await sb.auth.mfa.listFactors()
+      if (e1) throw new Error(friendlyAuth(e1))
+      for (const f of list.all) if (f.status !== 'verified') await sb.auth.mfa.unenroll({ factorId: f.id })
+      const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Authenticator app' })
+      if (error) throw new Error(friendlyAuth(error))
+      // The picture arrives as bare SVG text behind a "data:" prefix; a "#" in it would cut the
+      // address short, so encode it properly before it goes into an <img>.
+      const svg = data.totp.qr_code.replace(/^data:image\/svg\+xml;utf-8,/, '')
+      return { id: data.id, qr: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, secret: data.totp.secret }
+    },
+    async confirmTwoStep(id, code) {
+      const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: id, code: code.trim() })
+      if (error) throw new Error(friendlyAuth(error))
+    },
+    async stopTwoStep() {
+      const { data: list, error: e1 } = await sb.auth.mfa.listFactors()
+      if (e1) throw new Error(friendlyAuth(e1))
+      for (const f of list.all) {
+        const { error } = await sb.auth.mfa.unenroll({ factorId: f.id })
+        if (error) throw new Error(friendlyAuth(error))
+      }
+      // The session still says "code given"; fetch a fresh one so the screens agree.
+      await sb.auth.refreshSession()
     },
 
     async listConditions() {

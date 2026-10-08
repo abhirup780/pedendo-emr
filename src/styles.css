@@ -153,6 +153,10 @@ main.narrow { max-width: 860px; }
 
 .login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .login .card { max-width: 420px; width: 100%; padding: 32px; display: flex; flex-direction: column; gap: 16px; }
+.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 14px; }
+.qr { margin: 8px 0; padding: 10px; width: max-content; max-width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+.qr img { display: block; max-width: 100%; height: auto; }
+.secret { font-size: 14px; overflow-wrap: anywhere; }
 
 /* Stage 2: visit, prescription, print */
 .cols { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }

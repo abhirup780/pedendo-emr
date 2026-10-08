@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useUser } from '../auth'
 import { formatAge, formatDate, todayISO } from '../lib/age'
 import { compressImage } from '../lib/image'
 import { photoFiles } from '../lib/photofiles'
@@ -38,13 +37,11 @@ function Picture({ photo, large }: { photo: Photo; large?: boolean }) {
 
 export default function Photos() {
   const { id = '' } = useParams()
-  const user = useUser()
   const [patient, setPatient] = useState<Patient | null | undefined>(undefined)
   const [visits, setVisits] = useState<Visit[]>([])
   const [photos, setPhotos] = useState<Photo[]>([])
   const [consent, setConsent] = useState<PhotoConsent>({ on: null, by: '' })
   const [by, setBy] = useState('')
-  const [connected, setConnected] = useState(photoFiles.ready())
   const [view, setView] = useState<string>(PHOTO_VIEWS[2])
   const [takenOn, setTakenOn] = useState(todayISO())
   const [filter, setFilter] = useState('All')
@@ -83,15 +80,9 @@ export default function Photos() {
       await job()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
-      if (!photoFiles.ready()) setConnected(false)
     }
     setBusy('')
   }
-
-  const connect = () => run('Connecting to Google Drive…', async () => {
-    await photoFiles.connect(user?.email)
-    setConnected(true)
-  })
 
   function onFiles(e: ChangeEvent<HTMLInputElement>) {
     const files = [...(e.target.files ?? [])]
@@ -102,13 +93,12 @@ export default function Photos() {
       for (const [i, file] of files.entries()) {
         setBusy(`Adding photo ${i + 1} of ${files.length}…`)
         const { blob, width, height } = await compressImage(file)
-        const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(8, 14)
-        const fileId = await photoFiles.upload(blob, `${takenOn} ${view} ${stamp}-${i + 1}.jpg`, `MRN ${patient.mrn}`)
+        const fileId = await photoFiles.upload(blob, id)
         try {
           added.push(await store.addPhoto({ patient_id: id, taken_on: takenOn, view, note: '', file_id: fileId, width, height, bytes: blob.size }))
         } catch (err) {
-          // The record failed after the file was stored: do not leave an orphan in Drive.
-          await photoFiles.remove(fileId).catch(() => {})
+          // The record failed after the file was stored: do not leave a file nobody can find.
+          await photoFiles.remove([fileId]).catch(() => {})
           throw err
         }
       }
@@ -117,8 +107,10 @@ export default function Photos() {
   }
 
   const remove = (p: Photo) => run('Deleting…', async () => {
+    // The file first: if that fails the record is still here, so the photograph can still be
+    // found and deleted. The other way round would leave a picture nothing points to.
+    await photoFiles.remove([p.file_id])
     await store.deletePhoto(p.id)
-    await photoFiles.remove(p.file_id).catch(() => {})
     setCompare((old) => old.filter((x) => x !== p.id))
     setConfirmId(null)
     setPhotos(await store.listPhotos(id))
@@ -139,7 +131,7 @@ export default function Photos() {
       </main>
     )
 
-  const canAdd = !!consent.on && connected && !busy
+  const canAdd = !!consent.on && !busy
   const toggleCompare = (pid: string) => setCompare((old) => (old.includes(pid) ? old.filter((x) => x !== pid) : [...old.slice(-1), pid]))
 
   return (
@@ -150,7 +142,6 @@ export default function Photos() {
       </div>
       {error && <div className="alert">{error}</div>}
       {photoFiles.kind === 'demo' && <div className="note">Demo: photographs stay in this browser tab's memory and disappear when the page reloads. Use test images only.</div>}
-      {photoFiles.kind === 'none' && <div className="alert">Google Drive is not set up for this app yet, so photographs cannot be stored. The README explains the one-time setup.</div>}
 
       <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h2>Consent</h2>
@@ -174,37 +165,28 @@ export default function Photos() {
         )}
       </section>
 
-      {consent.on && photoFiles.kind !== 'none' && (
+      {consent.on && (
         <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <h2>Add photographs</h2>
-          {!connected ? (
-            <div className="row">
-              <span className="grow muted">Photographs are stored in the clinic's Google Drive, in a folder only this app uses. Connect once per session.</span>
-              <button type="button" className="btn primary" disabled={!!busy} onClick={() => void connect()}>Connect Google Drive</button>
+          <div className="row">
+            <label className="field" style={{ flex: '1 1 220px' }}>
+              View
+              <select value={view} onChange={(e) => setView(e.target.value)}>
+                {PHOTO_VIEWS.map((v) => <option key={v}>{v}</option>)}
+              </select>
+            </label>
+            <label className="field" style={{ flex: '0 1 190px' }}>
+              Date taken
+              <DateField value={takenOn} max={todayISO()} onChange={(v) => setTakenOn(v || todayISO())} />
+            </label>
+            <div className="row" style={{ alignSelf: 'flex-end', gap: 8 }}>
+              <button type="button" className="btn primary" disabled={!canAdd} onClick={() => camera.current?.click()}>Take photo</button>
+              <button type="button" className="btn outline" disabled={!canAdd} onClick={() => picker.current?.click()}>Choose files</button>
             </div>
-          ) : (
-            <>
-              <div className="row">
-                <label className="field" style={{ flex: '1 1 220px' }}>
-                  View
-                  <select value={view} onChange={(e) => setView(e.target.value)}>
-                    {PHOTO_VIEWS.map((v) => <option key={v}>{v}</option>)}
-                  </select>
-                </label>
-                <label className="field" style={{ flex: '0 1 190px' }}>
-                  Date taken
-                  <DateField value={takenOn} max={todayISO()} onChange={(v) => setTakenOn(v || todayISO())} />
-                </label>
-                <div className="row" style={{ alignSelf: 'flex-end', gap: 8 }}>
-                  <button type="button" className="btn primary" disabled={!canAdd} onClick={() => camera.current?.click()}>Take photo</button>
-                  <button type="button" className="btn outline" disabled={!canAdd} onClick={() => picker.current?.click()}>Choose files</button>
-                </div>
-              </div>
-              <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={onFiles} aria-label="Take a photo" />
-              <input ref={picker} type="file" accept="image/*" multiple hidden onChange={onFiles} aria-label="Choose photo files" />
-              <div className="muted" style={{ fontSize: 13 }}>Each photo is shrunk to about 300 KB before it is stored. Several files can be chosen at once; they all get the view and date above.</div>
-            </>
-          )}
+          </div>
+          <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={onFiles} aria-label="Take a photo" />
+          <input ref={picker} type="file" accept="image/*" multiple hidden onChange={onFiles} aria-label="Choose photo files" />
+          <div className="muted" style={{ fontSize: 13 }}>Each photo is shrunk to about 300 KB before it is stored, privately, beside the patient records. Several files can be chosen at once; they all get the view and date above.</div>
           {busy && <div className="muted" role="status">{busy}</div>}
         </section>
       )}
@@ -218,7 +200,7 @@ export default function Photos() {
           <div className="ph-compare">
             {[...pair].sort((a, b) => a.taken_on.localeCompare(b.taken_on)).map((p) => (
               <figure key={p.id}>
-                {connected ? <Picture photo={p} large /> : <div className="ph-box ph-msg">Connect Google Drive to view</div>}
+                <Picture photo={p} large />
                 <figcaption>
                   <div style={{ fontWeight: 600 }}>{formatDate(p.taken_on)}</div>
                   <div className="muted mono" style={{ fontSize: 13 }}>{formatAge(patient.dob, p.taken_on)}{heightOn(p.taken_on) != null && ` · ${heightOn(p.taken_on)} cm`}</div>
@@ -250,14 +232,14 @@ export default function Photos() {
           <div className="ph-grid">
             {shown.filter((p) => p.taken_on === d).map((p) => (
               <figure key={p.id}>
-                {connected ? <Picture photo={p} /> : <div className="ph-box ph-msg">Connect Google Drive to view</div>}
+                <Picture photo={p} />
                 <figcaption>
                   <div style={{ fontWeight: 500, fontSize: 13.5 }}>{p.view}</div>
                   <div className="muted mono" style={{ fontSize: 12 }}>{p.width}×{p.height} · {Math.round(p.bytes / 1024)} KB</div>
                   {confirmId === p.id ? (
                     <div className="row" style={{ gap: 6, marginTop: 6 }}>
                       <button type="button" className="btn small" onClick={() => setConfirmId(null)}>Keep</button>
-                      <button type="button" className="btn danger small" onClick={() => void remove(p)}>Delete</button>
+                      <button type="button" className="btn danger small" onClick={() => void remove(p)}>Delete for good</button>
                     </div>
                   ) : (
                     <div className="row" style={{ gap: 6, marginTop: 6 }}>
@@ -271,7 +253,7 @@ export default function Photos() {
           </div>
         </section>
       ))}
-      <div className="muted" style={{ fontSize: 13 }}>Photographs are never included in Excel exports or the backup file, and are not printed on prescriptions.</div>
+      <div className="muted" style={{ fontSize: 13 }}>Photographs are never included in Excel exports or the backup file, and are not printed on prescriptions. To keep copies, use "Download all photographs" under Registry.</div>
     </main>
   )
 }

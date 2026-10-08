@@ -5,6 +5,8 @@ import { backupFileName, buildBackup, lastBackup, noteBackup, parseBackup } from
 import { daysBetween } from '../lib/clinical'
 import { buildSheets, downloadBlob, exportFileName, SHEETS, toWorkbook } from '../lib/export'
 import type { ExportData, Sheet, SheetKey } from '../lib/export'
+import { photoFiles } from '../lib/photofiles'
+import { buildPhotoZip, photoZipName } from '../lib/photozip'
 import { store } from '../lib/store'
 import { tagColor } from '../lib/tags'
 import type { Backup, Condition } from '../lib/types'
@@ -110,6 +112,28 @@ export default function Registry() {
       setDone(PREVIEW ? `Backup built (${Math.round(json.length / 1024)} KB). Downloads are switched off in this preview.` : `Downloaded ${backupFileName()}. Keep it somewhere safe.`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not build the backup.')
+    }
+    setBusy('')
+  }
+
+  async function downloadPhotos() {
+    setBusy('Listing photographs…')
+    setError('')
+    setDone('')
+    try {
+      const dump = await store.dump()
+      if (dump.photos.length === 0) {
+        setDone('There are no photographs to download.')
+      } else {
+        const z = await buildPhotoZip(dump, (fileId) => photoFiles.read(fileId), (n, of) => setBusy(`Collecting photograph ${n} of ${of}…`))
+        if (z.count === 0) throw new Error('None of the photograph files could be read. Check the connection and try again.')
+        if (!PREVIEW) downloadBlob(z.blob, photoZipName(todayISO()))
+        const size = z.bytes < 1048576 ? `${Math.max(1, Math.round(z.bytes / 1024))} KB` : `${(z.bytes / 1048576).toFixed(1)} MB`
+        const left = z.missing > 0 ? ` ${z.missing} could not be read and ${z.missing === 1 ? 'was' : 'were'} left out.` : ''
+        setDone((PREVIEW ? `Built a zip of ${z.count} ${z.count === 1 ? 'photograph' : 'photographs'} (${size}). Downloads are switched off in this preview.` : `Downloaded ${photoZipName(todayISO())}: ${z.count} ${z.count === 1 ? 'photograph' : 'photographs'}, ${size}. It shows patients' names, so keep it as carefully as the records.`) + left)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not collect the photographs.')
     }
     setBusy('')
   }
@@ -265,13 +289,21 @@ export default function Registry() {
 
           <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <h2>Backup</h2>
-            <div className="muted">One file with every patient, visit, result and setting. The database plan keeps no backups of its own, so download one regularly and store it somewhere safe. Photographs stay in Google Drive and are not part of this file.</div>
+            <div className="muted">One file with every patient, visit, result and setting. The database plan keeps no backups of its own, so download one regularly and store it somewhere safe. Photographs are not part of this file; download them separately below.</div>
             <div className="row">
               <span className={backupAge == null || backupAge > 7 ? 'pill warn' : 'pill ok'}>
                 {backedUp ? `Last backup from this browser: ${formatDate(backedUp)}` : 'No backup downloaded from this browser yet'}
               </span>
               <span className="grow" />
               <button type="button" className="btn outline" disabled={!!busy} onClick={() => void backup()}>Download full backup</button>
+            </div>
+
+            <div className="row" style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <div style={{ fontWeight: 600 }}>Photographs</div>
+                <div className="muted">One zip file with a folder for each patient. The photograph store keeps no backups either, and holds 1 GB (about 3,000 photographs).</div>
+              </div>
+              <button type="button" className="btn outline" disabled={!!busy} onClick={() => void downloadPhotos()}>Download all photographs</button>
             </div>
 
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>

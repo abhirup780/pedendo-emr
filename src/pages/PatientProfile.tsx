@@ -6,6 +6,7 @@ import { Tag } from '../components/Tag'
 import { formatAge, formatDate, midParentalHeight, targetRange } from '../lib/age'
 import { bmi } from '../lib/clinical'
 import { sexLabel } from '../lib/sex'
+import { photoFiles } from '../lib/photofiles'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
 import type { Condition, Investigation, Patient, Visit } from '../lib/types'
@@ -50,6 +51,8 @@ export default function PatientProfile() {
 
   async function remove() {
     try {
+      // The photograph files first: once the records are gone nothing says where they are.
+      await photoFiles.remove((await store.listPhotos(id)).map((ph) => ph.file_id))
       await store.deletePatient(id)
       nav('/', { replace: true })
     } catch (e) {
@@ -164,7 +167,7 @@ export default function PatientProfile() {
       <div className="row end">
         {confirming ? (
           <>
-            <span>Delete {p.name} with all visits and results? This cannot be undone. Photograph files stay in Google Drive.</span>
+            <span>Delete {p.name} with all visits and results? Photographs of this patient are erased too. This cannot be undone.</span>
             <button type="button" className="btn" onClick={() => setConfirming(false)}>
               Keep
             </button>

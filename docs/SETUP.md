@@ -1,26 +1,28 @@
 # Going live: one-time setup
 
-About an hour, in this order. Menu names in these consoles change from time to time; the steps
-are what matter. Do it all signed in to the **dedicated clinic Google account**, with two-step
-verification switched on for that account first.
+About half an hour, in this order. Menu names in these consoles change from time to time; the
+steps are what matter. Everything lives in one free Supabase project: the records, the sign-in
+and the photographs. No Google Cloud Console is needed.
 
 ## 1. Database (Supabase)
 
 1. Create a free project at supabase.com. Choose the Mumbai region.
-2. Open the SQL editor. Run every file in `supabase/migrations/` **in number order**, one at a
-   time, from `0001` to the highest. Each should finish with "Success".
-3. From Project settings → API, note the **Project URL** and the **anon public key**.
+2. Open the SQL editor. Run every file in `supabase/migrations/` **in number order**, from
+   `0001` to the highest, pasting each (or all of them, in order, in one go) and pressing Run.
+   Each should finish with "Success". A file that has been run is never run again; when the
+   app is updated, only the new, higher-numbered files are run.
+3. From Project settings → API, note the **Project URL** and the **anon public key**. Never
+   use or share the `service_role` key.
 
-## 2. Google sign-in
+## 2. The doctor's account
 
-1. In Google Cloud Console create a project. Configure the OAuth consent screen as *External*.
-2. **Publish the app to "In production".** Left in "Testing", the sign-in expires every 7 days.
-3. Create an OAuth client of type *Web application*:
-   - Authorised redirect URI: `https://YOUR-PROJECT.supabase.co/auth/v1/callback`
-   - Authorised JavaScript origins: the address the app will be served from (add
-     `http://localhost:5173` too if you will run it locally).
-4. In Supabase → Authentication → Providers, enable Google with that client ID and secret.
-5. In Supabase → Authentication → URL configuration, set the Site URL to the app's address.
+1. In Supabase → Authentication → Sign In / Providers → Email, switch **off** "Allow new users
+   to sign up" (it may be under Authentication → Settings). The database already keeps each
+   account's rows private; this stops anyone else creating an account at all.
+2. In Authentication → Users, press **Add user → Create new user**. Enter the clinic's email
+   address and a long password (three or four unrelated words), and tick **Auto Confirm User**.
+   The email is only a sign-in name: no message is ever sent to it.
+3. Keep the password in a password manager or written down somewhere safe.
 
 ## 3. Put the app online (Cloudflare Pages)
 
@@ -31,16 +33,34 @@ verification switched on for that account first.
    |---|---|
    | `VITE_SUPABASE_URL` | the Project URL |
    | `VITE_SUPABASE_ANON_KEY` | the anon public key |
-   | `VITE_ALLOWED_EMAIL` | the clinic Google account's address |
-   | `VITE_GOOGLE_CLIENT_ID` | the OAuth client ID (only needed for photographs) |
+   | `VITE_ALLOWED_EMAIL` | the clinic email address from step 2 (optional) |
 
-3. Deploy, open the address, and sign in with the clinic account.
+3. Deploy, open the address, and sign in with the email and password.
 
 ## 4. Lock the door
 
-After that first sign-in, in Supabase → Authentication turn **off** "Allow new users to sign
-up". The database already keeps each account's rows private; this stops anyone else creating
-an account at all. `VITE_ALLOWED_EMAIL` is a convenience on top, not the lock.
+1. In the app, open **Settings → Sign-in** and press **Set up an authenticator app**. Scan the
+   square with Google Authenticator, Microsoft Authenticator or a similar app on the doctor's
+   phone, and type the code. From then on every sign-in needs the password and the code, and
+   the database itself refuses a sign-in that did not give the code. Other devices that were
+   signed in are signed out and ask for the code next time.
+2. The same screen changes the password. That also signs the other devices out.
+3. In Supabase → Authentication, leave "Secure password change" off (it is off by default; it
+   works by email, which this setup does not use).
+
+**Forgotten password.** Supabase → Authentication → Users → the user's menu → reset or set a
+new password. (The "forgot password" email is not used: the free plan sends very few emails.)
+
+**Lost phone.** Nobody, including the doctor, can sign in without the code, so the
+authenticator has to be removed from the Supabase side; the password then works alone again
+and the new phone is set up in the app. In Supabase → Authentication → Users, open the user's
+menu and remove their MFA factors if that choice is offered. If it is not, run this in the SQL
+editor, with the clinic email in place of the example:
+
+```sql
+delete from auth.mfa_factors
+where user_id = (select id from auth.users where email = 'clinic@example.com');
+```
 
 ## 5. First run in the app
 
@@ -56,19 +76,24 @@ The patient list shows a "Still to set up" card until these are done:
 
 ## 6. Photographs (optional)
 
-1. In the same Google Cloud project, enable the **Google Drive API**.
-2. On the OAuth consent screen add the scope `.../auth/drive.file` (the app can then use only
-   the files it creates itself).
-3. Make sure `VITE_GOOGLE_CLIENT_ID` is set and redeploy.
-4. Try it with a test image before a real one. Images go to a Drive folder called
-   "PedEndo EMR photographs", one subfolder per patient. Never share that folder.
+Nothing more to set up: migration `0013` made a private place for them in the same Supabase
+project. Try it with a test image before a real one.
+
+- The free plan holds **1 GB** of files, about 3,000 photographs at the size the app stores.
+- Deleting a photograph, or a patient, erases the files for good. There is no bin.
+- Files are private: each can be opened only by the signed-in account that added it.
 
 ## 7. Backups
 
 The free database plan keeps **no backups**. On Registry & export → Backup, download the full
 backup at least weekly and keep the file somewhere other than the clinic computer. The same
-screen can restore a backup into an empty account. Photograph files are not in the backup;
-they stay in Google Drive.
+screen can restore a backup into an empty account.
+
+Photograph files are not in that backup, and the photograph store keeps no backups either.
+On the same screen, **Download all photographs** saves one zip file with a folder per patient;
+do it whenever new photographs matter. There is no "restore photographs" yet: after a restore
+into a new project the photograph records remain but their pictures would have to be added
+again from the zip.
 
 A free Supabase project is also **paused after a week with no use**. After a long break, open
 the Supabase dashboard and press Restore.
@@ -78,11 +103,15 @@ the Supabase dashboard and press Restore.
 Before relying on the app, run it beside the current system for two weeks. Things that could
 not be tried during development and need a look on the live site:
 
-- [ ] Google sign-in works, and a different Google account is turned away.
+- [ ] Sign-in works with the email and password; a wrong password is turned away; after the
+      authenticator app is set up, a sign-in on another device asks for the code.
+- [ ] Settings → Sign-in shows "On" with no warning that the database is not checking the code.
 - [ ] A patient, a visit and a result save and reappear after signing out and in.
 - [ ] A prescription prints correctly on each clinic's printer and pad (try a two-page one). In
       the print window: the same paper size as the layout, margins "Default", scale 100%.
-- [ ] A photograph uploads, shows, and appears in the Drive folder.
+- [ ] A photograph uploads, shows again after a reload, and can be deleted. (Photograph
+      storage is the one part never run against the real service during development.)
+- [ ] "Download all photographs" gives a zip that opens, with the test image inside.
 - [ ] The Excel export opens in Excel with correct dates.
 - [ ] A backup downloads. (If you ever need it: restore into a spare, empty Supabase project.)
 - [ ] The browser console (F12) shows no "Content Security Policy" messages while doing all of

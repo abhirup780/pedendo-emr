@@ -19,5 +19,5 @@ jobs:
       - run: npm run build
       - name: Unit tests, in Indian time
         run: TZ=Asia/Kolkata npm test
-      - name: Database tests (local Postgres + PostgREST)
+      - name: Database and sign-in tests (local Postgres, PostgREST, Supabase Auth)
         run: PGBIN=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1) npm run test:db

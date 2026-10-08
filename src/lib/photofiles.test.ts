@@ -1,82 +1,80 @@
 import { describe, expect, it } from 'vitest'
 import { fitWithin } from './image'
-import { DriveError, driveClient, ROOT_FOLDER } from './photofiles'
+import { friendlyFileError, photoPath, storageFiles } from './photofiles'
+import type { Bucket } from './photofiles'
 
-interface Call { url: string; method: string; auth: string; body: unknown }
-
-/** A stand-in for Google Drive that remembers folders, like the real one. */
-function fakeDrive() {
-  const calls: Call[] = []
-  const folders: { id: string; name: string; parent: string }[] = []
-  let n = 0
-  const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status })
-  const doFetch = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    const url = String(input)
-    const method = init.method ?? 'GET'
-    calls.push({ url, method, auth: (init.headers as Record<string, string>).Authorization, body: init.body })
-    if (url.includes('/upload/')) return json({ id: 'file-1' })
-    if (method === 'GET' && url.includes('files?q=')) {
-      const q = decodeURIComponent(url.split('q=')[1].split('&')[0])
-      const name = /name = '((?:[^'\\]|\\.)*)'/.exec(q)![1].replace(/\\(.)/g, '$1')
-      const parent = /'([^']+)' in parents/.exec(q)![1]
-      return json({ files: folders.filter((f) => f.name === name && f.parent === parent).map((f) => ({ id: f.id })) })
-    }
-    if (method === 'POST') {
-      const b = JSON.parse(init.body as string) as { name: string; parents?: string[] }
-      const f = { id: `folder-${++n}`, name: b.name, parent: b.parents?.[0] ?? 'root' }
-      folders.push(f)
-      return json({ id: f.id })
-    }
-    if (method === 'PATCH') return json({})
-    return new Response(new Blob(['img']), { status: 200 })
-  }) as typeof fetch
-  return { calls, folders, doFetch }
+/** A stand-in for a Supabase Storage bucket that keeps files in memory and records each call. */
+function fakeBucket() {
+  const files = new Map<string, Blob>()
+  const calls: { op: string; path: string; options?: unknown }[] = []
+  let fail = ''
+  const bucket: Bucket = {
+    async upload(path, body, options) {
+      calls.push({ op: 'upload', path, options })
+      if (fail) return { error: { message: fail } }
+      if (files.has(path)) return { error: { message: 'The resource already exists' } }
+      files.set(path, body)
+      return { error: null }
+    },
+    async download(path, _options, parameters) {
+      calls.push({ op: 'download', path, options: parameters })
+      if (fail) return { data: null, error: { message: fail } }
+      const b = files.get(path)
+      return b ? { data: b, error: null } : { data: null, error: { message: 'Object not found' } }
+    },
+    async remove(paths) {
+      calls.push({ op: 'remove', path: paths.join(',') })
+      if (fail) return { error: { message: fail } }
+      paths.forEach((p) => files.delete(p))
+      return { error: null }
+    },
+  }
+  return { bucket, files, calls, failWith: (m: string) => { fail = m } }
 }
 
-describe('driveClient', () => {
-  it('creates the app folder and the patient folder once, then uploads into it', async () => {
-    const d = fakeDrive()
-    const api = driveClient(() => 'tok', d.doFetch)
-    expect(await api.upload(new Blob(['x']), 'a.jpg', 'MRN 10028')).toBe('file-1')
-    expect(d.folders.map((f) => [f.name, f.parent])).toEqual([[ROOT_FOLDER, 'root'], ['MRN 10028', 'folder-1']])
-    const upload = d.calls.at(-1)!
-    expect(upload.url).toContain('uploadType=multipart')
-    expect(upload.auth).toBe('Bearer tok')
-    const meta = JSON.parse(await ((upload.body as FormData).get('metadata') as Blob).text())
-    expect(meta).toEqual({ name: 'a.jpg', parents: ['folder-2'] })
-
-    const before = d.calls.length
-    await api.upload(new Blob(['y']), 'b.jpg', 'MRN 10028')
-    expect(d.calls.length - before).toBe(1)
-    expect(d.folders).toHaveLength(2)
+describe('storageFiles', () => {
+  it('stores each photograph under the account, then the patient, and never overwrites', async () => {
+    const f = fakeBucket()
+    let n = 0
+    const store = storageFiles(f.bucket, async () => 'acct-1', () => `id-${++n}`)
+    const one = await store.upload(new Blob(['a']), 'pt-7')
+    const two = await store.upload(new Blob(['b']), 'pt-7')
+    expect([one, two]).toEqual(['acct-1/pt-7/id-1.jpg', 'acct-1/pt-7/id-2.jpg'])
+    expect(one).toBe(photoPath('acct-1', 'pt-7', 'id-1'))
+    expect(f.calls[0].options).toEqual({ contentType: 'image/jpeg', upsert: false, cacheControl: '0' })
+    expect(await (await store.read(two)).text()).toBe('b')
+    expect(f.calls.at(-1)).toEqual({ op: 'download', path: two, options: { cache: 'no-store' } })
+    await store.remove([one])
+    expect([...f.files.keys()]).toEqual([two])
+    // Nothing to erase: no request at all.
+    const before = f.calls.length
+    await store.remove([])
+    expect(f.calls).toHaveLength(before)
+    await store.remove([two, 'acct-1/pt-7/never-there.jpg'])
+    expect(f.files.size).toBe(0)
+    expect(f.calls.at(-1)?.path).toBe(`${two},acct-1/pt-7/never-there.jpg`)
+    await expect(store.read(one)).rejects.toThrow(/no longer in the store/)
   })
 
-  it('reuses folders that already exist in Drive', async () => {
-    const d = fakeDrive()
-    d.folders.push({ id: 'old-root', name: ROOT_FOLDER, parent: 'root' }, { id: 'old-pt', name: "MRN 7 O'Brien", parent: 'old-root' })
-    await driveClient(() => 'tok', d.doFetch).upload(new Blob(['x']), 'a.jpg', "MRN 7 O'Brien")
-    expect(d.folders).toHaveLength(2)
-    expect(d.calls.filter((c) => c.method === 'POST' && !c.url.includes('/upload/'))).toHaveLength(0)
+  it('will not store anything when nobody is signed in', async () => {
+    const f = fakeBucket()
+    await expect(storageFiles(f.bucket, async () => null).upload(new Blob(['a']), 'pt-7')).rejects.toThrow(/Sign in again/)
+    expect(f.calls).toHaveLength(0)
   })
 
-  it('reads a file and moves a deleted one to the bin', async () => {
-    const d = fakeDrive()
-    const api = driveClient(() => 'tok', d.doFetch)
-    expect(await (await api.read('abc')).text()).toBe('img')
-    expect(d.calls[0].url).toMatch(/\/files\/abc\?alt=media$/)
-    await api.remove('abc')
-    expect(d.calls[1].method).toBe('PATCH')
-    expect(JSON.parse(d.calls[1].body as string)).toEqual({ trashed: true })
-  })
-
-  it('asks to connect when there is no token or Google rejects it', async () => {
-    const d = fakeDrive()
-    await expect(driveClient(() => null, d.doFetch).read('abc')).rejects.toMatchObject({ status: 401 })
-    expect(d.calls).toHaveLength(0)
-    const expired = (async () => new Response('', { status: 401 })) as typeof fetch
-    await expect(driveClient(() => 'old', expired).read('abc')).rejects.toBeInstanceOf(DriveError)
-    const broken = (async () => new Response('', { status: 500 })) as typeof fetch
-    await expect(driveClient(() => 'tok', broken).read('abc')).rejects.toMatchObject({ status: 500 })
+  it('explains what went wrong in plain words', async () => {
+    const f = fakeBucket()
+    const store = storageFiles(f.bucket, async () => 'acct-1')
+    f.failWith('Bucket not found')
+    await expect(store.upload(new Blob(['a']), 'pt-7')).rejects.toThrow(/migration 0013/)
+    f.failWith('new row violates row-level security policy')
+    await expect(store.upload(new Blob(['a']), 'pt-7')).rejects.toThrow(/Sign out and in again/)
+    f.failWith('Failed to fetch')
+    await expect(store.read('x')).rejects.toThrow(/No connection/)
+    await expect(store.remove(['x'])).rejects.toThrow(/No connection/)
+    expect(friendlyFileError('The object exceeded the maximum allowed size', 'store')).toMatch(/full or the file is too large/)
+    expect(friendlyFileError('mime type image/png is not supported', 'store')).toMatch(/Only JPEG/)
+    expect(friendlyFileError('', 'delete')).toBe('Could not delete the photograph (no reason given).')
   })
 })
 

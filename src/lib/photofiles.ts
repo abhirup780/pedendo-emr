@@ -1,147 +1,73 @@
+import { supabase } from './supabase'
+
 /**
- * Where photograph files are kept. Two implementations: Google Drive (real use) and an
- * in-memory store for the demo. The database never holds image data, only file IDs.
+ * Where photograph files are kept. Two implementations: Supabase Storage (real use; a private
+ * bucket in the same project as the database) and an in-memory store for the demo. The
+ * database never holds image data, only each file's ID.
  */
 export interface PhotoFiles {
-  kind: 'drive' | 'demo' | 'none'
-  /** True once files can be read and written without asking the doctor again. */
-  ready(): boolean
-  /** Asks for access. Must be called from a click, because it may open Google's window. */
-  connect(loginHint?: string): Promise<void>
-  /** Stores a file in the patient's folder and returns its file ID. */
-  upload(blob: Blob, name: string, folder: string): Promise<string>
+  kind: 'storage' | 'demo'
+  /** Stores a file for this patient and returns its file ID. */
+  upload(blob: Blob, patientId: string): Promise<string>
   read(fileId: string): Promise<Blob>
-  remove(fileId: string): Promise<void>
+  /** Erases the files, all in one request. There is no bin: this cannot be undone. */
+  remove(fileIds: string[]): Promise<void>
 }
 
-const DRIVE = 'https://www.googleapis.com/drive/v3'
-const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id'
-/** Lets the app create and open only the files it made itself, nothing else in the Drive. */
-export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
-export const ROOT_FOLDER = 'PedEndo EMR photographs'
-const FOLDER_MIME = 'application/vnd.google-apps.folder'
-
-export class DriveError extends Error {
-  status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
-
-type Fetch = typeof fetch
+/** The bucket made by migration 0013. */
+export const PHOTO_BUCKET = 'photos'
 
 /**
- * Google Drive calls, given a way to get an access token. Kept separate from the sign-in
- * window so the requests can be tested without Google.
+ * A file's ID is also its place in storage: account / patient / a random name. The database
+ * rules (migration 0013) let an account touch only what is under its own id, so the first
+ * part is what keeps one doctor's photographs from another's.
  */
-export function driveClient(getToken: () => string | null, doFetch: Fetch = fetch) {
-  const folders = new Map<string, string>()
+export function photoPath(accountId: string, patientId: string, unique: string): string {
+  return `${accountId}/${patientId}/${unique}.jpg`
+}
 
-  async function call(url: string, init: RequestInit = {}): Promise<Response> {
-    const token = getToken()
-    if (!token) throw new DriveError(401, 'Connect Google Drive to continue.')
-    const res = await doFetch(url, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), Authorization: `Bearer ${token}` } })
-    if (res.status === 401) throw new DriveError(401, 'Google Drive access has expired. Connect again.')
-    if (!res.ok) throw new DriveError(res.status, `Google Drive refused the request (${res.status}).`)
-    return res
-  }
+/** The part of Supabase's storage client that is used here; narrow, so tests can stand in for it. */
+export interface Bucket {
+  upload(path: string, body: Blob, options: { contentType: string; upsert: boolean; cacheControl: string }): Promise<{ error: { message: string } | null }>
+  download(path: string, options?: Record<string, never>, parameters?: { cache?: RequestCache }): PromiseLike<{ data: Blob | null; error: { message: string } | null }>
+  remove(paths: string[]): Promise<{ error: { message: string } | null }>
+}
 
-  const quote = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+/** Storage errors in plain words. */
+export function friendlyFileError(message: string, doing: 'store' | 'open' | 'delete'): string {
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(message)) return 'No connection to the photograph store. Check the internet and try again.'
+  if (/bucket not found/i.test(message)) return 'The place for photographs has not been made yet: run migration 0013 in Supabase (see docs/SETUP.md).'
+  if (/row-level security|unauthorized|not authorized|jwt|invalid token/i.test(message)) return 'The photograph store refused this. Sign out and in again, then repeat the last step.'
+  if (/exceeded the maximum allowed size|payload too large|quota|limit/i.test(message)) return 'The photograph store is full or the file is too large. Download and delete older photographs, then try again.'
+  if (/mime type|not supported/i.test(message)) return 'Only JPEG photographs can be stored.'
+  if (/not found|no such/i.test(message)) return 'This photograph\'s file is no longer in the store.'
+  return `Could not ${doing} the photograph (${message || 'no reason given'}).`
+}
 
-  async function folder(name: string, parent: string | null): Promise<string> {
-    const key = `${parent ?? 'root'}/${name}`
-    const hit = folders.get(key)
-    if (hit) return hit
-    const q = `name = '${quote(name)}' and mimeType = '${FOLDER_MIME}' and trashed = false and '${parent ?? 'root'}' in parents`
-    const found = (await (await call(`${DRIVE}/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1`)).json()) as { files?: { id: string }[] }
-    let id = found.files?.[0]?.id
-    if (!id) {
-      const made = await call(`${DRIVE}/files?fields=id`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, mimeType: FOLDER_MIME, ...(parent ? { parents: [parent] } : {}) }),
-      })
-      id = ((await made.json()) as { id: string }).id
-    }
-    folders.set(key, id)
-    return id
-  }
-
+/** Photograph files in a Supabase Storage bucket. `accountId` is the signed-in doctor's id, or null. */
+export function storageFiles(bucket: Bucket, accountId: () => Promise<string | null>, unique: () => string = () => crypto.randomUUID()): PhotoFiles {
   return {
-    async upload(blob: Blob, name: string, patientFolder: string): Promise<string> {
-      const parent = await folder(patientFolder, await folder(ROOT_FOLDER, null))
-      const form = new FormData()
-      form.append('metadata', new Blob([JSON.stringify({ name, parents: [parent] })], { type: 'application/json' }))
-      form.append('file', blob)
-      const res = await call(UPLOAD, { method: 'POST', body: form })
-      return ((await res.json()) as { id: string }).id
+    kind: 'storage',
+    async upload(blob, patientId) {
+      const account = await accountId()
+      if (!account) throw new Error('Sign in again to add photographs.')
+      const path = photoPath(account, patientId, unique())
+      // Never overwrite: every photograph gets a new file. No caching: a clinic computer must
+      // not keep patients' photographs on its disk after the doctor signs out.
+      const { error } = await bucket.upload(path, blob, { contentType: 'image/jpeg', upsert: false, cacheControl: '0' })
+      if (error) throw new Error(friendlyFileError(error.message, 'store'))
+      return path
     },
-    async read(fileId: string): Promise<Blob> {
-      return (await call(`${DRIVE}/files/${encodeURIComponent(fileId)}?alt=media`)).blob()
+    async read(fileId) {
+      const { data, error } = await bucket.download(fileId, {}, { cache: 'no-store' })
+      if (error || !data) throw new Error(friendlyFileError(error?.message ?? 'not found', 'open'))
+      return data
     },
-    /** Moves the file to Drive's bin rather than erasing it, so a mistaken delete can be undone for 30 days. */
-    async remove(fileId: string): Promise<void> {
-      await call(`${DRIVE}/files/${encodeURIComponent(fileId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) })
+    async remove(fileIds) {
+      if (fileIds.length === 0) return
+      const { error } = await bucket.remove(fileIds)
+      if (error) throw new Error(friendlyFileError(error.message, 'delete'))
     },
-  }
-}
-
-interface TokenResponse {
-  access_token?: string
-  expires_in?: number
-  error?: string
-}
-interface TokenClient {
-  requestAccessToken(opts?: { prompt?: string; login_hint?: string }): void
-  callback: (r: TokenResponse) => void
-}
-interface Gis {
-  accounts: { oauth2: { initTokenClient(cfg: { client_id: string; scope: string; callback: (r: TokenResponse) => void; error_callback?: (e: { type?: string }) => void }): TokenClient } }
-}
-
-function loadGis(): Promise<Gis> {
-  const w = window as unknown as { google?: Gis }
-  if (w.google?.accounts?.oauth2) return Promise.resolve(w.google)
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script')
-    s.src = 'https://accounts.google.com/gsi/client'
-    s.async = true
-    s.onload = () => (w.google?.accounts?.oauth2 ? resolve(w.google) : reject(new Error('Google sign-in did not load.')))
-    s.onerror = () => reject(new Error('Google sign-in could not be loaded. Check the internet connection.'))
-    document.head.appendChild(s)
-  })
-}
-
-function createDriveFiles(clientId: string): PhotoFiles {
-  let token: string | null = null
-  let expires = 0
-  const live = () => (token && Date.now() < expires ? token : null)
-  const api = driveClient(live)
-  return {
-    kind: 'drive',
-    ready: () => live() !== null,
-    async connect(loginHint) {
-      const gis = await loadGis()
-      await new Promise<void>((resolve, reject) => {
-        const client = gis.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: DRIVE_SCOPE,
-          callback: (r) => {
-            if (r.error || !r.access_token) return reject(new Error('Google Drive access was not granted.'))
-            token = r.access_token
-            // Stop a minute early so a request never starts with a token about to lapse.
-            expires = Date.now() + ((r.expires_in ?? 3600) - 60) * 1000
-            resolve()
-          },
-          error_callback: (e) => reject(new Error(e.type === 'popup_closed' ? 'The Google window was closed before access was given.' : 'Google Drive could not be connected.')),
-        })
-        client.requestAccessToken({ prompt: '', login_hint: loginHint })
-      })
-    },
-    upload: api.upload,
-    read: api.read,
-    remove: api.remove,
   }
 }
 
@@ -150,8 +76,6 @@ function createDemoFiles(): PhotoFiles {
   let n = 0
   return {
     kind: 'demo',
-    ready: () => true,
-    async connect() {},
     async upload(blob) {
       const id = `demo-${++n}`
       files.set(id, blob)
@@ -162,22 +86,12 @@ function createDemoFiles(): PhotoFiles {
       if (!b) throw new Error('This demo photo is no longer in memory.')
       return b
     },
-    async remove(id) {
-      files.delete(id)
+    async remove(ids) {
+      ids.forEach((id) => files.delete(id))
     },
   }
 }
 
-const NONE: PhotoFiles = {
-  kind: 'none',
-  ready: () => false,
-  connect: async () => { throw new Error('Google Drive is not set up for this app yet.') },
-  upload: async () => { throw new Error('Google Drive is not set up for this app yet.') },
-  read: async () => { throw new Error('Google Drive is not set up for this app yet.') },
-  remove: async () => { throw new Error('Google Drive is not set up for this app yet.') },
-}
-
-const demo = !(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
-const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
-
-export const photoFiles: PhotoFiles = demo ? createDemoFiles() : clientId ? createDriveFiles(clientId) : NONE
+export const photoFiles: PhotoFiles = supabase
+  ? storageFiles(supabase.storage.from(PHOTO_BUCKET), async () => (await supabase!.auth.getSession()).data.session?.user.id ?? null)
+  : createDemoFiles()

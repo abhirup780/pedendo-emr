@@ -214,7 +214,20 @@ export function createDemoStore(): Store {
       db.signedIn = true
       save()
       emit()
+      return 'ok' as const
     },
+    async verifyCode() {},
+    async changePassword() {
+      throw new Error('The demo has no password.')
+    },
+    async twoStep() {
+      return { on: false, enforced: false }
+    },
+    async startTwoStep() {
+      throw new Error('The demo has no sign-in to protect.')
+    },
+    async confirmTwoStep() {},
+    async stopTwoStep() {},
     async signOut() {
       db.signedIn = false
       save()

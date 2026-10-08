@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PrintLayouts from './PrintLayouts'
+import SignInSettings from './SignInSettings'
 import { store } from '../lib/store'
 import { EMPTY_RX } from '../lib/clinical'
 import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../lib/device'
@@ -537,6 +538,7 @@ const TABS = [
   { key: 'meds', label: 'Medicines', el: <Medicines /> },
   { key: 'tests', label: 'Investigations', el: <Investigations /> },
   { key: 'templates', label: 'Templates', el: <Templates /> },
+  { key: 'signin', label: 'Sign-in', el: <SignInSettings /> },
   { key: 'device', label: 'This device', el: <ThisDevice /> },
 ]
 

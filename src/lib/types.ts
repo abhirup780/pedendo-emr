@@ -154,7 +154,7 @@ export interface Tanner {
 
 export const PHOTO_VIEWS = ['Face, frontal', 'Face, profile', 'Full height, standing', 'Hands', 'Skin sign', 'X-ray', 'Other'] as const
 
-/** A photograph's record. The image itself is in Google Drive under `file_id`. */
+/** A photograph's record. The image itself is in the photograph store under `file_id`. */
 export interface Photo {
   id: string
   patient_id: string
@@ -182,7 +182,7 @@ export interface Dump {
   patients: Patient[]
   visits: Visit[]
   results: Result[]
-  /** Photograph records (Drive file IDs), not the images. */
+  /** Photograph records (file IDs), not the images. */
   photos: Photo[]
   consents: { patient_id: string; on: string; by: string }[]
 }

@@ -8,14 +8,18 @@ the single source of truth — commit and push finished work.
 
 - **Stack**: React + TypeScript + Vite, plain CSS (`src/styles.css`, tokens in `:root`), no UI
   library. Fonts self-hosted through `@fontsource` (IBM Plex Sans / Mono).
-- **Database and sign-in**: Supabase free plan (Postgres, Google sign-in). Every table has
-  `owner_id default auth.uid()` and a row-level-security policy `owner_id = auth.uid()`.
-- **Photographs** (stage 6): the doctor's Google Drive through the Drive API with the
-  `drive.file` permission; the database stores only file IDs. Compress in the browser first.
-  Photos are optional and never go into exports.
+- **Everything is in one Supabase free project**: Postgres, sign-in and photograph files. The
+  owner does not want Google Cloud Console; do not bring back Google sign-in or Drive.
+- **Database and sign-in**: email and password, with an optional authenticator-app code
+  (see "Sign-in" below). Every table has `owner_id default auth.uid()` and a
+  row-level-security policy `owner_id = auth.uid()`.
+- **Photographs** (stage 6): a private Supabase Storage bucket (1 GB on the free plan); the
+  database stores only file IDs. Compress in the browser first. Photos are optional and never
+  go into the Excel exports or the backup file.
 - **Excel export** (stage 7): built in the browser, no server.
 - **Hosting**: static (Cloudflare Pages). No server code of our own.
-- **Backups**: the free Supabase plan has none; stage 7 must add an in-app backup to Drive.
+- **Backups**: the free Supabase plan has none, for the database or for files. The app
+  downloads a backup file and, separately, a zip of all photographs.
 - The prescription symbol is ℞, not "Rx".
 - No em dash (—) anywhere the doctor or patient can read it: screens, prints, exports, starter
   lists. An empty value shows as `NONE` from `src/lib/text.ts` (a plain hyphen); use a colon,
@@ -51,13 +55,38 @@ the single source of truth — commit and push finished work.
 - Verify before pushing: `npm run lint`, `npm run build`, `TZ=Asia/Kolkata npm test`,
   `npm run test:db`, and click through the changed screens (Playwright + the built app).
 - `tests/contract.ts` is the single list of what a `Store` must do. It runs against the demo
-  store (`npm test`) and the Supabase store (`npm run test:db`, local Postgres + PostgREST,
-  two accounts). Every new `Store` method gets a case there, so the demo cannot drift.
+  store (`npm test`) and the Supabase store (`npm run test:db`: local Postgres, PostgREST and
+  Supabase's own auth server, two accounts that sign in with a real password). Every new
+  `Store` method gets a case there, so the demo cannot drift (sign-in methods are tested in
+  `tests/db/supabase.test.ts` and `tests/demo-store.test.ts` instead).
+- `PGTEST_RUN="command" npm run test:db` runs a command against those servers instead of the
+  tests; that is how the built app was clicked through with real sign-in.
 - Give each screen that holds unsaved input a `key` from its route params (see `VisitPage`),
   or state leaks from one record to the next.
 - Condition tags are made in Settings or with "+ New tag" on the patient form; the latter saves
   the tag at once (even if the patient is then not saved) and ticks an existing tag of the
   same name instead of failing.
+
+## Sign-in
+
+- `src/lib/supabase.ts` holds the one Supabase client (null in the demo); the store and the
+  photograph files share it. `createSupabaseStore(client)` takes it as a parameter.
+- `store.signIn(email, password)` returns `'ok'` or `'code'`. With an authenticator app set up
+  (Settings, Sign-in tab: `SignInSettings.tsx`), a password-only session counts as signed out:
+  `getUser` and `onAuthChange` give null until `verifyCode` (`awaitingCode` in
+  `store.supabase.ts` reads the level from the session's token).
+- The database enforces the same thing (migration 0013): restrictive policies on every table
+  and on the photograph files call `second_step_ok()`, which wants an `aal2` token whenever
+  the account has a verified factor. Every new table needs the same restrictive policy.
+  `second_step_required()` lets the Sign-in screen show whether the database is enforcing it;
+  it relies on the hosted `postgres` role being allowed to read `auth.mfa_factors`.
+- Accounts are made in the Supabase dashboard with sign-ups switched off. No email is ever
+  sent (the free plan allows 2 an hour), so a forgotten password and a lost phone are both
+  fixed from the dashboard (`docs/SETUP.md`).
+- `signOut` is for this device only (`scope: 'local'`). Setting up the authenticator or
+  changing the password ends the sessions on other devices (the auth server does that);
+  `stillGood()` in `store.supabase.ts` asks the database on start-up and whenever the app comes
+  back into view, and signs a refused device out with a notice instead of showing empty lists.
 
 ## Sex not yet assigned
 
@@ -156,15 +185,26 @@ the single source of truth — commit and push finished work.
 
 ## Stage 6 notes
 
-- `src/lib/photofiles.ts`: `PhotoFiles` interface with a Google Drive implementation (Google
-  Identity Services token in memory, `drive.file` scope, one-hour tokens, reconnect on 401) and
-  an in-memory demo one. `driveClient` takes `fetch` as a parameter so it is testable.
+- `src/lib/photofiles.ts`: `PhotoFiles` interface with a Supabase Storage implementation
+  (`storageFiles`, bucket `photos`, made by migration 0013) and an in-memory demo one. A file's
+  ID is its path, `account id/patient id/random.jpg` (`photoPath`); the storage rules allow an
+  account only what is under its own id, with no update, so a file is never overwritten.
+  `storageFiles` takes the bucket as a parameter so it is testable. Files are stored and
+  fetched with caching off, so a clinic computer keeps no photographs on disk after sign-out.
+  When deleting, the file goes first and the record second, so a failure never leaves a
+  picture that nothing points to.
 - Images are resized to 1600 px and re-encoded as JPEG in the browser (`src/lib/image.ts`),
-  which also strips camera metadata. The database row holds the Drive file ID, never the image.
+  which also strips camera metadata. The database row holds the file ID, never the image.
 - Consent is two columns on `patients`, read and written through `getPhotoConsent` /
   `setPhotoConsent`, deliberately outside the `Patient` type. Uploading is blocked without it.
-- Deleting a photo moves the Drive file to the bin. Deleting a patient removes the records but
-  leaves the Drive files; nothing cleans those up yet.
+- Deleting a photo erases its file for good (no bin). Deleting a patient erases that patient's
+  files first (`PatientProfile`), then the records.
+- "Download all photographs" on the Registry screen (`src/lib/photozip.ts`, `src/lib/zip.ts`:
+  a plain, uncompressed zip written without a library) is the only copy outside Supabase.
+  There is no way yet to put photographs back from that zip.
+- Storage is the one part not run against the real service: `tests/db/setup.sql` has a
+  stand-in for its tables (shape copied from supabase/storage's migrations), so the access
+  rules are tested but an actual upload is not.
 - Demo photos and consent are memory-only and vanish on reload.
 
 ## Growth chart notes
@@ -216,7 +256,7 @@ the single source of truth — commit and push finished work.
   column or the save bar cannot cover it; on a phone it is a sheet at the foot of the screen.
   The stored value stays `YYYY-MM-DD`.
 - `public/_headers`: security headers for Cloudflare Pages. The CSP is report-only until the
-  owner's trial run shows a clean console with live Google sign-in and Drive.
+  owner's trial run shows a clean console on the live site.
 - An axe-core scan (wcag2a/aa + best-practice) was clean on every screen; keep it that way.
 
 ## Print layouts
@@ -264,8 +304,8 @@ the single source of truth — commit and push finished work.
 3. ~~Investigations: grouped master list, one-click panels, result entry~~ (done)
 4. ~~Growth: chart, velocity, MPH, WHO 2006 + IAP 2015 reference lines and SDS~~ (done; WHO weight/BMI under 5 not supplied)
 5. ~~Tanner staging per visit~~ (done)
-6. ~~Photographs on Google Drive, compare view~~ (done; Drive calls unit-tested with a stand-in, never run against Google)
-7. ~~Excel export per condition group; backup~~ (done, with restore; backup is a downloaded file, not yet sent to Drive)
+6. ~~Photographs, compare view~~ (done; moved from Google Drive to Supabase Storage; never run against the real storage service)
+7. ~~Excel export per condition group; backup~~ (done, with restore; backups are downloaded files)
 8. Trial run alongside the current system — checklist in `docs/SETUP.md`
 
 The clickable design for all screens is a Claude design canvas titled "Pediatric Endocrine EMR".

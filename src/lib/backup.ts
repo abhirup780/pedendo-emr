@@ -9,7 +9,7 @@ export const BACKUP_FORMAT = 3
 /**
  * Everything in the account as one JSON document. The free database plan keeps no backups,
  * so this file is the safety net: download it regularly and keep it somewhere safe.
- * Photograph records are included; the image files themselves stay in Google Drive.
+ * Photograph records are included; the image files themselves stay in the photograph store.
  */
 export async function buildBackup(store: Store): Promise<Backup> {
   const [dump, conditions, medicines, templates, investigations, panels, clinic, print_layouts] = await Promise.all([

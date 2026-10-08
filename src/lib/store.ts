@@ -2,6 +2,7 @@ import type { PrintLayout } from './printlayout'
 import type { Backup, Clinic, Condition, Dump, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { createDemoStore } from './store.demo'
 import { createSupabaseStore } from './store.supabase'
+import { supabase } from './supabase'
 
 export type PatientSort = 'recent' | 'registered' | 'name'
 /** 'overdue': review date has passed with no visit since. 'week': review due within 7 days. */
@@ -21,8 +22,24 @@ export interface Store {
   mode: 'supabase' | 'demo'
   getUser(): Promise<SessionUser | null>
   onAuthChange(cb: (user: SessionUser | null) => void): () => void
-  signIn(): Promise<void>
+  /**
+   * 'code' means the password was right and the account has an authenticator app: nobody is
+   * signed in until `verifyCode` succeeds. The demo ignores both arguments.
+   */
+  signIn(email: string, password: string): Promise<'ok' | 'code'>
+  /** The six-digit code from the authenticator app, straight after `signIn` returned 'code'. */
+  verifyCode(code: string): Promise<void>
   signOut(): Promise<void>
+  changePassword(next: string): Promise<void>
+  /**
+   * The second sign-in step. `on`: an authenticator app is set up. `enforced`: the database
+   * itself refuses a password-only sign-in (false means migration 0013 has not been run).
+   */
+  twoStep(): Promise<{ on: boolean; enforced: boolean }>
+  /** Begins setting up an authenticator app: a QR picture (an image address) and the same secret as text. */
+  startTwoStep(): Promise<{ id: string; qr: string; secret: string }>
+  confirmTwoStep(id: string, code: string): Promise<void>
+  stopTwoStep(): Promise<void>
 
   listConditions(): Promise<Condition[]>
   conditionCounts(): Promise<Record<string, number>>
@@ -91,8 +108,5 @@ export interface Store {
 
 export const EMPTY_CLINIC: Clinic = { doctor_name: '', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '', logo: '', signature: '' }
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-
 /** Without Supabase settings the app runs in demo mode: sample data, this browser only. */
-export const store: Store = url && key ? createSupabaseStore(url, key) : createDemoStore()
+export const store: Store = supabase ? createSupabaseStore(supabase) : createDemoStore()
