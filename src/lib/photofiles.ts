@@ -36,7 +36,7 @@ export interface Bucket {
 /** Storage errors in plain words. */
 export function friendlyFileError(message: string, doing: 'store' | 'open' | 'delete'): string {
   if (/failed to fetch|networkerror|load failed|network request failed/i.test(message)) return 'No connection to the photograph store. Check the internet and try again.'
-  if (/bucket not found/i.test(message)) return 'The place for photographs has not been made yet: run migration 0013 in Supabase (see docs/SETUP.md).'
+  if (/bucket not found/i.test(message)) return 'The place for photographs has not been set up yet. Contact the administrator.'
   if (/row-level security|unauthorized|not authorized|jwt|invalid token/i.test(message)) return 'The photograph store refused this. Sign out and in again, then repeat the last step.'
   if (/exceeded the maximum allowed size|payload too large|quota|limit/i.test(message)) return 'The photograph store is full or the file is too large. Download and delete older photographs, then try again.'
   if (/mime type|not supported/i.test(message)) return 'Only JPEG photographs can be stored.'

@@ -4,6 +4,7 @@ import { DemoBanner } from '../components/Shell'
 import { clearNotice, peekNotice } from '../lib/device'
 import { store } from '../lib/store'
 import { Curves, Mark, Wordmark } from '../components/Brand'
+import PasswordInput from '../components/PasswordInput'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -80,10 +81,10 @@ export default function Login() {
                 Email
                 <input type="email" name="email" autoComplete="username" autoCapitalize="none" spellCheck={false} required value={email} onChange={(e) => setEmail(e.target.value)} />
               </label>
-              <label className="field">
-                Password
-                <input type="password" name="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-              </label>
+              <div className="field">
+                <label htmlFor="signin-password">Password</label>
+                <PasswordInput id="signin-password" name="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
             </>
           )}
           {!demo && step === 'code' && (
@@ -99,7 +100,7 @@ export default function Login() {
             <button type="button" className="btn" onClick={() => void startAgain()}>Use a different account</button>
           )}
           {!demo && step === 'password' && (
-            <div className="muted" style={{ fontSize: 13 }}>Forgotten the password? It is reset from the Supabase dashboard, under Authentication, Users.</div>
+            <div className="muted" style={{ fontSize: 13 }}>Forgotten the password? Contact the administrator.</div>
           )}
         </form>
         </div>

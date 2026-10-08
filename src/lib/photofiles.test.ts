@@ -66,7 +66,7 @@ describe('storageFiles', () => {
     const f = fakeBucket()
     const store = storageFiles(f.bucket, async () => 'acct-1')
     f.failWith('Bucket not found')
-    await expect(store.upload(new Blob(['a']), 'pt-7')).rejects.toThrow(/migration 0013/)
+    await expect(store.upload(new Blob(['a']), 'pt-7')).rejects.toThrow(/not been set up yet/)
     f.failWith('new row violates row-level security policy')
     await expect(store.upload(new Blob(['a']), 'pt-7')).rejects.toThrow(/Sign out and in again/)
     f.failWith('Failed to fetch')

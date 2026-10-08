@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useUser } from '../auth'
 import { store } from '../lib/store'
+import PasswordInput from '../components/PasswordInput'
 
 /** Shortest password the app will set. The sign-in service has its own, lower, floor. */
 export const MIN_PASSWORD = 10
@@ -40,14 +41,14 @@ function Password() {
       {error && <div className="alert" role="alert">{error}</div>}
       {done && <div className="pill ok" role="status">Password changed.</div>}
       <div className="row">
-        <label className="field" style={{ flex: '1 1 220px' }}>
-          New password
-          <input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
-        </label>
-        <label className="field" style={{ flex: '1 1 220px' }}>
-          The same again
-          <input type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} />
-        </label>
+        <div className="field" style={{ flex: '1 1 220px' }}>
+          <label htmlFor="new-password">New password</label>
+          <PasswordInput id="new-password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+        </div>
+        <div className="field" style={{ flex: '1 1 220px' }}>
+          <label htmlFor="new-password-again">The same again</label>
+          <PasswordInput id="new-password-again" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} />
+        </div>
       </div>
       <div className="row end">
         <button type="submit" className="btn primary" disabled={busy || !next || !again}>Change password</button>
@@ -115,7 +116,7 @@ function TwoStep() {
             {!confirmOff && <button type="button" className="btn" disabled={busy} onClick={() => setConfirmOff(true)}>Turn off</button>}
           </div>
           {!state.enforced && (
-            <div className="alert">The database is not checking the code yet, only this app is. Run migration 0013 in Supabase (see docs/SETUP.md) and reload this page. If it has been run already, report this message: the records are then protected by the password only.</div>
+            <div className="alert">The database is not checking the code yet, only this app is, so the records are protected by the password only. Contact the administrator and report this message.</div>
           )}
           {confirmOff && (
             <div className="row">
@@ -125,7 +126,7 @@ function TwoStep() {
             </div>
           )}
           <div className="muted" style={{ fontSize: 13 }}>
-            Lost or changed the phone? Nobody can sign in without the code, so it is removed from the Supabase dashboard (docs/SETUP.md, "Lost phone"), and then set up again here.
+            Lost or changed the phone? Nobody can sign in without the code. Contact the administrator to have it removed, then set it up again here.
           </div>
         </>
       )}
@@ -178,7 +179,7 @@ export default function SignInSettings() {
     <>
       <section className="card pad">
         <h2>Sign-in</h2>
-        <div className="muted">Signed in as <span className="mono">{user?.email}</span>. The account itself is made, and a forgotten password reset, in the Supabase dashboard.</div>
+        <div className="muted">Signed in as <span className="mono">{user?.email}</span>. For a new account or a forgotten password, contact the administrator.</div>
       </section>
       <Password />
       <TwoStep />
