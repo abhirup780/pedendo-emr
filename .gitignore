@@ -30,3 +30,5 @@ dist-ssr
 *.xlsx
 exports/
 backups/
+
+dist-preview

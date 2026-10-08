@@ -15,6 +15,9 @@ npm run dev
 With no settings file the app opens in **demo mode**: sample patients kept only in
 that browser. It is for trying the screens, never for real patients.
 
+`npm run build:preview` writes `dist-preview/preview.html`, the whole demo as one file, for
+sharing a clickable preview without any hosting.
+
 Checks: `npm run build` (type-check and build), `npm test` (unit tests), `npm run lint`.
 
 ## Connect the real database (once)

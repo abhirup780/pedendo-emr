@@ -29,6 +29,9 @@ the single source of truth — commit and push finished work.
 - `supabase/migrations/` — SQL, numbered, run in order. Add a new file per stage; never edit one
   that has been applied.
 
+- `scripts/make-preview.mjs` + `npm run build:preview` — one-file demo build (sample data,
+  in-memory routing) that can be published as a Claude artifact to show progress.
+
 ## Rules
 
 - New data access goes through `Store`; add the method to both implementations.
