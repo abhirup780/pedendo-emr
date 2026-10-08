@@ -11,7 +11,7 @@ import type { Patient, Photo, PhotoConsent, Visit } from '../lib/types'
 import DateField from '../components/DateField'
 
 /** Loads one image from the file store and shows it; images are fetched only when on screen. */
-function Picture({ photo, large }: { photo: Photo; large?: boolean }) {
+function Picture({ photo, size }: { photo: Photo; size?: 'large' | 'full' }) {
   const [url, setUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState('')
   useEffect(() => {
@@ -32,7 +32,59 @@ function Picture({ photo, large }: { photo: Photo; large?: boolean }) {
   }, [photo.file_id])
   if (failed) return <div className="ph-box ph-msg">{failed}</div>
   if (!url) return <div className="ph-box ph-msg">Loading…</div>
-  return <img className={large ? 'ph-img large' : 'ph-img'} src={url} alt={`${photo.view}, ${formatDate(photo.taken_on)}`} />
+  return <img className={size ? `ph-img ${size}` : 'ph-img'} src={url} alt={`${photo.view}, ${formatDate(photo.taken_on)}`} />
+}
+
+/**
+ * One photograph filling the screen, uncropped. The side buttons and the left and right arrow
+ * keys move through the photographs on show; Escape or the cross closes.
+ */
+function Viewer({ photos, at, caption, onMove, onClose }: { photos: Photo[]; at: number; caption: (p: Photo) => string; onMove: (at: number) => void; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const d = ref.current
+    if (d && !d.open) d.showModal()
+  }, [])
+  const photo = photos[at]
+  const last = photos.length - 1
+  return (
+    <dialog
+      ref={ref}
+      className="ph-view"
+      aria-label="Photograph, full screen"
+      onClose={onClose}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowLeft' && at > 0) onMove(at - 1)
+        if (e.key === 'ArrowRight' && at < last) onMove(at + 1)
+      }}
+    >
+      <div className="ph-view-bar">
+        <div className="grow">
+          <div style={{ fontWeight: 600 }}>{photo.view} · {formatDate(photo.taken_on)}</div>
+          <div className="mono" style={{ fontSize: 12.5, opacity: 0.8 }}>{caption(photo)}</div>
+        </div>
+        {photos.length > 1 && <span className="mono" style={{ fontSize: 13 }}>{at + 1} / {photos.length}</span>}
+        <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <div className="ph-view-stage">
+        {photos.length > 1 && (
+          <button type="button" className="icon-btn" aria-label="Previous photograph" disabled={at === 0} onClick={() => onMove(at - 1)}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+        )}
+        <div className="ph-view-pic">
+          <Picture key={photo.id} photo={photo} size="full" />
+        </div>
+        {photos.length > 1 && (
+          <button type="button" className="icon-btn" aria-label="Next photograph" disabled={at === last} onClick={() => onMove(at + 1)}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        )}
+      </div>
+    </dialog>
+  )
 }
 
 export default function Photos() {
@@ -47,6 +99,7 @@ export default function Photos() {
   const [filter, setFilter] = useState('All')
   const [compare, setCompare] = useState<string[]>([])
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const camera = useRef<HTMLInputElement>(null)
@@ -200,7 +253,7 @@ export default function Photos() {
           <div className="ph-compare">
             {[...pair].sort((a, b) => a.taken_on.localeCompare(b.taken_on)).map((p) => (
               <figure key={p.id}>
-                <Picture photo={p} large />
+                <Picture photo={p} size="large" />
                 <figcaption>
                   <div style={{ fontWeight: 600 }}>{formatDate(p.taken_on)}</div>
                   <div className="muted mono" style={{ fontSize: 13 }}>{formatAge(patient.dob, p.taken_on)}{heightOn(p.taken_on) != null && ` · ${heightOn(p.taken_on)} cm`}</div>
@@ -232,7 +285,9 @@ export default function Photos() {
           <div className="ph-grid">
             {shown.filter((p) => p.taken_on === d).map((p) => (
               <figure key={p.id}>
-                <Picture photo={p} />
+                <button type="button" className="ph-open" aria-label={`Open ${p.view} of ${formatDate(p.taken_on)} full screen`} title="Open full screen" onClick={() => setOpenId(p.id)}>
+                  <Picture photo={p} />
+                </button>
                 <figcaption>
                   <div style={{ fontWeight: 500, fontSize: 13.5 }}>{p.view}</div>
                   <div className="muted mono" style={{ fontSize: 12 }}>{p.width}×{p.height} · {Math.round(p.bytes / 1024)} KB</div>
@@ -253,6 +308,15 @@ export default function Photos() {
           </div>
         </section>
       ))}
+      {openId && shown.some((p) => p.id === openId) && (
+        <Viewer
+          photos={shown}
+          at={shown.findIndex((p) => p.id === openId)}
+          caption={(p) => `${formatAge(patient.dob, p.taken_on)}${heightOn(p.taken_on) != null ? ` · ${heightOn(p.taken_on)} cm` : ''}`}
+          onMove={(i) => setOpenId(shown[i].id)}
+          onClose={() => setOpenId(null)}
+        />
+      )}
       <div className="muted" style={{ fontSize: 13 }}>Photographs are never included in Excel exports or the backup file, and are not printed on prescriptions. To keep copies, use "Download all photographs" under Registry.</div>
     </main>
   )
