@@ -13,7 +13,7 @@ import { dropDraft, readDraft, saveDraft } from '../lib/device'
 import { refSex, sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
-import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
+import type { Condition, Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
 import { NONE } from '../lib/text'
 import DateField from '../components/DateField'
 
@@ -64,6 +64,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const [visits, setVisits] = useState<Visit[]>([])
   const [catalog, setCatalog] = useState<Medicine[]>([])
   const [templates, setTemplates] = useState<RxTemplate[]>([])
+  const [conditions, setConditions] = useState<Condition[]>([])
   const [f, setF] = useState({ ...BLANK, date: todayISO() })
   const [printPlan, setPrintPlan] = useState(true)
   const [tests, setTests] = useState<string[]>([])
@@ -112,9 +113,10 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   useEffect(() => {
     let live = true
     setLoaded(false)
-    Promise.all([store.getPatient(id), store.listVisits(id), store.listMedicines(), store.listTemplates(), store.listInvestigations(), store.listPanels()]).then(
-      ([p, vs, ms, ts, inv, pn]) => {
+    Promise.all([store.getPatient(id), store.listVisits(id), store.listMedicines(), store.listTemplates(), store.listInvestigations(), store.listPanels(), store.listConditions()]).then(
+      ([p, vs, ms, ts, inv, pn, cs]) => {
         if (!live) return
+        setConditions(cs)
         setPatient(p)
         setVisits(vs)
         setCatalog(ms)
@@ -590,7 +592,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             )}
           </section>
 
-          <InvestigationPicker catalog={testCatalog} panels={panels} value={tests} onChange={setTests} onSavePanel={savePanel} />
+          <InvestigationPicker catalog={testCatalog} panels={panels} value={tests} onChange={setTests} onSavePanel={savePanel} conditions={conditions} patientTagIds={patient.condition_ids} />
 
           <Results patientId={id} catalog={testCatalog} mode="latest" />
 

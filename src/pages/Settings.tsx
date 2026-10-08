@@ -6,9 +6,9 @@ import { store } from '../lib/store'
 import { EMPTY_RX } from '../lib/clinical'
 import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../lib/device'
 import { smallImageDataUrl } from '../lib/image'
-import { categoryOrder, STARTER_INVESTIGATIONS, STARTER_PANELS } from '../lib/investigations'
+import { categoryOrder, STARTER_INVESTIGATIONS, STARTER_PANELS, starterPanelTags } from '../lib/investigations'
 import { STARTER_MEDICINES } from '../lib/medicines'
-import { Swatches } from '../components/Tag'
+import { Swatches, TagChip } from '../components/Tag'
 import { STARTER_CONDITIONS, tagColor } from '../lib/tags'
 import type { Clinic, Condition, Investigation, Medicine, Panel, RxItem, RxTemplate } from '../lib/types'
 
@@ -368,13 +368,15 @@ function Templates() {
 function Investigations() {
   const [list, setList] = useState<Investigation[] | null>(null)
   const [panels, setPanels] = useState<Panel[]>([])
+  const [tags, setTags] = useState<Condition[]>([])
   const [draft, setDraft] = useState({ name: '', category: '', unit: '' })
   const [confirm, setConfirm] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function reload() {
     try {
-      const [i, p] = await Promise.all([store.listInvestigations(), store.listPanels()])
+      const [i, p, c] = await Promise.all([store.listInvestigations(), store.listPanels(), store.listConditions()])
+      setTags(c)
       setList(i)
       setPanels(p)
     } catch (e) {
@@ -420,7 +422,8 @@ function Investigations() {
               className="btn outline small"
               onClick={() => run(async () => {
                 for (const g of STARTER_INVESTIGATIONS) for (const [name, unit] of g.items) await store.saveInvestigation({ name, unit, category: g.category })
-                if (panels.length === 0) for (const p of STARTER_PANELS) await store.savePanel(p)
+                // Starter panels are tied to the clinic's tags of the same name, where they exist.
+                if (panels.length === 0) for (const p of STARTER_PANELS) await store.savePanel({ name: p.name, items: p.items, condition_ids: starterPanelTags(p, tags) })
               })}
             >
               Add the starter list and panels
@@ -461,7 +464,7 @@ function Investigations() {
         <div className="card-head">
           <div className="grow">
             <h2>Panels</h2>
-            <div className="muted">Create a panel from any visit with "Save this selection as a panel".</div>
+            <div className="muted">Create a panel from any visit with "Save this selection as a panel". Tick the condition tags a panel belongs to: it is then offered on visits of patients with that tag. With no tag ticked it is offered for every patient.</div>
           </div>
         </div>
         {panels.length === 0 && <div className="empty">No panels yet.</div>}
@@ -470,6 +473,24 @@ function Investigations() {
             <div className="grow">
               <div style={{ fontWeight: 600 }}>{p.name}</div>
               <div className="muted" style={{ fontSize: 13 }}>{p.items.join(' · ')}</div>
+              {tags.length > 0 && (
+                <div className="tags" role="group" aria-label={`Condition tags for panel ${p.name}`} style={{ marginTop: 8 }}>
+                  <span className="muted" style={{ fontSize: 13, alignSelf: 'center' }}>{p.condition_ids.some((id) => tags.some((t) => t.id === id)) ? 'Offered for:' : 'Offered for every patient. Limit to:'}</span>
+                  {tags.map((t) => {
+                    const on = p.condition_ids.includes(t.id)
+                    return (
+                      <TagChip
+                        key={t.id}
+                        label={t.name}
+                        color={t.color}
+                        pressed={on}
+                        // Ids of tags deleted since are dropped as the list is saved.
+                        onClick={() => void run(() => store.savePanel({ id: p.id, name: p.name, items: p.items, condition_ids: (on ? p.condition_ids.filter((x) => x !== t.id) : [...p.condition_ids, t.id]).filter((x) => tags.some((y) => y.id === x)) }))}
+                      />
+                    )
+                  })}
+                </div>
+              )}
             </div>
             {confirm === p.id ? (
               <>

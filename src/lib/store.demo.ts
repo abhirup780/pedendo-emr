@@ -1,5 +1,5 @@
 import type { Backup, Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
-import { STARTER_INVESTIGATIONS, STARTER_PANELS } from './investigations'
+import { STARTER_INVESTIGATIONS, STARTER_PANELS, starterPanelTags } from './investigations'
 import type { ListOptions, Store } from './store'
 import { addDays } from './clinical'
 import { STARTER_MEDICINES } from './medicines'
@@ -11,7 +11,7 @@ import { STARTER_CONDITIONS } from './tags'
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v10'
+const KEY = 'pedendo-demo-v11'
 
 interface Db {
   signedIn: boolean
@@ -148,7 +148,7 @@ function seed(): Db {
   // Two saved layouts so the print screen has something to choose between.
   const layouts: PrintLayout[] = [PRESETS[1], PRESETS[2]].map((p) => ({ id: uid(), name: p.name, is_default: false, config: p.config }))
   const investigations: Investigation[] = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map(([name, unit]) => ({ id: uid(), name, category: g.category, unit })))
-  const panels: Panel[] = STARTER_PANELS.map((p) => ({ id: uid(), ...p }))
+  const panels: Panel[] = STARTER_PANELS.map((p) => ({ id: uid(), name: p.name, items: p.items, condition_ids: starterPanelTags(p, conditions) }))
   const res = (test: string, value: string, unit: string, date: string, flag: Result['flag'] = ''): Result => ({ id: uid(), patient_id: aarav, test, value, unit, result_date: date, flag, created_at: `${date}T06:00:00.000Z` })
   const results: Result[] = [
     res('IGF-1', '96', 'ng/mL', '2026-01-10', 'low'),
@@ -378,7 +378,7 @@ export function createDemoStore(): Store {
       const name = p.name.trim()
       if (!name) throw new Error('Give the panel a name.')
       if (db.panels.some((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== p.id)) throw new Error(`A panel called "${name}" already exists.`)
-      const saved: Panel = { id: p.id ?? uid(), name, items: [...p.items] }
+      const saved: Panel = { id: p.id ?? uid(), name, items: [...p.items], condition_ids: [...(p.condition_ids ?? db.panels.find((x) => x.id === p.id)?.condition_ids ?? [])] }
       db.panels = p.id ? db.panels.map((x) => (x.id === p.id ? saved : x)) : [...db.panels, saved]
       save()
       return saved

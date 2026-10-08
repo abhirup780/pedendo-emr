@@ -262,15 +262,15 @@ export function createSupabaseStore(url: string, key: string): Store {
     },
 
     async listPanels() {
-      const { data, error } = await sb.from('investigation_panels').select('id, name, items').order('name')
+      const { data, error } = await sb.from('investigation_panels').select('id, name, items, condition_ids').order('name')
       fail(error)
       return (data ?? []) as Panel[]
     },
     async savePanel(p) {
-      const { id, ...body } = p
-      body.name = body.name.trim()
+      const { id } = p
+      const body = { name: p.name.trim(), items: p.items, ...(p.condition_ids ? { condition_ids: p.condition_ids } : {}) }
       const q = id ? sb.from('investigation_panels').update(body).eq('id', id) : sb.from('investigation_panels').insert(body)
-      const { data, error } = await q.select('id, name, items').single()
+      const { data, error } = await q.select('id, name, items, condition_ids').single()
       fail(error)
       return data as Panel
     },

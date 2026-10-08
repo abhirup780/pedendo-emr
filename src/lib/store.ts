@@ -55,7 +55,8 @@ export interface Store {
   deleteInvestigation(id: string): Promise<void>
 
   listPanels(): Promise<Panel[]>
-  savePanel(p: Omit<Panel, 'id'> & { id?: string }): Promise<Panel>
+  /** `condition_ids` left out keeps the panel's current tags (none for a new panel). */
+  savePanel(p: { id?: string; name: string; items: string[]; condition_ids?: string[] }): Promise<Panel>
   deletePanel(id: string): Promise<void>
 
   /** Newest first. */

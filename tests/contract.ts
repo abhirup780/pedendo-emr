@@ -42,6 +42,27 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       expect((await s.getPatient(p.id))!.condition_ids).toEqual([ghd.id])
     })
 
+    it('panels: condition tags are kept through an edit and can be changed', async () => {
+      const { store: s } = await make()
+      await wipe(s)
+      const thyroid = await s.saveCondition({ name: 'Hypothyroidism', color: 'blue' })
+      const growth = await s.saveCondition({ name: 'Short stature', color: 'sand' })
+      const plain = await s.savePanel({ name: 'Thyroid profile', items: ['TSH'] })
+      expect(plain.condition_ids).toEqual([])
+      const tied = await s.savePanel({ id: plain.id, name: 'Thyroid profile', items: ['TSH'], condition_ids: [thyroid.id] })
+      expect(tied.condition_ids).toEqual([thyroid.id])
+      // Changing the tests without mentioning tags leaves the tags alone.
+      const edited = await s.savePanel({ id: plain.id, name: 'Thyroid profile', items: ['TSH', 'Free T4'] })
+      expect(edited.items).toEqual(['TSH', 'Free T4'])
+      expect(edited.condition_ids).toEqual([thyroid.id])
+      const both = await s.savePanel({ id: plain.id, name: 'Thyroid profile', items: ['TSH', 'Free T4'], condition_ids: [thyroid.id, growth.id] })
+      expect([...both.condition_ids].sort()).toEqual([thyroid.id, growth.id].sort())
+      expect((await s.listPanels()).find((p) => p.id === plain.id)!.condition_ids.length).toBe(2)
+      expect((await s.savePanel({ id: plain.id, name: 'Thyroid profile', items: ['TSH'], condition_ids: [] })).condition_ids).toEqual([])
+      const fresh = await s.savePanel({ name: 'Growth screen', items: ['IGF-1'], condition_ids: [growth.id] })
+      expect(fresh.condition_ids).toEqual([growth.id])
+    })
+
     it('patients: a newborn can be saved with sex not yet assigned, and assigned later', async () => {
       const { store: s } = await make()
       await wipe(s)

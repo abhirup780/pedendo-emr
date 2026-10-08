@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { bestMatch, categoryOrder, latestPerTest, rankedMatches, STARTER_INVESTIGATIONS, STARTER_PANELS } from './investigations'
+import { bestMatch, categoryOrder, latestPerTest, panelsForPatient, rankedMatches, STARTER_INVESTIGATIONS, STARTER_PANELS, starterPanelTags } from './investigations'
+import { STARTER_CONDITIONS } from './tags'
 
 describe('starter investigations', () => {
   const names = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map((i) => i[0]))
@@ -25,6 +26,43 @@ describe('latestPerTest', () => {
     expect(out[0].latest.value).toBe('2.4')
     expect(out[0].previous?.value).toBe('3.1')
     expect(out[1].previous).toBeNull()
+  })
+})
+
+describe('panels by condition tag', () => {
+  const tags = [{ id: 't1', name: 'Hypothyroidism' }, { id: 't2', name: 'Type 1 diabetes' }, { id: 't3', name: 'Obesity' }]
+  const panels = [
+    { name: 'Thyroid profile', condition_ids: ['t1'] },
+    { name: 'Diabetes review', condition_ids: ['t2'] },
+    { name: 'Metabolic', condition_ids: ['t2', 't3'] },
+    { name: 'Polyuria', condition_ids: [] },
+    { name: 'Orphan', condition_ids: ['deleted-tag'] },
+  ]
+  const names = (list: { name: string }[]) => list.map((p) => p.name)
+  const live = tags.map((t) => t.id)
+  it('offers a patient the panels of their tags, then the panels for everyone', () => {
+    const s = panelsForPatient(panels, ['t2'], live)
+    expect(names(s.matched)).toEqual(['Diabetes review', 'Metabolic'])
+    expect(names(s.general)).toEqual(['Polyuria', 'Orphan'])
+    expect(names(s.other)).toEqual(['Thyroid profile'])
+  })
+  it('a patient with no tags gets only the panels for everyone', () => {
+    const s = panelsForPatient(panels, [], live)
+    expect(s.matched).toEqual([])
+    expect(names(s.other)).toEqual(['Thyroid profile', 'Diabetes review', 'Metabolic'])
+  })
+  it('a panel whose only tag was deleted goes back to being for everyone', () => {
+    expect(names(panelsForPatient(panels, ['t1'], live).general)).toContain('Orphan')
+  })
+  it('ties starter panels to tags by name, whatever the capitals, and only to tags that exist', () => {
+    expect(starterPanelTags({ tags: ['Hypothyroidism'] }, [{ id: 'a', name: ' hypothyroidism ' }, { id: 'b', name: 'Rickets' }])).toEqual(['a'])
+    expect(starterPanelTags({ tags: ['Turner syndrome'] }, tags)).toEqual([])
+    expect(starterPanelTags({ tags: [] }, tags)).toEqual([])
+  })
+  it('every starter panel names only starter condition tags, and every starter tag has a panel', () => {
+    const known = STARTER_CONDITIONS.map((c) => c.name)
+    for (const p of STARTER_PANELS) for (const t of p.tags) expect(known, `${p.name}: ${t}`).toContain(t)
+    for (const k of known) expect(STARTER_PANELS.some((p) => p.tags.includes(k)), k).toBe(true)
   })
 })
 

@@ -118,6 +118,11 @@ export interface Panel {
   id: string
   name: string
   items: string[]
+  /**
+   * Condition tags this panel belongs to. It is offered on a visit when the patient carries
+   * one of them; with none it is offered for every patient.
+   */
+  condition_ids: string[]
 }
 
 export type ResultFlag = '' | 'low' | 'high'

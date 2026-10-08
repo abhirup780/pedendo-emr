@@ -208,20 +208,49 @@ export const STARTER_INVESTIGATIONS: { category: string; items: [name: string, u
 const BONE_AGE = 'Bone age X-ray (left hand and wrist)'
 const COELIAC = 'Coeliac screen (tTG-IgA + total IgA)'
 
-export const STARTER_PANELS: { name: string; items: string[] }[] = [
-  { name: 'GH therapy monitoring', items: ['IGF-1', 'TSH', 'Free T4', 'HbA1c', BONE_AGE] },
-  { name: 'Short stature work-up', items: ['Complete blood count', 'Renal function tests', 'Liver function tests', 'TSH', 'Free T4', 'IGF-1', 'IGFBP-3', COELIAC, BONE_AGE] },
-  { name: 'Type 1 diabetes annual review', items: ['HbA1c', 'TSH', 'Anti-TPO antibodies', COELIAC, 'Urine albumin : creatinine ratio', 'Fasting lipid profile'] },
-  { name: 'Precocious puberty work-up', items: ['LH', 'FSH', 'Estradiol', 'GnRH stimulation test', BONE_AGE, 'Pelvic ultrasound'] },
-  { name: 'CAH monitoring', items: ['17-OH progesterone', 'Testosterone (total)', 'Plasma renin activity', 'Serum electrolytes (Na, K)', BONE_AGE] },
-  { name: 'Rickets and bone profile', items: ['Calcium', 'Phosphate', 'Alkaline phosphatase', '25-OH vitamin D', 'PTH', 'X-ray wrist and knee'] },
-  { name: 'Thyroid profile', items: ['TSH', 'Free T4'] },
-  { name: 'Diabetes at diagnosis', items: ['HbA1c', 'Random plasma glucose', 'Blood ketones (beta-hydroxybutyrate)', 'Venous blood gas', 'C-peptide', 'GAD-65 antibodies', 'IA-2 antibodies', 'TSH', COELIAC] },
-  { name: 'Obesity work-up', items: ['Fasting plasma glucose', 'HbA1c', 'Fasting lipid profile', 'ALT (SGPT)', 'TSH', 'Ultrasound abdomen'] },
-  { name: 'Delayed puberty work-up', items: ['LH', 'FSH', 'Testosterone (total)', 'Estradiol', 'Prolactin', 'TSH', 'Free T4', BONE_AGE, 'Karyotype'] },
-  { name: 'Hypocalcaemia work-up', items: ['Calcium', 'Phosphate', 'Magnesium', 'Alkaline phosphatase', 'PTH', '25-OH vitamin D', 'Urine calcium : creatinine ratio'] },
-  { name: 'Polyuria work-up', items: ['Serum sodium', 'Serum osmolality', 'Urine osmolality', 'Fasting plasma glucose', 'Calcium', 'Renal function tests'] },
+/**
+ * Starter panels. `tags` names the starter condition tags a panel belongs to: it is then
+ * offered on visits of patients carrying that tag. No tags means it is offered for everyone.
+ */
+export const STARTER_PANELS: { name: string; items: string[]; tags: string[] }[] = [
+  { name: 'GH therapy monitoring', tags: ['GH deficiency'], items: ['IGF-1', 'TSH', 'Free T4', 'HbA1c', BONE_AGE] },
+  { name: 'Short stature work-up', tags: ['Short stature'], items: ['Complete blood count', 'Renal function tests', 'Liver function tests', 'TSH', 'Free T4', 'IGF-1', 'IGFBP-3', COELIAC, BONE_AGE] },
+  { name: 'Type 1 diabetes annual review', tags: ['Type 1 diabetes'], items: ['HbA1c', 'TSH', 'Anti-TPO antibodies', COELIAC, 'Urine albumin : creatinine ratio', 'Fasting lipid profile'] },
+  { name: 'Diabetes at diagnosis', tags: ['Type 1 diabetes'], items: ['HbA1c', 'Random plasma glucose', 'Blood ketones (beta-hydroxybutyrate)', 'Venous blood gas', 'C-peptide', 'GAD-65 antibodies', 'IA-2 antibodies', 'TSH', COELIAC] },
+  { name: 'Precocious puberty work-up', tags: ['Precocious puberty'], items: ['LH', 'FSH', 'Estradiol', 'GnRH stimulation test', BONE_AGE, 'Pelvic ultrasound'] },
+  { name: 'Delayed puberty work-up', tags: ['Delayed puberty'], items: ['LH', 'FSH', 'Testosterone (total)', 'Estradiol', 'Prolactin', 'TSH', 'Free T4', BONE_AGE, 'Karyotype'] },
+  { name: 'CAH monitoring', tags: ['CAH'], items: ['17-OH progesterone', 'Testosterone (total)', 'Plasma renin activity', 'Serum electrolytes (Na, K)', BONE_AGE] },
+  { name: 'Rickets and bone profile', tags: ['Rickets'], items: ['Calcium', 'Phosphate', 'Alkaline phosphatase', '25-OH vitamin D', 'PTH', 'X-ray wrist and knee'] },
+  { name: 'Thyroid profile', tags: ['Hypothyroidism'], items: ['TSH', 'Free T4'] },
+  { name: 'Obesity work-up', tags: ['Obesity'], items: ['Fasting plasma glucose', 'HbA1c', 'Fasting lipid profile', 'ALT (SGPT)', 'TSH', 'Ultrasound abdomen'] },
+  { name: 'Turner syndrome review', tags: ['Turner syndrome'], items: ['TSH', 'Free T4', COELIAC, 'Liver function tests', 'HbA1c', 'Fasting lipid profile', 'LH', 'FSH', 'Echocardiography', 'Renal ultrasound', 'Audiometry'] },
+  { name: 'Hypocalcaemia work-up', tags: [], items: ['Calcium', 'Phosphate', 'Magnesium', 'Alkaline phosphatase', 'PTH', '25-OH vitamin D', 'Urine calcium : creatinine ratio'] },
+  { name: 'Polyuria work-up', tags: [], items: ['Serum sodium', 'Serum osmolality', 'Urine osmolality', 'Fasting plasma glucose', 'Calcium', 'Renal function tests'] },
 ]
+
+/** The ids of the clinic's tags that a starter panel belongs to, matched by name. */
+export function starterPanelTags(panel: { tags: string[] }, conditions: { id: string; name: string }[]): string[] {
+  return conditions.filter((c) => panel.tags.some((t) => t.toLowerCase() === c.name.trim().toLowerCase())).map((c) => c.id)
+}
+
+/**
+ * Splits the clinic's panels for one patient: those tied to one of the patient's tags, those
+ * offered for everyone (no tags), and the rest (tied only to tags this patient does not have).
+ * Tags that have since been deleted do not count.
+ */
+export function panelsForPatient<P extends { condition_ids: string[] }>(panels: P[], patientTagIds: string[], liveTagIds: string[]): { matched: P[]; general: P[]; other: P[] } {
+  const live = new Set(liveTagIds)
+  const mine = new Set(patientTagIds)
+  const out = { matched: [] as P[], general: [] as P[], other: [] as P[] }
+  for (const p of panels) {
+    const tags = p.condition_ids.filter((id) => live.has(id))
+    if (tags.length === 0) out.general.push(p)
+    else if (tags.some((id) => mine.has(id))) out.matched.push(p)
+    else out.other.push(p)
+  }
+  return out
+}
+
 
 /** Categories in clinic order, then any the doctor added, alphabetically. */
 export function categoryOrder(categories: string[]): string[] {

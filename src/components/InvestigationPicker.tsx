@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { bestMatch, categoryOrder, rankedMatches } from '../lib/investigations'
+import { bestMatch, categoryOrder, panelsForPatient, rankedMatches } from '../lib/investigations'
 import BrowseWindow from './BrowseWindow'
-import type { Investigation, Panel } from '../lib/types'
+import type { Condition, Investigation, Panel } from '../lib/types'
 
 interface Props {
   catalog: Investigation[]
@@ -11,6 +11,9 @@ interface Props {
   onChange: (next: string[]) => void
   /** Saves the current selection as a panel; resolves to a short confirmation. */
   onSavePanel: (name: string) => Promise<string>
+  /** The clinic's condition tags and the ones this patient carries: they decide which panels are offered. */
+  conditions?: Condition[]
+  patientTagIds?: string[]
 }
 
 export const Tick = ({ on }: { on: boolean }) => <span className="box" aria-hidden="true">{on ? '✓' : ''}</span>
@@ -20,7 +23,7 @@ export const Tick = ({ on }: { on: boolean }) => <span className="box" aria-hidd
  * chosen tests, and a search box that suggests as you type. The whole list, however long it
  * grows, is browsed in a window of its own ("Browse all").
  */
-export default function InvestigationPicker({ catalog, panels, value, onChange, onSavePanel }: Props) {
+export default function InvestigationPicker({ catalog, panels, value, onChange, onSavePanel, conditions = [], patientTagIds = [] }: Props) {
   const [q, setQ] = useState('')
   const [browsing, setBrowsing] = useState(false)
   const [panelName, setPanelName] = useState<string | null>(null)
@@ -39,6 +42,14 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
     if (!has(name)) onChange([...value, name])
     setQ('')
   }
+
+  const split = panelsForPatient(panels, patientTagIds, conditions.map((c) => c.id))
+  const tagNames = conditions.filter((c) => patientTagIds.includes(c.id) && split.matched.some((p) => p.condition_ids.includes(c.id))).map((c) => c.name).join(', ')
+  const panelButton = (p: Panel) => (
+    <button type="button" key={p.id} className="panel-btn" onClick={() => onChange([...value, ...p.items.filter((n) => !has(n))])}>
+      + {p.name} <span className="muted">({p.items.length})</span>
+    </button>
+  )
 
   async function savePanel() {
     if (!panelName?.trim()) return
@@ -59,16 +70,18 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
         </span>
       </div>
 
-      {panels.length > 0 && (
+      {/* Panels tied to this patient's condition tags come first; panels for everyone follow.
+          Panels tied only to other conditions stay out of the way, in "Browse all". */}
+      {split.matched.length > 0 && (
         <div>
-          <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>One-tap panels</div>
-          <div className="suggest">
-            {panels.map((p) => (
-              <button type="button" key={p.id} className="panel-btn" onClick={() => onChange([...value, ...p.items.filter((n) => !has(n))])}>
-                + {p.name} <span className="muted">({p.items.length})</span>
-              </button>
-            ))}
-          </div>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>For {tagNames || 'this patient'}</div>
+          <div className="suggest">{split.matched.map(panelButton)}</div>
+        </div>
+      )}
+      {split.general.length > 0 && (
+        <div>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>{split.matched.length > 0 ? 'Other one-tap panels' : 'One-tap panels'}</div>
+          <div className="suggest">{split.general.map(panelButton)}</div>
         </div>
       )}
 
@@ -134,13 +147,13 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
         </div>
       )}
 
-      {browsing && <BrowseDialog catalog={catalog} panels={panels} value={value} onChange={onChange} onClose={() => setBrowsing(false)} />}
+      {browsing && <BrowseDialog catalog={catalog} panels={panels} conditions={conditions} patientTagIds={patientTagIds} value={value} onChange={onChange} onClose={() => setBrowsing(false)} />}
     </section>
   )
 }
 
 /** The whole investigation list in its own window: groups down the side, search across all. */
-function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props, 'onSavePanel'> & { onClose: () => void }) {
+function BrowseDialog({ catalog, panels, conditions = [], patientTagIds = [], value, onChange, onClose }: Omit<Props, 'onSavePanel'> & { onClose: () => void }) {
   const [q, setQ] = useState('')
   const [group, setGroup] = useState<string | null>(null)
 
@@ -153,6 +166,7 @@ function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props,
   const groups = categories.map((c) => ({ category: c, items: shown.filter((i) => i.category === c) })).filter((g) => g.items.length > 0)
   const exact = catalog.some((i) => i.name.toLowerCase() === t)
   const extra = value.filter((n) => !catalog.some((i) => i.name === n))
+  const split = panelsForPatient(panels, patientTagIds, conditions.map((c) => c.id))
 
   return (
     <BrowseWindow
@@ -187,18 +201,18 @@ function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props,
         )
       }
     >
-      {panels.length > 0 && !t && group == null && (
-        <div className="inv-group">
-          <div className="cat">Panels</div>
+      {!t && group == null && ([['For this patient', split.matched], [split.matched.length > 0 ? 'Panels for everyone' : 'Panels', split.general], ['Panels for other conditions', split.other]] as const).map(([title, list]) => list.length > 0 && (
+        <div className="inv-group" key={title}>
+          <div className="cat">{title}</div>
           <div className="suggest">
-            {panels.map((p) => (
+            {list.map((p) => (
               <button type="button" key={p.id} className="panel-btn" onClick={() => onChange([...value, ...p.items.filter((n) => !has(n))])}>
                 + {p.name} <span className="muted">({p.items.length})</span>
               </button>
             ))}
           </div>
         </div>
-      )}
+      ))}
       {groups.map((g) => (
         <div className="inv-group" key={g.category}>
           <div className="cat">{g.category}</div>

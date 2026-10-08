@@ -91,6 +91,11 @@ the single source of truth — commit and push finished work.
 - Two columns on a wide screen, kept about the same height: left is the examination
   (measurements, puberty, clinical notes), right is the plan (prescription, investigations,
   latest results). Do not put a long, always-open section in one column again.
+- One-tap panels follow the patient's condition tags (`Panel.condition_ids`, migration 0012,
+  `panelsForPatient`): panels tied to one of the patient's tags are offered first, panels with
+  no tag are offered for everyone, and panels tied only to other tags appear only in
+  "Browse all". Tags are ticked per panel under Settings, Investigations; starter panels are
+  tied to the starter tags by name.
 - Investigations on the card: one-tap panels, the chosen tests, and a search box that suggests
   up to seven matches as you type (Enter adds the first). The whole list lives in a window of
   its own, `BrowseDialog` in `InvestigationPicker.tsx`: a native `<dialog>` (focus trap, Escape,
