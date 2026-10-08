@@ -2,6 +2,7 @@ import { ageInDays, decimalAge, localDate, midParentalHeight, parseISODate, toda
 import { bmi, dosePerKg, heightVelocity } from './clinical'
 import { visitSds } from './growth'
 import { referenceAt, REFS } from './growth-reference'
+import { refSex } from './sex'
 import { tannerSummary } from './tanner'
 import type { Condition, Patient, Result, Visit } from './types'
 
@@ -144,7 +145,8 @@ export function buildSheets(data: ExportData, opts: ExportOptions): Sheet[] {
         // SDS against WHO 2006 (height under 5 years) or IAP 2015 (5 to 18 years); blank where neither applies.
         const z = visitSds(v, p.dob, p.sex)
         const days = ageInDays(p.dob, v.visit_date)
-        const ref = days == null ? null : (referenceAt(p.sex, 'height', days) ?? referenceAt(p.sex, 'weight', days))
+        const rs = refSex(p.sex)
+        const ref = days == null || !rs ? null : (referenceAt(rs, 'height', days) ?? referenceAt(rs, 'weight', days))
         return [...visitCells(v), v.height_cm, v.weight_kg, bmi(v.height_cm, v.weight_kg), z.height, z.weight, z.bmi, ref ? REFS[ref.ref].short : null, vel?.cmPerYear ?? null, date(vel?.fromDate ?? null), round(midParentalHeight(p.father_height_cm, p.mother_height_cm, p.sex), 1)]
       }),
     })
@@ -156,8 +158,9 @@ export function buildSheets(data: ExportData, opts: ExportOptions): Sheet[] {
       columns: [...visitCols, { header: 'Genital (G)', width: 10 }, { header: 'Breast (B)', width: 10 }, { header: 'Pubic hair (P)', width: 13 }, { header: 'Testis right (mL)', width: 15 }, { header: 'Testis left (mL)', width: 15 }, { header: 'Other signs', width: 30 }],
       rows: order(visits.filter((v) => v.tanner)).map((v) => {
         const t = v.tanner!
-        const male = byId.get(v.patient_id)!.sex === 'M'
-        return [...visitCells(v), male ? t.g : null, male ? null : t.b, t.p, male ? t.testis_r : null, male ? t.testis_l : null, t.signs.join('; ')]
+        // Boys: genital stage and testes. Girls: breast stage. Sex not assigned: whatever was recorded.
+        const sex = byId.get(v.patient_id)!.sex
+        return [...visitCells(v), sex !== 'F' ? t.g : null, sex !== 'M' ? t.b : null, t.p, sex !== 'F' ? t.testis_r : null, sex !== 'F' ? t.testis_l : null, t.signs.join('; ')]
       }),
     })
   }

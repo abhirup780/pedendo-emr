@@ -57,6 +57,10 @@ describe('visitSds and BMI', () => {
     expect(infant.bmi).toBeNull()
     expect(visitSds({ visit_date: '2026-10-08', height_cm: null, weight_kg: 24 }, '2017-05-12', 'M')).toMatchObject({ height: null, bmi: null })
   })
+  it('gives no SDS while sex is not assigned', () => {
+    expect(visitSds({ visit_date: '2026-10-08', height_cm: 121, weight_kg: 24.2 }, '2017-05-12', 'U')).toEqual({ height: null, weight: null, bmi: null })
+    expect(growthPoints([{ visit_date: '2026-10-08', height_cm: 121, weight_kg: 24.2 }], '2017-05-12', 'height', null)[0].sds).toBeNull()
+  })
   it('works BMI SDS from the unrounded BMI', () => {
     expect(bmiExact(121, 24.2)).toBeCloseTo(16.529, 3)
     expect(bmiExact(null, 24.2)).toBeNull()

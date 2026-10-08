@@ -1,5 +1,5 @@
 import { IAP_BMI_PRINTED, IAP_LMS, WHO_LHFA } from './growth-data'
-import type { Sex } from './types'
+import type { RefSex as Sex } from './types'
 
 /**
  * Which published reference applies to a child of a given age, and its L, M and S there.

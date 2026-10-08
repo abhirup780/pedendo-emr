@@ -5,6 +5,7 @@ import { useUser } from '../auth'
 import { formatAge, formatDate, todayISO } from '../lib/age'
 import { compressImage } from '../lib/image'
 import { photoFiles } from '../lib/photofiles'
+import { sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import { PHOTO_VIEWS } from '../lib/types'
 import type { Patient, Photo, PhotoConsent, Visit } from '../lib/types'
@@ -144,7 +145,7 @@ export default function Photos() {
     <main className="page">
       <div>
         <h1 style={{ fontSize: 21 }}>Photographs · <Link to={`/patients/${id}`}>{patient.name}</Link></h1>
-        <div className="muted">{formatAge(patient.dob)} · {patient.sex === 'M' ? 'Male' : 'Female'} · <span className="mono">MRN {patient.mrn}</span> · Optional; a visit never needs a photograph.</div>
+        <div className="muted">{formatAge(patient.dob)} · {sexLabel(patient.sex)} · <span className="mono">MRN {patient.mrn}</span> · Optional; a visit never needs a photograph.</div>
       </div>
       {error && <div className="alert">{error}</div>}
       {photoFiles.kind === 'demo' && <div className="note">Demo: photographs stay in this browser tab's memory and disappear when the page reloads. Use test images only.</div>}

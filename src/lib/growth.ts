@@ -2,7 +2,7 @@ import { ageInDays } from './age'
 import { bmi } from './clinical'
 import { BMI_LINE, DAYS_PER_YEAR, IAP_BMI_LINES, IAP_FROM_YEARS, IAP_HEIGHT_WEIGHT_LINES, IAP_TO_YEARS, iapAt, iapBmiPrintedAt, iapYears, referenceAt, WHO_LAST_LENGTH_DAY, WHO_SD_LINES, whoHeightAt } from './growth-reference'
 import type { ChartLine, Measure, RefId, RefPoint } from './growth-reference'
-import type { Sex, Visit } from './types'
+import type { Sex as AnySex, RefSex as Sex, Visit } from './types'
 
 export const MEASURES: { key: Measure; label: string; unit: string }[] = [
   { key: 'height', label: 'Height', unit: 'cm' },
@@ -39,7 +39,7 @@ export function bmiExact(heightCm: number | null, weightKg: number | null): numb
 }
 
 /** The child's own measurements as (age, value) points, oldest first. */
-export function growthPoints(visits: Measured[], dob: string, measure: Measure, sex?: Sex): GrowthPoint[] {
+export function growthPoints(visits: Measured[], dob: string, measure: Measure, sex?: Sex | null): GrowthPoint[] {
   const out: GrowthPoint[] = []
   for (const v of visits) {
     const value = measure === 'bmi' ? bmi(v.height_cm, v.weight_kg) : measureValue(v, measure)
@@ -77,12 +77,15 @@ function round2(z: number | null): number | null {
   return z == null || !Number.isFinite(z) ? null : Math.round(z * 100) / 100 + 0
 }
 
-/** All three SDS for one visit; each is null where no reference applies. */
-export function visitSds(v: Measured, dob: string, sex: Sex): Record<Measure, number | null> {
+/**
+ * All three SDS for one visit; each is null where no reference applies. All are null while
+ * the child's sex is not assigned: the references are published for boys and for girls only.
+ */
+export function visitSds(v: Measured, dob: string, sex: AnySex): Record<Measure, number | null> {
   const days = ageInDays(dob, v.visit_date)
   const one = (m: Measure) => {
     const value = measureValue(v, m)
-    return value == null || days == null ? null : sds(value, sex, m, days)
+    return value == null || days == null || sex === 'U' ? null : sds(value, sex, m, days)
   }
   return { height: one('height'), weight: one('weight'), bmi: one('bmi') }
 }

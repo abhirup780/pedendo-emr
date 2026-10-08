@@ -1,4 +1,7 @@
-export type Sex = 'M' | 'F'
+/** 'U': not yet assigned, e.g. a newborn with a difference of sex development. */
+export type Sex = 'M' | 'F' | 'U'
+/** The sexes the growth and puberty references are published for. */
+export type RefSex = 'M' | 'F'
 
 export interface Condition {
   id: string

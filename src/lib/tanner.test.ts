@@ -19,6 +19,20 @@ describe('tannerSummary', () => {
   })
 })
 
+describe('sex not yet assigned', () => {
+  const t = { g: 2, b: 1, p: 1, testis_r: 1, testis_l: null, signs: [] }
+  it('lists whatever was recorded and gives no timing verdict', () => {
+    expect(tannerSummary(t, 'U')).toBe('G2 B1 P1 · testes R 1 mL, L — mL')
+    expect(pubertyStarted(t, 'U')).toBeNull()
+    expect(pubertyFlag(t, 'U', 0.1)).toBeNull()
+    expect(pubertyFlag(t, 'U', 15)).toBeNull()
+  })
+  it('reads the same record as a boy or a girl once assigned', () => {
+    expect(tannerSummary(t, 'M')).toBe('G2 P1 · testes R 1 mL, L — mL')
+    expect(tannerSummary(t, 'F')).toBe('B1 P1')
+  })
+})
+
 describe('pubertyStarted', () => {
   it('uses testicular volume of 4 mL or genital stage 2 in boys', () => {
     expect(pubertyStarted(t({ g: 1, testis_r: 3, testis_l: 3 }), 'M')).toBe(false)

@@ -116,7 +116,7 @@ export default function PatientForm() {
   const errs = {
     name: f.name.trim() ? '' : 'Enter the patient’s name.',
     dob: !dob ? 'Enter the date of birth.' : f.dob > todayISO() ? 'Date of birth cannot be in the future.' : '',
-    sex: f.sex ? '' : 'Choose boy or girl.',
+    sex: f.sex ? '' : 'Choose boy, girl or not yet assigned.',
     father: heightOrNull(f.father) === 'bad' ? 'Enter a height between 100 and 230 cm.' : '',
     mother: heightOrNull(f.mother) === 'bad' ? 'Enter a height between 100 and 230 cm.' : '',
   }
@@ -230,8 +230,11 @@ export default function PatientForm() {
                 <button type="button" aria-pressed={f.sex === 'F'} onClick={() => set('sex', 'F')}>
                   Girl
                 </button>
+                <button type="button" aria-pressed={f.sex === 'U'} onClick={() => set('sex', 'U')}>
+                  Not yet assigned
+                </button>
               </div>
-              {show('sex')}
+              {show('sex') ?? (f.sex === 'U' ? <span className="hint">Growth SDS and puberty timing wait for a sex. Change it here once assigned; nothing recorded is lost.</span> : null)}
             </div>
             <label className="field">
               Parent or guardian

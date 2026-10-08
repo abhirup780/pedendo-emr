@@ -42,6 +42,17 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       expect((await s.getPatient(p.id))!.condition_ids).toEqual([ghd.id])
     })
 
+    it('patients: a newborn can be saved with sex not yet assigned, and assigned later', async () => {
+      const { store: s } = await make()
+      await wipe(s)
+      const baby = await s.savePatient(patient({ name: 'Baby of Mita', dob: '2026-09-30', sex: 'U' }))
+      expect(baby.sex).toBe('U')
+      expect((await s.getPatient(baby.id))!.sex).toBe('U')
+      const later = await s.savePatient(patient({ name: 'Baby of Mita', dob: '2026-09-30', sex: 'F' }), baby.id)
+      expect(later.sex).toBe('F')
+      expect(later.mrn).toBe(baby.mrn)
+    })
+
     it('patients: MRNs, edit, search, tag filter, limit, sort, delete', async () => {
       const { store: s } = await make()
       await wipe(s)

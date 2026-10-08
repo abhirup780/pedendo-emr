@@ -65,6 +65,23 @@ describe('buildSheets', () => {
     expect(col(g, 'Height SDS').slice(0, 2).every((z) => typeof z === 'number')).toBe(true)
     expect(col(g, 'SDS reference')).toEqual(['IAP 2015', 'IAP 2015', 'IAP 2015'])
   })
+  it('exports a child with sex not assigned: U, no SDS, no target height, every Tanner field', () => {
+    const d: ExportData = {
+      ...data,
+      patients: [patient({ sex: 'U' })],
+      visits: [visit({ id: 'u1', tanner: { g: 2, b: 1, p: 1, testis_r: 1, testis_l: null, signs: [] } })],
+      results: [],
+    }
+    const one = (name: string) => buildSheets(d, all).find((s) => s.name === name)!
+    expect(col(one('Patients'), 'Sex')).toEqual(['U'])
+    expect(col(one('Patients'), 'Mid-parental height (cm)')).toEqual([null])
+    expect(col(one('Growth'), 'Height SDS')).toEqual([null])
+    expect(col(one('Growth'), 'SDS reference')).toEqual([null])
+    expect(col(one('Growth'), 'Height (cm)')).toEqual([121])
+    expect(col(one('Tanner'), 'Genital (G)')).toEqual([2])
+    expect(col(one('Tanner'), 'Breast (B)')).toEqual([1])
+    expect(col(one('Tanner'), 'Testis right (mL)')).toEqual([1])
+  })
   it('gives growth, Tanner and prescription rows', () => {
     expect(col(sheet({}, 'Growth'), 'BMI')).toEqual([16.4, 16.5, null])
     const t = sheet({}, 'Tanner')

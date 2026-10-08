@@ -56,6 +56,17 @@ the single source of truth — commit and push finished work.
   the tag at once (even if the patient is then not saved) and ticks an existing tag of the
   same name instead of failing.
 
+## Sex not yet assigned
+
+- `Sex` is `'M' | 'F' | 'U'` (migration 0011). `'U'` is a child whose sex has not been assigned
+  (a newborn with a difference of sex development); the doctor changes it on the patient form
+  later and nothing recorded is lost. `RefSex` (`'M' | 'F'`) is what the growth and puberty
+  references take; `refSex()` and `sexLabel()` are in `src/lib/sex.ts`.
+- For `'U'`: no SDS, no mid-parental target and no puberty-timing prompt are stored or exported.
+  The visit screen shows height SDS both ways (as a boy / as a girl); the growth screen has a
+  Boys / Girls / No reference switch that is a way of looking only and is never saved. Tanner
+  staging offers every scale. The prescription prints no sex. Never default `'U'` to a sex.
+
 ## Stage 2 notes
 
 - A visit's prescription is a JSON array on the `visits` row (`medicines`), saved with the visit

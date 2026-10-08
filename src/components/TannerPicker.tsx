@@ -60,7 +60,7 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {sex === 'M' ? (
+      {sex !== 'F' && (
         <Scale
           title="Genital stage" code="G" value={t.g} onPick={(n) => set({ g: n })} caps={GENITAL}
           icon={(i) => (
@@ -73,7 +73,8 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
             </span>
           )}
         />
-      ) : (
+      )}
+      {sex !== 'M' && (
         <Scale
           title="Breast stage" hint="Side-profile outline" code="B" value={t.b} onPick={(n) => set({ b: n })} caps={BREAST}
           icon={(i) => (
@@ -96,10 +97,10 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
         )}
       />
 
-      {sex === 'M' && (
+      {sex !== 'F' && (
         <div>
           <div className="row" style={{ gap: '2px 10px', marginBottom: 6 }}>
-            <h3 className="t-title">Testicular volume</h3>
+            <h3 className="t-title">{sex === 'U' ? 'Gonadal volume, if palpable' : 'Testicular volume'}</h3>
             <span className="muted" style={{ fontSize: 13 }}>Orchidometer beads, mL · 4 mL and above marks pubertal onset</span>
           </div>
           {(['testis_r', 'testis_l'] as const).map((side) => (

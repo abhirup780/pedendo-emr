@@ -5,6 +5,7 @@ import { initials } from '../components/Shell'
 import { Tag } from '../components/Tag'
 import { formatAge, formatDate, midParentalHeight, targetRange } from '../lib/age'
 import { bmi } from '../lib/clinical'
+import { sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
 import type { Condition, Investigation, Patient, Visit } from '../lib/types'
@@ -71,7 +72,7 @@ export default function PatientProfile() {
               ))}
             </div>
             <div className="muted" style={{ marginTop: 3 }}>
-              {formatAge(p.dob)} · {p.sex === 'M' ? 'Male' : 'Female'} · DOB {formatDate(p.dob)} · <span className="mono">MRN {p.mrn}</span>
+              {formatAge(p.dob)} · {sexLabel(p.sex)} · DOB {formatDate(p.dob)} · <span className="mono">MRN {p.mrn}</span>
             </div>
           </div>
           <span className={`pill ${p.allergies ? 'warn' : 'ok'}`}>{p.allergies ? `Allergy: ${p.allergies}` : 'No known drug allergy'}</span>
@@ -151,7 +152,7 @@ export default function PatientProfile() {
             {p.father_height_cm || p.mother_height_cm ? `Father ${p.father_height_cm ?? '—'} cm · Mother ${p.mother_height_cm ?? '—'} cm` : '—'}
           </dd>
           <dt>Mid-parental height</dt>
-          <dd className="mono">{mph == null ? '—' : `${mph.toFixed(1)} cm (target ${targetRange(mph)})`}</dd>
+          <dd className="mono">{mph == null ? (p.sex === 'U' && p.father_height_cm && p.mother_height_cm ? 'after sex is assigned' : '—') : `${mph.toFixed(1)} cm (target ${targetRange(mph)})`}</dd>
           <dt>Notes</dt>
           <dd style={{ whiteSpace: 'pre-wrap' }}>{p.notes || '—'}</dd>
           <dt>Registered</dt>

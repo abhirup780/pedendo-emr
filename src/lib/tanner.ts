@@ -29,6 +29,8 @@ export const ORCHIDOMETER = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25]
 export const OTHER_SIGNS: Record<Sex, string[]> = {
   M: ['Axillary hair', 'Acne', 'Body odour', 'Voice change', 'Facial hair'],
   F: ['Axillary hair', 'Acne', 'Body odour', 'Vaginal discharge', 'Menarche'],
+  // Sex not yet assigned: every sign is on offer.
+  U: ['Axillary hair', 'Acne', 'Body odour', 'Voice change', 'Facial hair', 'Vaginal discharge', 'Menarche'],
 }
 
 export const EMPTY_TANNER: Tanner = { g: null, b: null, p: null, testis_r: null, testis_l: null, signs: [] }
@@ -37,13 +39,16 @@ export function isBlank(t: Tanner | null): boolean {
   return !t || (t.g == null && t.b == null && t.p == null && t.testis_r == null && t.testis_l == null && t.signs.length === 0)
 }
 
-/** "G1 P1 · testes R 3 mL, L 3 mL" for a boy, "B2 P1" for a girl; empty when nothing staged. */
+/**
+ * "G1 P1 · testes R 3 mL, L 3 mL" for a boy, "B2 P1" for a girl; empty when nothing staged.
+ * While sex is not assigned, whatever was recorded is listed: "G1 B1 P1 · testes …".
+ */
 export function tannerSummary(t: Tanner | null, sex: Sex): string {
   if (!t || isBlank(t)) return ''
-  const stage = [sex === 'M' ? (t.g ? `G${t.g}` : '') : t.b ? `B${t.b}` : '', t.p ? `P${t.p}` : ''].filter(Boolean).join(' ')
+  const stage = [sex !== 'F' && t.g ? `G${t.g}` : '', sex !== 'M' && t.b ? `B${t.b}` : '', t.p ? `P${t.p}` : ''].filter(Boolean).join(' ')
   const parts = stage ? [stage] : []
-  if (sex === 'M' && (t.testis_r != null || t.testis_l != null)) parts.push(`testes R ${t.testis_r ?? '—'} mL, L ${t.testis_l ?? '—'} mL`)
-  if (sex === 'F' && t.signs.includes('Menarche')) parts.push('menarche attained')
+  if (sex !== 'F' && (t.testis_r != null || t.testis_l != null)) parts.push(`testes R ${t.testis_r ?? '—'} mL, L ${t.testis_l ?? '—'} mL`)
+  if (sex !== 'M' && t.signs.includes('Menarche')) parts.push('menarche attained')
   return parts.join(' · ')
 }
 
@@ -52,7 +57,8 @@ export function tannerSummary(t: Tanner | null, sex: Sex): string {
  * stage 2. Null when the deciding sign was not recorded (pubic hair alone does not count).
  */
 export function pubertyStarted(t: Tanner | null, sex: Sex): boolean | null {
-  if (!t) return null
+  // The deciding sign differs by sex, so there is no answer until one is assigned.
+  if (!t || sex === 'U') return null
   if (sex === 'M') {
     const vol = Math.max(t.testis_r ?? 0, t.testis_l ?? 0)
     if (t.g == null && t.testis_r == null && t.testis_l == null) return null

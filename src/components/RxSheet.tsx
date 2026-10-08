@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { formatAge, formatDate } from '../lib/age'
 import { bmi, rxLine } from '../lib/clinical'
+import { sexLabel } from '../lib/sex'
 import { blocks, firstPageInnerHeight } from '../lib/printlayout'
 import type { PrintConfig, SectionKey } from '../lib/printlayout'
 import { tannerSummary } from '../lib/tanner'
@@ -74,7 +75,7 @@ export default function RxSheet({ config: c, patient: p, visit: v, clinic, guide
     patient: () => (
       <div className="who-row">
         <div>
-          <strong>{p.name}</strong> · {formatAge(p.dob, v.visit_date)} · {p.sex === 'M' ? 'Male' : 'Female'}
+          <strong>{p.name}</strong> · {formatAge(p.dob, v.visit_date)}{p.sex === 'U' ? '' : ` · ${sexLabel(p.sex)}`}
         </div>
         {(c.patient.mrn || c.patient.date) && (
           <div>

@@ -32,7 +32,7 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
         </div>
       </div>
       <div>
-        {formatAge(p.dob)} · {p.sex}
+        {formatAge(p.dob)} · {p.sex === 'U' ? 'sex not assigned' : p.sex}
       </div>
       <div className="tags">
         {p.condition_ids.map((id) => {

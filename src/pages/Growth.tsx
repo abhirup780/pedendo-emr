@@ -6,8 +6,9 @@ import { bmi, heightVelocity } from '../lib/clinical'
 import { bmiBand, chartReference, growthPoints, MEASURES, visitSds } from '../lib/growth'
 import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
 import type { Measure } from '../lib/growth-reference'
+import { refSex, sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
-import type { Patient, Visit } from '../lib/types'
+import type { Patient, RefSex, Visit } from '../lib/types'
 
 const signed = (n: number | null) => (n == null ? '—' : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`)
 
@@ -17,6 +18,9 @@ export default function Growth() {
   const [visits, setVisits] = useState<Visit[]>([])
   const [measure, setMeasure] = useState<Measure>('height')
   const [error, setError] = useState('')
+  // Only for a child whose sex is not assigned: which reference to hold the points against.
+  // A way of looking, chosen on this screen; it is not saved and changes nothing on the record.
+  const [compare, setCompare] = useState<RefSex | null>(null)
 
   useEffect(() => {
     Promise.all([store.getPatient(id), store.listVisits(id)]).then(
@@ -31,7 +35,7 @@ export default function Growth() {
     )
   }, [id])
 
-  const points = useMemo(() => (patient ? growthPoints(visits, patient.dob, measure, patient.sex) : []), [visits, patient, measure])
+  const points = useMemo(() => (patient ? growthPoints(visits, patient.dob, measure, refSex(patient.sex) ?? compare) : []), [visits, patient, measure, compare])
   const measured = useMemo(() => visits.filter((v) => v.height_cm != null || v.weight_kg != null), [visits])
 
   if (patient === undefined) return <main className="page muted">Loading…</main>
@@ -46,10 +50,12 @@ export default function Growth() {
   const info = MEASURES.find((m) => m.key === measure)!
   const lower = measure === 'bmi' ? 'BMI' : info.label.toLowerCase()
   const last = points[points.length - 1]
-  const reference = chartReference(patient.sex, measure, points.map((p) => p.age))
-  const lastRef = last ? referenceAt(patient.sex, measure, last.ageDays) : null
+  const unassigned = patient.sex === 'U'
+  const rs = refSex(patient.sex) ?? compare
+  const reference = rs ? chartReference(rs, measure, points.map((p) => p.age)) : null
+  const lastRef = last && rs ? referenceAt(rs, measure, last.ageDays) : null
   const lastSds = last?.sds ?? null
-  const band = measure === 'bmi' && last ? bmiBand(last.raw, patient.sex, last.ageDays) : null
+  const band = measure === 'bmi' && last && rs ? bmiBand(last.raw, rs, last.ageDays) : null
   const refNames = reference ? reference.refs.map((r) => REFS[r].short).join(' · ') : ''
   const lineNote = !reference
     ? ''
@@ -61,14 +67,14 @@ export default function Growth() {
   const latestHeight = visits.find((v) => v.height_cm != null)
   const velocity = latestHeight ? heightVelocity(latestHeight.height_cm, latestHeight.visit_date, visits.filter((v) => v.visit_date < latestHeight.visit_date)) : null
   const mph = midParentalHeight(patient.father_height_cm, patient.mother_height_cm, patient.sex)
-  const rows = measured.map((v) => ({ v, z: visitSds(v, patient.dob, patient.sex) }))
+  const rows = measured.map((v) => ({ v, z: visitSds(v, patient.dob, rs ?? 'U') }))
 
   return (
     <main className="page">
       <div className="row">
         <div className="grow">
           <h1 style={{ fontSize: 21 }}>Growth · <Link to={`/patients/${id}`}>{patient.name}</Link></h1>
-          <div className="muted">{formatAge(patient.dob)} · {patient.sex === 'M' ? 'Male' : 'Female'} · <span className="mono">MRN {patient.mrn}</span></div>
+          <div className="muted">{formatAge(patient.dob)} · {sexLabel(patient.sex)} · <span className="mono">MRN {patient.mrn}</span></div>
         </div>
         <Link to={`/patients/${id}/visits/new`} className="btn primary">+ New visit</Link>
       </div>
@@ -83,7 +89,7 @@ export default function Growth() {
         <div>
           <div className="k">{info.label} SDS</div>
           <div className="v">{signed(lastSds)}</div>
-          <div className="k">{!last ? 'not recorded' : !lastRef || lastSds == null ? noReferenceReason(measure, last.ageDays) : `${REFS[lastRef.ref].short}${lastRef.posture === 'length' ? ' · length' : ''}${band ? ` · ${band}` : ''}`}</div>
+          <div className="k">{!last ? 'not recorded' : !rs ? 'sex not assigned' : !lastRef || lastSds == null ? noReferenceReason(measure, last.ageDays) : unassigned ? `as a ${rs === 'M' ? 'boy' : 'girl'} · ${REFS[lastRef.ref].short}` : `${REFS[lastRef.ref].short}${lastRef.posture === 'length' ? ' · length' : ''}${band ? ` · ${band}` : ''}`}</div>
         </div>
         <div>
           <div className="k">Height velocity</div>
@@ -93,7 +99,7 @@ export default function Growth() {
         <div>
           <div className="k">Mid-parental height</div>
           <div className="v">{mph == null ? '—' : `${mph.toFixed(1)} cm`}</div>
-          <div className="k">{mph == null ? 'add the parents’ heights' : `target ${targetRange(mph)}`}</div>
+          <div className="k">{mph == null ? (unassigned ? 'after sex is assigned' : 'add the parents’ heights') : `target ${targetRange(mph)}`}</div>
         </div>
       </div>
 
@@ -104,9 +110,21 @@ export default function Growth() {
               <button type="button" key={m.key} aria-pressed={measure === m.key} onClick={() => setMeasure(m.key)}>{m.label}</button>
             ))}
           </div>
+          {unassigned && (
+            <div className="seg" role="group" aria-label="Compare with the reference for">
+              <button type="button" aria-pressed={compare === null} onClick={() => setCompare(null)}>No reference</button>
+              <button type="button" aria-pressed={compare === 'M'} onClick={() => setCompare('M')}>Boys</button>
+              <button type="button" aria-pressed={compare === 'F'} onClick={() => setCompare('F')}>Girls</button>
+            </div>
+          )}
           <span className="grow" />
-          <span className="muted" style={{ fontSize: 13 }}>{reference ? refNames : 'The child’s own measurements'}</span>
+          <span className="muted" style={{ fontSize: 13 }}>{reference ? `${refNames}${unassigned ? (rs === 'M' ? ' · boys' : ' · girls') : ''}` : 'The child’s own measurements'}</span>
         </div>
+        {unassigned && (
+          <div className="note" style={{ background: '#eceFee', color: '#44545b', fontWeight: 400 }}>
+            Sex is not yet assigned, so no reference is applied by default. Choose Boys or Girls above to look at the measurements against either one; the choice is not saved.
+          </div>
+        )}
         <GrowthChart points={points} reference={reference} label={info.label} unit={info.unit} />
         {reference && (
           <div className="muted" style={{ fontSize: 13 }}>
@@ -116,7 +134,7 @@ export default function Growth() {
             {measure !== 'height' && points.some((p) => p.age < 5) && ` No ${lower} reference is held for under 5 years.`}
           </div>
         )}
-        {!reference && points.length > 0 && (
+        {!reference && points.length > 0 && rs && (
           <div className="note" style={{ background: '#eceFee', color: '#44545b', fontWeight: 400 }}>
             No reference lines or SDS: {noReferenceReason(measure, last.ageDays)}. The app holds WHO 2006 length/height for under 5 years and IAP 2015 height, weight and BMI for 5 to 18 years.
           </div>

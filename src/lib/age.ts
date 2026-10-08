@@ -49,9 +49,12 @@ export function decimalAge(dobISO: string, onISO: string = todayISO()): number |
   return days == null ? null : days / 365.25
 }
 
-/** Mid-parental height (Tanner): mean of parents, +6.5 cm for boys, −6.5 cm for girls. */
-export function midParentalHeight(fatherCm: number | null, motherCm: number | null, sex: 'M' | 'F'): number | null {
-  if (!fatherCm || !motherCm) return null
+/**
+ * Mid-parental height (Tanner): mean of parents, +6.5 cm for boys, −6.5 cm for girls.
+ * Null while the child's sex is not assigned ('U').
+ */
+export function midParentalHeight(fatherCm: number | null, motherCm: number | null, sex: 'M' | 'F' | 'U'): number | null {
+  if (!fatherCm || !motherCm || sex === 'U') return null
   return (fatherCm + motherCm) / 2 + (sex === 'M' ? 6.5 : -6.5)
 }
 

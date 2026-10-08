@@ -37,6 +37,7 @@ describe('age', () => {
   it('computes mid-parental height by sex', () => {
     expect(midParentalHeight(168, 155, 'M')).toBe(168)
     expect(midParentalHeight(168, 155, 'F')).toBe(155)
+    expect(midParentalHeight(168, 155, 'U')).toBeNull()
     expect(midParentalHeight(null, 155, 'M')).toBeNull()
   })
 })

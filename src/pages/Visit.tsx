@@ -9,6 +9,7 @@ import { visitSds } from '../lib/growth'
 import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
 import { addMonths, bmi, dosePerKg, EMPTY_RX, heightVelocity, validBp } from '../lib/clinical'
 import { dropDraft, readDraft, saveDraft } from '../lib/device'
+import { refSex, sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
 import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
@@ -279,7 +280,10 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   // Live SDS against the published reference for the child's age on the visit date.
   const ageDays = ageInDays(patient.dob, f.date)
   const z = visitSds({ visit_date: f.date, height_cm: h, weight_kg: w }, patient.dob, patient.sex)
-  const heightRef = ageDays == null ? null : referenceAt(patient.sex, 'height', ageDays)
+  const rs = refSex(patient.sex)
+  const heightRef = ageDays == null || !rs ? null : referenceAt(rs, 'height', ageDays)
+  // Sex not assigned: show the height SDS both ways, as a boy and as a girl.
+  const both = rs ? null : { m: visitSds({ visit_date: f.date, height_cm: h, weight_kg: w }, patient.dob, 'M').height, f: visitSds({ visit_date: f.date, height_cm: h, weight_kg: w }, patient.dob, 'F').height }
   const sdsText = (n: number | null) => (n == null ? '—' : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`)
   const sameDay = visits.find((v) => v.id !== vid && v.visit_date === f.date)
   const lastStaged = earlier.find((v) => v.tanner)
@@ -293,7 +297,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             {vid ? 'Visit' : 'New visit'} · <Link to={`/patients/${id}`}>{patient.name}</Link>
           </h1>
           <div className="muted">
-            {formatAge(patient.dob, f.date)} at this visit · {patient.sex === 'M' ? 'Male' : 'Female'} · <span className="mono">MRN {patient.mrn}</span>
+            {formatAge(patient.dob, f.date)} at this visit · {sexLabel(patient.sex)} · <span className="mono">MRN {patient.mrn}</span>
             {patient.allergies && <> · <strong style={{ color: 'var(--warn-fg)' }}>Allergy: {patient.allergies}</strong></>}
           </div>
         </div>
@@ -352,8 +356,8 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             <div className="calc">
               <div>
                 <div className="k">Height SDS · calculated</div>
-                <div className="v">{sdsText(z.height)}</div>
-                <div className="k">{h == null ? 'enter a height' : heightRef ? `${REFS[heightRef.ref].short}${heightRef.posture === 'length' ? ' · length, lying down' : ''}` : ageDays == null ? 'check the visit date' : noReferenceReason('height', ageDays)}</div>
+                <div className="v">{both && (both.m != null || both.f != null) ? `${sdsText(both.m)} / ${sdsText(both.f)}` : sdsText(z.height)}</div>
+                <div className="k">{h == null ? 'enter a height' : both ? (both.m != null || both.f != null ? 'sex not assigned: as a boy / as a girl' : ageDays == null ? 'check the visit date' : noReferenceReason('height', ageDays)) : heightRef ? `${REFS[heightRef.ref].short}${heightRef.posture === 'length' ? ' · length, lying down' : ''}` : ageDays == null ? 'check the visit date' : noReferenceReason('height', ageDays)}</div>
               </div>
               <div>
                 <div className="k">BMI · calculated</div>
