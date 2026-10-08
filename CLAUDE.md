@@ -52,6 +52,9 @@ the single source of truth — commit and push finished work.
   two accounts). Every new `Store` method gets a case there, so the demo cannot drift.
 - Give each screen that holds unsaved input a `key` from its route params (see `VisitPage`),
   or state leaks from one record to the next.
+- Condition tags are made in Settings or with "+ New tag" on the patient form; the latter saves
+  the tag at once (even if the patient is then not saved) and ticks an existing tag of the
+  same name instead of failing.
 
 ## Stage 2 notes
 

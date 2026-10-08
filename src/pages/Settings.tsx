@@ -8,18 +8,9 @@ import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../lib/device'
 import { smallImageDataUrl } from '../lib/image'
 import { categoryOrder, STARTER_INVESTIGATIONS, STARTER_PANELS } from '../lib/investigations'
 import { STARTER_MEDICINES } from '../lib/medicines'
-import { STARTER_CONDITIONS, TAG_COLORS, tagColor } from '../lib/tags'
+import { Swatches } from '../components/Tag'
+import { STARTER_CONDITIONS, tagColor } from '../lib/tags'
 import type { Clinic, Condition, Investigation, Medicine, Panel, RxItem, RxTemplate } from '../lib/types'
-
-function Swatches({ value, onChange, label }: { value: string; onChange: (c: string) => void; label: string }) {
-  return (
-    <div className="swatches" role="group" aria-label={label}>
-      {Object.entries(TAG_COLORS).map(([key, c]) => (
-        <button key={key} type="button" className="swatch" aria-label={c.label} aria-pressed={value === key} style={{ background: c.fg }} onClick={() => onChange(key)} />
-      ))}
-    </div>
-  )
-}
 
 function ConditionTags() {
   const [list, setList] = useState<Condition[] | null>(null)

@@ -70,6 +70,11 @@ main.narrow { max-width: 860px; }
 
 .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 18px; border: 1.5px solid; font-weight: 500; font-size: 13px; }
 .chip .n { font-family: var(--mono); font-size: 12px; opacity: 0.85; }
+.chip.new { border-style: dashed; border-color: var(--line-strong); background: #fff; color: var(--ink); }
+.tag-new { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #f7f9f8; }
+.tag-new input[type='text'] { min-height: 44px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; flex: 1 1 220px; min-width: 0; font-size: 15px; background: #fff; }
+.tag-new .err { color: #8c1d18; font-weight: 500; }
+.tag-new .btn.small { min-height: 44px; }
 .tag { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .switch { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 4px; background: transparent; border: 0; font-weight: 500; }
@@ -387,7 +392,7 @@ a.tel { color: inherit; text-decoration: none; }
   .wide-only { display: none; }
   .narrow-only { display: revert; }
   /* 16px stops iPhones zooming the page when a field is tapped. */
-  input, select, textarea, select.btn, select.btn.small, .search input, .picker-box input, .sort select, .field input, .field select, .field textarea, .field input.num, .med-head input, .med-grid .field input, .pl-space input, .tag-row input[type='text'] { font-size: 16px; }
+  input, select, textarea, select.btn, select.btn.small, .search input, .picker-box input, .sort select, .field input, .field select, .field textarea, .field input.num, .med-head input, .med-grid .field input, .pl-space input, .tag-row input[type='text'], .tag-new input[type='text'] { font-size: 16px; }
   h1 { font-size: 22px; }
   main.page { padding: 14px 16px 28px; gap: 14px; }
   .card.pad { padding: 14px; }
@@ -474,6 +479,6 @@ a.tel { color: inherit; text-decoration: none; }
 
 /* Any touch screen, tablets included: 16px fields, so tapping one never zooms the page. */
 @media (pointer: coarse) {
-  input, select, textarea, select.btn, select.btn.small, .search input, .picker-box input, .sort select, .field input, .field select, .field textarea, .med-head input, .med-grid .field input, .pl-space input, .tag-row input[type='text'] { font-size: 16px; }
+  input, select, textarea, select.btn, select.btn.small, .search input, .picker-box input, .sort select, .field input, .field select, .field textarea, .med-head input, .med-grid .field input, .pl-space input, .tag-row input[type='text'], .tag-new input[type='text'] { font-size: 16px; }
   .field input.num { font-size: 17px; }
 }

@@ -1,5 +1,5 @@
 import type { Condition } from '../lib/types'
-import { tagColor } from '../lib/tags'
+import { TAG_COLORS, tagColor } from '../lib/tags'
 
 export function Tag({ condition }: { condition: Condition }) {
   const c = tagColor(condition.color)
@@ -7,6 +7,17 @@ export function Tag({ condition }: { condition: Condition }) {
     <span className="tag" style={{ background: c.bg, color: c.fg }}>
       {condition.name}
     </span>
+  )
+}
+
+/** The row of colour dots for choosing a tag's colour. */
+export function Swatches({ value, onChange, label }: { value: string; onChange: (c: string) => void; label: string }) {
+  return (
+    <div className="swatches" role="group" aria-label={label}>
+      {Object.entries(TAG_COLORS).map(([key, c]) => (
+        <button key={key} type="button" className="swatch" aria-label={c.label} aria-pressed={value === key} style={{ background: c.fg }} onClick={() => onChange(key)} />
+      ))}
+    </div>
   )
 }
 

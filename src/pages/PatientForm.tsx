@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { TagChip } from '../components/Tag'
+import { Swatches, TagChip } from '../components/Tag'
 import { formatAge, parseISODate, todayISO } from '../lib/age'
 import { store } from '../lib/store'
 import type { Condition, Patient, PatientInput, Sex } from '../lib/types'
@@ -38,6 +38,13 @@ export default function PatientForm() {
   const [error, setError] = useState('')
   const [twins, setTwins] = useState<Patient[]>([])
   const [touched, setTouched] = useState(false)
+  // "+ New tag": a tag made here is saved straight away (it is a clinic-wide tag, like one
+  // made in Settings) and ticked for this patient.
+  const [adding, setAdding] = useState(false)
+  const [tagName, setTagName] = useState('')
+  const [tagColour, setTagColour] = useState('teal')
+  const [tagBusy, setTagBusy] = useState(false)
+  const [tagError, setTagError] = useState('')
 
   useEffect(() => {
     store.listConditions().then(setConditions, (e: Error) => setError(e.message))
@@ -114,6 +121,46 @@ export default function PatientForm() {
     mother: heightOrNull(f.mother) === 'bad' ? 'Enter a height between 100 and 230 cm.' : '',
   }
   const invalid = Object.values(errs).some(Boolean)
+  async function addTag() {
+    const name = tagName.trim().replace(/\s+/g, ' ')
+    if (!name || tagBusy) return
+    const tick = (tagId: string) => setF((cur) => (cur.condition_ids.includes(tagId) ? cur : { ...cur, condition_ids: [...cur.condition_ids, tagId] }))
+    const done = () => {
+      setTouched(true)
+      setAdding(false)
+      setTagName('')
+      setTagError('')
+    }
+    // A tag of that name already there (whatever the capitals): tick it instead of failing.
+    const same = (list: Condition[]) => list.find((c) => c.name.trim().toLowerCase() === name.toLowerCase())
+    const existing = same(conditions)
+    if (existing) {
+      tick(existing.id)
+      done()
+      return
+    }
+    setTagBusy(true)
+    try {
+      const saved = await store.saveCondition({ name, color: tagColour })
+      setConditions(await store.listConditions().catch(() => [...conditions, saved]))
+      tick(saved.id)
+      done()
+    } catch (e) {
+      // Made on another device since this form was opened: fetch the list and tick it.
+      const fresh = await store.listConditions().catch(() => null)
+      const found = fresh ? same(fresh) : undefined
+      if (fresh && found) {
+        setConditions(fresh)
+        tick(found.id)
+        done()
+      } else {
+        setTagError(e instanceof Error ? e.message : 'The tag could not be added.')
+      }
+    } finally {
+      setTagBusy(false)
+    }
+  }
+
   const show = (k: keyof typeof errs) => (tried && errs[k] ? <span className="err">{errs[k]}</span> : null)
 
   async function submit(e: FormEvent) {
@@ -227,11 +274,42 @@ export default function PatientForm() {
                 />
               )
             })}
-            {conditions.length === 0 && (
-              <span className="muted">
-                No tags yet. Create them under <Link to="/settings">Settings</Link>, then come back.
-              </span>
+            {!adding && (
+              <button type="button" className="chip new" onClick={() => { setAdding(true); setTagError('') }}>
+                + New tag
+              </button>
             )}
+          </div>
+          {adding && (
+            <div className="tag-new" role="group" aria-label="New condition tag">
+              <input
+                type="text"
+                aria-label="New tag name"
+                placeholder="New tag, e.g. Diabetes insipidus"
+                value={tagName}
+                autoFocus
+                maxLength={60}
+                onChange={(e) => { setTagName(e.target.value); setTagError('') }}
+                onKeyDown={(e) => {
+                  // Enter adds the tag; it must not save the whole patient form.
+                  if (e.key === 'Enter') { e.preventDefault(); void addTag() }
+                  if (e.key === 'Escape') setAdding(false)
+                }}
+              />
+              <Swatches value={tagColour} onChange={setTagColour} label="Colour of the new tag" />
+              <div className="row" style={{ gap: 8 }}>
+                <button type="button" className="btn primary small" disabled={!tagName.trim() || tagBusy} onClick={() => void addTag()}>
+                  {tagBusy ? 'Adding…' : 'Add tag'}
+                </button>
+                <button type="button" className="btn small" onClick={() => { setAdding(false); setTagName(''); setTagError('') }}>
+                  Cancel
+                </button>
+              </div>
+              {tagError && <div className="err" role="alert" style={{ flexBasis: '100%' }}>{tagError}</div>}
+            </div>
+          )}
+          <div className="muted" style={{ marginTop: 10, fontSize: 13 }}>
+            Tags can be renamed, recoloured or deleted under Settings → Condition tags.
           </div>
         </section>
 
