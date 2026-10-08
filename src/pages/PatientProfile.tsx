@@ -78,6 +78,9 @@ export default function PatientProfile() {
           <Link to={`/patients/${p.id}/edit`} className="btn outline">
             Edit
           </Link>
+          <Link to={`/patients/${p.id}/photos`} className="btn outline">
+            Photos
+          </Link>
           <Link to={`/patients/${p.id}/visits/new`} className="btn primary">
             + New visit
           </Link>
@@ -156,7 +159,7 @@ export default function PatientProfile() {
       <div className="row end">
         {confirming ? (
           <>
-            <span>Delete {p.name} and all their records? This cannot be undone.</span>
+            <span>Delete {p.name} with all visits and results? This cannot be undone. Photograph files stay in Google Drive.</span>
             <button type="button" className="btn" onClick={() => setConfirming(false)}>
               Keep
             </button>

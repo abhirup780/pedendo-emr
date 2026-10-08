@@ -1,4 +1,4 @@
-import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { STARTER_INVESTIGATIONS, STARTER_PANELS } from './investigations'
 import type { ListOptions, Store } from './store'
 import { STARTER_MEDICINES } from './medicines'
@@ -136,6 +136,9 @@ export function createDemoStore(): Store {
       /* storage unavailable: keep working in memory */
     }
   }
+  // Demo photographs live in memory only and disappear when the page reloads.
+  let photos: Photo[] = []
+  const consents = new Map<string, PhotoConsent>()
   const user = () => (db.signedIn ? DEMO_USER : null)
   const emit = () => listeners.forEach((l) => l(user()))
 
@@ -329,6 +332,24 @@ export function createDemoStore(): Store {
     async deleteResult(id) {
       db.results = db.results.filter((r) => r.id !== id)
       save()
+    },
+
+    async listPhotos(patientId) {
+      return photos.filter((p) => p.patient_id === patientId).sort((a, b) => b.taken_on.localeCompare(a.taken_on) || b.created_at.localeCompare(a.created_at))
+    },
+    async addPhoto(input: PhotoInput) {
+      const saved: Photo = { ...input, id: uid(), created_at: new Date().toISOString() }
+      photos.push(saved)
+      return saved
+    },
+    async deletePhoto(id) {
+      photos = photos.filter((p) => p.id !== id)
+    },
+    async getPhotoConsent(patientId) {
+      return consents.get(patientId) ?? { on: null, by: '' }
+    },
+    async setPhotoConsent(patientId, consent) {
+      consents.set(patientId, { ...consent })
     },
 
     async dump() {

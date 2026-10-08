@@ -135,3 +135,28 @@ export interface Tanner {
   testis_l: number | null
   signs: string[]
 }
+
+export const PHOTO_VIEWS = ['Face — frontal', 'Face — profile', 'Full height — standing', 'Hands', 'Skin sign', 'X-ray', 'Other'] as const
+
+/** A photograph's record. The image itself is in Google Drive under `file_id`. */
+export interface Photo {
+  id: string
+  patient_id: string
+  /** ISO date, YYYY-MM-DD. */
+  taken_on: string
+  view: string
+  note: string
+  file_id: string
+  width: number
+  height: number
+  bytes: number
+  created_at: string
+}
+
+export type PhotoInput = Omit<Photo, 'id' | 'created_at'>
+
+/** Guardian consent for clinical photographs; `on` is null until recorded. */
+export interface PhotoConsent {
+  on: string | null
+  by: string
+}

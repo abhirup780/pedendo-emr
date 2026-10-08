@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import type { User } from '@supabase/supabase-js'
-import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import type { ListOptions, Store } from './store'
 
 const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, complaint, history, assessment, plan, print_plan, advice, review_date, medicines, investigations, tanner, created_at'
+const PHOTO_COLS = 'id, patient_id, taken_on, view, note, file_id, width, height, bytes, created_at'
 const RESULT_COLS = 'id, patient_id, test, value, unit, result_date, flag, created_at'
 const MED_COLS = 'id, name, dose, frequency, route, duration, instructions'
 const CLINIC_COLS = 'doctor_name, qualifications, reg_no, clinic_name, address, phone, email'
@@ -263,6 +264,36 @@ export function createSupabaseStore(url: string, key: string): Store {
     },
     async deleteResult(id) {
       const { error } = await sb.from('results').delete().eq('id', id)
+      fail(error)
+    },
+
+    async listPhotos(patientId) {
+      const { data, error } = await sb
+        .from('photos')
+        .select(PHOTO_COLS)
+        .eq('patient_id', patientId)
+        .order('taken_on', { ascending: false })
+        .order('created_at', { ascending: false })
+      fail(error)
+      return (data ?? []) as Photo[]
+    },
+    async addPhoto(input: PhotoInput) {
+      const { data, error } = await sb.from('photos').insert(input).select(PHOTO_COLS).single()
+      fail(error)
+      return data as Photo
+    },
+    async deletePhoto(id) {
+      const { error } = await sb.from('photos').delete().eq('id', id)
+      fail(error)
+    },
+    async getPhotoConsent(patientId) {
+      const { data, error } = await sb.from('patients').select('photo_consent_on, photo_consent_by').eq('id', patientId).maybeSingle()
+      fail(error)
+      const row = data as { photo_consent_on: string | null; photo_consent_by: string } | null
+      return { on: row?.photo_consent_on ?? null, by: row?.photo_consent_by ?? '' }
+    },
+    async setPhotoConsent(patientId, consent) {
+      const { error } = await sb.from('patients').update({ photo_consent_on: consent.on, photo_consent_by: consent.by }).eq('id', patientId)
       fail(error)
     },
 

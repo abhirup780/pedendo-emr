@@ -90,6 +90,19 @@ the single source of truth — commit and push finished work.
   restore screen yet; the "last backup" note is per browser, a reminder only.
 - The artifact preview cannot download files, so the Registry builds the file and says so.
 
+## Stage 6 notes
+
+- `src/lib/photofiles.ts`: `PhotoFiles` interface with a Google Drive implementation (Google
+  Identity Services token in memory, `drive.file` scope, one-hour tokens, reconnect on 401) and
+  an in-memory demo one. `driveClient` takes `fetch` as a parameter so it is testable.
+- Images are resized to 1600 px and re-encoded as JPEG in the browser (`src/lib/image.ts`),
+  which also strips camera metadata. The database row holds the Drive file ID, never the image.
+- Consent is two columns on `patients`, read and written through `getPhotoConsent` /
+  `setPhotoConsent`, deliberately outside the `Patient` type. Uploading is blocked without it.
+- Deleting a photo moves the Drive file to the bin. Deleting a patient removes the records but
+  leaves the Drive files; nothing cleans those up yet.
+- Demo photos and consent are memory-only and vanish on reload.
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)
@@ -97,7 +110,7 @@ the single source of truth — commit and push finished work.
 3. ~~Investigations: grouped master list, one-click panels, result entry~~ (done)
 4. Growth: reference tables, SDS and velocity, chart
 5. ~~Tanner staging per visit~~ (done)
-6. Photographs on Google Drive, compare view
+6. ~~Photographs on Google Drive, compare view~~ (done; Drive calls unit-tested with a stand-in, never run against Google)
 7. ~~Excel export per condition group; backup~~ (done; backup is a downloaded file, not yet sent to Drive)
 8. Trial run alongside the current system
 

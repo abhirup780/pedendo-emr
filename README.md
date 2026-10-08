@@ -3,9 +3,10 @@
 Patient records and prescription writing for a single pediatric endocrinologist.
 A web app: the doctor signs in with a dedicated Google account from any browser.
 
-**Status: stage 3 of 8** — sign-in, patient records, condition tags, visits with measurements
-and notes, prescription writing with a medicine list and templates, A4 ℞ print, a grouped
-investigation list with one-tap panels, and result entry.
+**Status** — built: sign-in, patients, condition tags, visits, prescriptions with A4 ℞ print,
+investigations and results, Tanner staging, photographs on Google Drive, Excel export and
+backup. Waiting: growth chart reference tables (the chart plots the child's own points).
+Not yet tried against the real services: Google sign-in and Google Drive.
 
 ## Run it
 
@@ -39,6 +40,21 @@ Menu names in these consoles change from time to time; the steps are what matter
 5. **Lock the door** — after the doctor has signed in once, turn off *Allow new users to sign
    up* in Supabase Authentication settings. Row-level security already keeps each account's
    rows private; this stops strangers creating accounts at all.
+
+## Photographs on Google Drive (optional, once)
+
+Photographs are stored in the clinic's Google Drive, in a folder called "PedEndo EMR
+photographs" with one subfolder per patient. The app asks only for permission to use files it
+created itself. This part could not be tested against Google from the development machine, so
+try it with a test image first.
+
+1. In the same Google Cloud project as the sign-in, enable the **Google Drive API**.
+2. On the OAuth consent screen, add the scope `.../auth/drive.file`.
+3. On the OAuth client, add the app's address (and `http://localhost:5173` for local work)
+   under *Authorised JavaScript origins*.
+4. Put the client ID in `VITE_GOOGLE_CLIENT_ID` (see `.env.example`) and redeploy.
+
+Use a dedicated clinic Google account with two-step verification, and never share the folder.
 
 ## Deploy
 

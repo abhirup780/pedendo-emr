@@ -1,4 +1,4 @@
-import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { createDemoStore } from './store.demo'
 import { createSupabaseStore } from './store.supabase'
 
@@ -51,6 +51,13 @@ export interface Store {
   listResults(patientId: string): Promise<Result[]>
   saveResult(input: ResultInput): Promise<Result>
   deleteResult(id: string): Promise<void>
+
+  /** Newest first. */
+  listPhotos(patientId: string): Promise<Photo[]>
+  addPhoto(input: PhotoInput): Promise<Photo>
+  deletePhoto(id: string): Promise<void>
+  getPhotoConsent(patientId: string): Promise<PhotoConsent>
+  setPhotoConsent(patientId: string, consent: PhotoConsent): Promise<void>
 
   /** Every patient, visit and result of this account, for export and backup. */
   dump(): Promise<{ patients: Patient[]; visits: Visit[]; results: Result[] }>

@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Patients from './pages/Patients'
 import PatientForm from './pages/PatientForm'
 import PatientProfile from './pages/PatientProfile'
+import Photos from './pages/Photos'
 import PrintRx from './pages/PrintRx'
 import Registry from './pages/Registry'
 import Settings from './pages/Settings'
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/patients/new" element={<PatientForm />} />
         <Route path="/patients/:id" element={<PatientProfile />} />
         <Route path="/patients/:id/edit" element={<PatientForm />} />
+        <Route path="/patients/:id/photos" element={<Photos />} />
         <Route path="/patients/:id/visits/new" element={<VisitPage />} />
         <Route path="/patients/:id/visits/:vid" element={<VisitPage />} />
         <Route path="/patients/:id/visits/:vid/print" element={<PrintRx />} />

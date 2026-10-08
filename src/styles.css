@@ -256,3 +256,14 @@ main.narrow { max-width: 860px; }
 table.preview { border-collapse: collapse; font-size: 13.5px; min-width: 100%; }
 table.preview th { text-align: left; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg); border-bottom: 1px solid var(--line); white-space: nowrap; }
 table.preview td { padding: 8px 12px; border-bottom: 1px solid #edf0ef; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Stage 6: photographs */
+.ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.ph-grid figure, .ph-compare figure { margin: 0; min-width: 0; }
+.ph-grid figcaption, .ph-compare figcaption { margin-top: 6px; }
+.ph-img { display: block; width: 100%; max-width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; border: 1px solid var(--line-strong); background: #eceFee; }
+.ph-img.large { aspect-ratio: auto; object-fit: contain; max-height: 70vh; }
+.ph-box { width: 100%; max-width: 100%; aspect-ratio: 3 / 4; border-radius: 8px; border: 1px solid var(--line-strong); background: repeating-linear-gradient(135deg, #eceFee 0 10px, #f7f9f8 10px 20px); }
+.ph-msg { display: flex; align-items: center; justify-content: center; padding: 10px; text-align: center; color: #44545b; font-size: 12.5px; }
+.ph-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 760px; }
+.btn[aria-pressed='true'] { border-color: var(--primary); background: var(--primary-tint); color: var(--primary-dark); }
