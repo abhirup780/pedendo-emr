@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { bestMatch, categoryOrder, rankedMatches } from '../lib/investigations'
+import BrowseWindow from './BrowseWindow'
 import type { Investigation, Panel } from '../lib/types'
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
   onSavePanel: (name: string) => Promise<string>
 }
 
-const Tick = ({ on }: { on: boolean }) => <span className="box" aria-hidden="true">{on ? '✓' : ''}</span>
+export const Tick = ({ on }: { on: boolean }) => <span className="box" aria-hidden="true">{on ? '✓' : ''}</span>
 
 /**
  * Investigations advised at a visit. On the visit screen this stays small: one-tap panels, the
@@ -140,19 +141,8 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
 
 /** The whole investigation list in its own window: groups down the side, search across all. */
 function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props, 'onSavePanel'> & { onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null)
-  const search = useRef<HTMLInputElement>(null)
   const [q, setQ] = useState('')
   const [group, setGroup] = useState<string | null>(null)
-
-  useEffect(() => {
-    const d = ref.current
-    if (d && !d.open) d.showModal()
-    // With a keyboard, start in the search box. On a touch screen that would bring up the
-    // on-screen keyboard over the list, so the list is left in view instead.
-    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) search.current?.focus()
-    else d?.focus()
-  }, [])
 
   const has = (n: string) => value.includes(n)
   const toggle = (n: string) => onChange(has(n) ? value.filter((x) => x !== n) : [...value, n])
@@ -161,118 +151,74 @@ function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props,
   // Searching looks through every group; otherwise the chosen group (or all of them) is shown.
   const shown = catalog.filter((i) => (t ? i.name.toLowerCase().includes(t) : group == null || i.category === group))
   const groups = categories.map((c) => ({ category: c, items: shown.filter((i) => i.category === c) })).filter((g) => g.items.length > 0)
-  const chosenIn = (c: string) => catalog.filter((i) => i.category === c && has(i.name)).length
   const exact = catalog.some((i) => i.name.toLowerCase() === t)
   const extra = value.filter((n) => !catalog.some((i) => i.name === n))
 
   return (
-    <dialog
-      ref={ref}
-      className="inv-dialog"
-      tabIndex={-1}
-      aria-labelledby="inv-title"
+    <BrowseWindow
+      title="Investigations"
+      hint="Tick what to advise at this visit. Changes apply straight away."
+      searchLabel="Search all investigations"
+      q={q}
+      onSearch={setQ}
+      groups={[
+        { key: null, label: 'All', count: catalog.length },
+        ...categories.map((c) => ({ key: c, label: c, count: catalog.filter((i) => i.category === c).length, chosen: catalog.filter((i) => i.category === c && has(i.name)).length })),
+      ]}
+      group={group}
+      onGroup={setGroup}
+      listLabel="Investigation list"
+      onClear={value.length > 0 ? () => onChange([]) : undefined}
       onClose={onClose}
-      // A click on the dimmed area around the window closes it.
-      onClick={(e) => { if (e.target === ref.current) ref.current?.close() }}
+      chosen={
+        value.length === 0 ? (
+          <span className="muted">Nothing advised yet</span>
+        ) : (
+          <>
+            <span className="muted">{value.length} advised:</span>
+            {value.map((n) => (
+              <span className="picked" key={n}>
+                {n}
+                <button type="button" aria-label={`Remove ${n}`} onClick={() => toggle(n)}>×</button>
+              </span>
+            ))}
+            {extra.length > 0 && <span className="muted" style={{ fontSize: 12.5 }}>({extra.length} not in your list)</span>}
+          </>
+        )
+      }
     >
-      <div className="inv-head">
-        <div className="grow">
-          <h2 id="inv-title">Investigations</h2>
-          <div className="muted" style={{ fontSize: 13 }}>Tick what to advise at this visit. Changes apply straight away.</div>
+      {panels.length > 0 && !t && group == null && (
+        <div className="inv-group">
+          <div className="cat">Panels</div>
+          <div className="suggest">
+            {panels.map((p) => (
+              <button type="button" key={p.id} className="panel-btn" onClick={() => onChange([...value, ...p.items.filter((n) => !has(n))])}>
+                + {p.name} <span className="muted">({p.items.length})</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <button type="button" className="icon-btn" aria-label="Close" onClick={() => ref.current?.close()}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      )}
+      {groups.map((g) => (
+        <div className="inv-group" key={g.category}>
+          <div className="cat">{g.category}</div>
+          <div className="inv-grid">
+            {g.items.map((i) => (
+              <button type="button" key={i.id} className="opt" aria-pressed={has(i.name)} onClick={() => toggle(i.name)}>
+                <Tick on={has(i.name)} />
+                {i.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      {t && !exact && (
+        <button type="button" className="opt add" onClick={() => { if (!has(q.trim())) onChange([...value, q.trim()]); setQ('') }}>
+          + Add "{q.trim()}" as a new investigation for this visit
         </button>
-      </div>
-
-      <div className="inv-search">
-        <input
-          type="search"
-          aria-label="Search all investigations"
-          placeholder="Search all investigations"
-          value={q}
-          ref={search}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            // Enter must not save the visit form behind this window.
-            if (e.key === 'Enter') e.preventDefault()
-          }}
-        />
-      </div>
-
-      <div className="inv-body">
-        <div className="inv-groups" role="group" aria-label="Groups">
-          <button type="button" aria-pressed={!t && group == null} onClick={() => { setGroup(null); setQ('') }}>
-            <span className="grow">All</span>
-            <span className="n">{catalog.length}</span>
-          </button>
-          {categories.map((c) => (
-            <button type="button" key={c} aria-pressed={!t && group === c} onClick={() => { setGroup(c); setQ('') }}>
-              <span className="grow">{c}</span>
-              {chosenIn(c) > 0 && <span className="n on">{chosenIn(c)}</span>}
-              <span className="n">{catalog.filter((i) => i.category === c).length}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="inv-list" tabIndex={0} role="region" aria-label="Investigation list">
-          {panels.length > 0 && !t && group == null && (
-            <div className="inv-group">
-              <div className="cat">Panels</div>
-              <div className="suggest">
-                {panels.map((p) => (
-                  <button type="button" key={p.id} className="panel-btn" onClick={() => onChange([...value, ...p.items.filter((n) => !has(n))])}>
-                    + {p.name} <span className="muted">({p.items.length})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {groups.map((g) => (
-            <div className="inv-group" key={g.category}>
-              <div className="cat">{g.category}</div>
-              <div className="inv-grid">
-                {g.items.map((i) => (
-                  <button type="button" key={i.id} className="opt" aria-pressed={has(i.name)} onClick={() => toggle(i.name)}>
-                    <Tick on={has(i.name)} />
-                    {i.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          {t && !exact && (
-            <button type="button" className="opt add" onClick={() => { if (!has(q.trim())) onChange([...value, q.trim()]); setQ('') }}>
-              + Add "{q.trim()}" as a new investigation for this visit
-            </button>
-          )}
-          {catalog.length === 0 && <div className="muted">Your investigation list is empty. Build it under <Link to="/settings?tab=tests">Settings</Link>, or type a name above to add it for this visit.</div>}
-          {catalog.length > 0 && groups.length === 0 && t && <div className="muted">Nothing in your list matches "{q.trim()}".</div>}
-        </div>
-      </div>
-
-      <div className="inv-foot">
-        <div className="inv-chosen" aria-live="polite">
-          {value.length === 0 ? (
-            <span className="muted">Nothing advised yet</span>
-          ) : (
-            <>
-              <span className="muted">{value.length} advised:</span>
-              {value.map((n) => (
-                <span className="picked" key={n}>
-                  {n}
-                  <button type="button" aria-label={`Remove ${n}`} onClick={() => toggle(n)}>×</button>
-                </span>
-              ))}
-            </>
-          )}
-          {extra.length > 0 && <span className="muted" style={{ fontSize: 12.5 }}>({extra.length} not in your list)</span>}
-        </div>
-        <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-          {value.length > 0 && <button type="button" className="btn" onClick={() => onChange([])}>Clear all</button>}
-          <button type="button" className="btn primary" onClick={() => ref.current?.close()}>Done</button>
-        </div>
-      </div>
-    </dialog>
+      )}
+      {catalog.length === 0 && <div className="muted">Your investigation list is empty. Build it under <Link to="/settings?tab=tests">Settings</Link>, or type a name above to add it for this visit.</div>}
+      {catalog.length > 0 && groups.length === 0 && t && <div className="muted">Nothing in your list matches "{q.trim()}".</div>}
+    </BrowseWindow>
   )
 }

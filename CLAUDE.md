@@ -93,6 +93,12 @@ the single source of truth — commit and push finished work.
   click outside to close), groups down the side with counts, search across all groups, the
   chosen tests in the footer. On a phone it fills the screen and the groups become a strip.
   Ticks apply straight away; there is no separate "apply" step.
+- Medicines work the same way (`MedicinePicker.tsx`): type-ahead on the prescription card and
+  a "Browse all" window. Both windows share `BrowseWindow.tsx`. The medicine list has no
+  categories, so its groups are the route (Oral, Subcutaneous, ...) plus "Last prescription"
+  (with the doses given then) and the templates. A medicine already on the prescription is
+  ticked and cannot be added twice from the window; it is removed from the footer chips or on
+  the card, so doses typed for this visit are not lost by a stray click.
 - The right column is `position: sticky` (`.side.follow`); a small effect in `Visit.tsx` sets
   `--side-top` from its height so that a column taller than the window sticks by its foot,
   above the save bar. So the shorter column never leaves an empty area beside the longer one.

@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import InvestigationPicker from '../components/InvestigationPicker'
+import MedicinePicker from '../components/MedicinePicker'
 import Results from '../components/Results'
 import TannerPicker from '../components/TannerPicker'
 import { ageInDays, decimalAge, formatAge, formatDate, todayISO } from '../lib/age'
 import { visitSds } from '../lib/growth'
 import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
-import { addMonths, bmi, dosePerKg, EMPTY_RX, heightVelocity, validBp } from '../lib/clinical'
+import { addMonths, bmi, dosePerKg, heightVelocity, validBp } from '../lib/clinical'
 import { dropDraft, readDraft, saveDraft } from '../lib/device'
 import { refSex, sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
@@ -63,7 +64,6 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const [testCatalog, setTestCatalog] = useState<Investigation[]>([])
   const [panels, setPanels] = useState<Panel[]>([])
   const [meds, setMeds] = useState<RxItem[]>([])
-  const [q, setQ] = useState('')
   const [tplName, setTplName] = useState<string | null>(null)
   const [tried, setTried] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -203,14 +203,8 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const invalid = Object.values(errs).some(Boolean)
   const show = (k: keyof typeof errs) => (tried && errs[k] ? <span className="err">{errs[k]}</span> : null)
 
-  const suggestions = useMemo(() => {
-    const t = q.trim().toLowerCase()
-    return catalog.filter((m) => !t || m.name.toLowerCase().includes(t)).slice(0, 8)
-  }, [catalog, q])
-
   function addMed(item: RxItem) {
     setMeds((old) => [...old, { name: item.name, dose: item.dose, frequency: item.frequency, route: item.route, duration: item.duration, instructions: item.instructions }])
-    setQ('')
   }
   const editMed = (i: number, k: keyof RxItem, v: string) => setMeds((old) => old.map((m, j) => (j === i ? { ...m, [k]: v } : m)))
 
@@ -488,32 +482,15 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             })}
             {tried && errs.meds && <div className="note">{errs.meds}</div>}
 
-            <div className="field">
-              <label htmlFor="med-add">Add a medicine</label>
-              <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-                <input
-                  id="med-add"
-                  placeholder="Type a name, or pick from your list below"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      if (q.trim()) addMed(suggestions.length === 1 ? suggestions[0] : { ...EMPTY_RX, name: q.trim() })
-                    }
-                  }}
-                />
-                <button type="button" className="btn" disabled={!q.trim()} onClick={() => addMed({ ...EMPTY_RX, name: q.trim() })}>
-                  Add
-                </button>
-              </div>
-            </div>
-            <div className="suggest">
-              {suggestions.map((s) => (
-                <button type="button" key={s.id} onClick={() => addMed(s)}>+ {s.name}</button>
-              ))}
-              {catalog.length === 0 && <span className="muted">Your medicine list is empty. Build it under <Link to="/settings">Settings</Link>.</span>}
-            </div>
+            <MedicinePicker
+              catalog={catalog}
+              meds={meds}
+              last={last && last.medicines.length > 0 ? { label: formatDate(last.visit_date), medicines: last.medicines } : null}
+              templates={templates}
+              onAdd={addMed}
+              onRemove={(name) => setMeds((old) => old.filter((m) => m.name !== name))}
+              onTemplate={applyTemplate}
+            />
 
             <label className="field">
               Advice
