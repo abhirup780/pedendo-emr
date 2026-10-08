@@ -50,9 +50,8 @@ After an update, a browser that had the app open may show the old copy until a h
 (Ctrl+Shift+R).
 
 No `public/_redirects` file is needed: Pages sends unknown addresses to the app by itself.
-The app can also be deployed as a Cloudflare Worker (`npx wrangler deploy`, which reads
-`wrangler.jsonc`), but a Worker takes a custom address only when the whole domain's DNS is
-moved to Cloudflare, and it refuses a `_redirects` file with `/* /index.html 200`.
+Use Pages, not a Worker: a Worker takes a custom address only when the whole domain's DNS is
+moved to Cloudflare.
 
 ## 4. Lock the door
 

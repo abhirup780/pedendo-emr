@@ -256,9 +256,8 @@ the single source of truth — commit and push finished work.
   calendar with month and year lists, drawn through a portal to `document.body` so a sticky
   column or the save bar cannot cover it; on a phone it is a sheet at the foot of the screen.
   The stored value stays `YYYY-MM-DD`.
-- `wrangler.jsonc`: not used by Pages (which sends unknown paths to `index.html` by itself);
-  kept so the app can also be deployed as a Worker. Never add `public/_redirects` with
-  `/* /index.html 200`: a Worker deploy rejects it as an infinite loop (error 100324).
+- No `wrangler.jsonc` and no `public/_redirects`: Pages sends unknown paths to `index.html`
+  by itself.
 - `public/_headers`: security headers for Cloudflare Pages. The CSP is report-only until the
   owner's trial run shows a clean console on the live site.
 - An axe-core scan (wcag2a/aa + best-practice) was clean on every screen; keep it that way.
