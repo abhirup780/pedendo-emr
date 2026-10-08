@@ -176,6 +176,7 @@ main.narrow { max-width: 860px; }
   .sheet { border: 0; max-width: none; width: 210mm; min-height: 297mm; }
 }
 
-.check { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 4px 0; font-size: 14px; color: var(--ink); cursor: pointer; }
-.check input { width: 20px; height: 20px; margin: 1px 0 0; flex: 0 0 20px; accent-color: var(--primary); }
-.check .hint { display: block; font-size: 13px; color: var(--muted); }
+.switch.compact { align-self: flex-start; font-size: 13px; font-weight: 400; color: #44545b; padding: 0; gap: 8px; }
+.switch.compact .track { width: 32px; height: 18px; border-radius: 9px; flex: 0 0 32px; }
+.switch.compact .track::after { width: 14px; height: 14px; }
+.switch.compact[aria-pressed='true'] { color: var(--ink); }

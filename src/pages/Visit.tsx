@@ -268,13 +268,10 @@ export default function VisitPage() {
               <div className="field">
                 <label htmlFor="plan">Plan</label>
                 <textarea id="plan" rows={3} value={f.plan} onChange={(e) => set('plan', e.target.value)} />
-                <label className="check">
-                <input type="checkbox" checked={printPlan} onChange={(e) => setPrintPlan(e.target.checked)} />
-                <span>
-                  Print the plan on the prescription
-                    <span className="hint">{printPlan ? 'Untick to keep it for your record only.' : 'Kept for your record only.'}</span>
-                  </span>
-                </label>
+                <button type="button" className="switch compact" role="switch" aria-checked={printPlan} aria-pressed={printPlan} onClick={() => setPrintPlan(!printPlan)}>
+                  <span className="track" />
+                  {printPlan ? 'Printed on the prescription' : 'For your record only, not printed'}
+                </button>
               </div>
             </div>
           </section>
