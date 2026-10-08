@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { User } from '@supabase/supabase-js'
-import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Backup, Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import { addDays } from './clinical'
 import type { ListOptions, Store } from './store'
 
 const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, complaint, history, assessment, plan, print_plan, advice, review_date, medicines, investigations, tanner, created_at'
@@ -23,7 +24,7 @@ function toVisit(r: Visit): Visit {
 }
 
 const PATIENT_COLS =
-  'id, mrn, name, dob, sex, phone, guardian_name, guardian_relation, address, allergies, notes, father_height_cm, mother_height_cm, created_at'
+  'id, mrn, name, dob, sex, phone, guardian_name, guardian_relation, address, allergies, notes, father_height_cm, mother_height_cm, created_at, last_visit_on, next_review_on, visit_count'
 
 type Row = Omit<Patient, 'condition_ids'> & { tags: { condition_id: string }[] | null }
 
@@ -48,11 +49,22 @@ function pattern(q: string): string {
   return '"%' + q.replace(/[%*]/g, ' ').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '%"'
 }
 
+/** Turns the database's wording into something a doctor can act on. */
+export function friendly(error: { message: string; code?: string }): string {
+  const m = error.message ?? ''
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(m)) return 'No connection to the database. Check the internet and try again; nothing on this screen has been lost.'
+  if (error.code === 'PGRST116') return 'This record no longer exists. It may have been deleted from another device.'
+  if (error.code === 'PGRST301' || /jwt expired|invalid jwt/i.test(m)) return 'Your sign-in has expired. Sign in again, then repeat the last step.'
+  if (error.code === '42501' || /row-level security/i.test(m)) return 'The database refused this change. Sign out and in again; if it continues, the record belongs to another account.'
+  if (error.code === '23514' || error.code === '22003' || /check constraint|numeric field overflow/i.test(m)) return 'The database did not accept one of the values. Check the numbers and dates, then try again.'
+  return m || 'The database returned an error.'
+}
+
 export function createSupabaseStore(url: string, key: string): Store {
   const sb = createClient(url, key)
 
-  function fail(error: { message: string } | null): void {
-    if (error) throw new Error(error.message)
+  function fail(error: { message: string; code?: string } | null): void {
+    if (error) throw new Error(friendly(error))
   }
 
   return {
@@ -117,10 +129,23 @@ export function createSupabaseStore(url: string, key: string): Store {
         if (/^\d{1,9}$/.test(term)) parts.push(`mrn.eq.${term}`)
         q = q.or(parts.join(','))
       }
+      if (opts.due && opts.today) {
+        q = opts.due === 'overdue' ? q.lt('next_review_on', opts.today) : q.gte('next_review_on', opts.today).lte('next_review_on', addDays(opts.today, 7))
+      }
+      if (opts.sort === 'name') q = q.order('name')
+      else if (opts.sort === 'recent') q = q.order('last_visit_on', { ascending: false, nullsFirst: false })
+      else if (opts.due) q = q.order('next_review_on')
       const { data, error, count } = await q.order('created_at', { ascending: false }).limit(limit)
       fail(error)
       const rows = ((data ?? []) as unknown as Row[]).map(toPatient)
       return { rows, total: count ?? rows.length }
+    },
+    async followupCounts(today) {
+      const head = () => sb.from('patients').select('id', { count: 'exact', head: true })
+      const [overdue, week] = await Promise.all([head().lt('next_review_on', today), head().gte('next_review_on', today).lte('next_review_on', addDays(today, 7))])
+      fail(overdue.error)
+      fail(week.error)
+      return { overdue: overdue.count ?? 0, week: week.count ?? 0 }
     },
     async getPatient(id) {
       const { data, error } = await sb
@@ -138,6 +163,11 @@ export function createSupabaseStore(url: string, key: string): Store {
       fail(error)
       const pid = (data as { id: string }).id
       const rpc = await sb.rpc('set_patient_conditions', { p_patient: pid, p_conditions: condition_ids })
+      if (rpc.error && !id) {
+        // A new patient whose tags could not be saved: undo the insert, or pressing Save
+        // again would create the same child twice.
+        await sb.from('patients').delete().eq('id', pid)
+      }
       fail(rpc.error)
       const saved = await this.getPatient(pid)
       if (!saved) throw new Error('Saved, but the record could not be read back.')
@@ -310,12 +340,60 @@ export function createSupabaseStore(url: string, key: string): Store {
           if (rows.length < PAGE) return out
         }
       }
-      const [patients, visits, results] = await Promise.all([
-        all<Row>('patients', `${PATIENT_COLS}, tags:patient_conditions(condition_id)`, 'mrn'),
+      type WithConsent = Row & { photo_consent_on: string | null; photo_consent_by: string }
+      const [patients, visits, results, photos] = await Promise.all([
+        all<WithConsent>('patients', `${PATIENT_COLS}, photo_consent_on, photo_consent_by, tags:patient_conditions(condition_id)`, 'mrn'),
         all<Visit>('visits', VISIT_COLS, 'visit_date'),
         all<Result>('results', RESULT_COLS, 'result_date'),
+        all<Photo>('photos', PHOTO_COLS, 'taken_on'),
       ])
-      return { patients: patients.map(toPatient), visits: visits.map(toVisit), results }
+      const consents = patients.filter((p) => p.photo_consent_on).map((p) => ({ patient_id: p.id, on: p.photo_consent_on as string, by: p.photo_consent_by }))
+      return {
+        patients: patients.map((p) => {
+          const { photo_consent_on: _on, photo_consent_by: _by, ...row } = p
+          return toPatient(row)
+        }),
+        visits: visits.map(toVisit),
+        results,
+        photos,
+        consents,
+      }
+    },
+
+    async restore(b: Backup) {
+      const existing = await sb.from('patients').select('id', { count: 'exact', head: true })
+      fail(existing.error)
+      if ((existing.count ?? 0) > 0) throw new Error('This account already has patients. A backup can only be restored into an empty account.')
+      const everything = '00000000-0000-0000-0000-000000000000'
+      async function put(table: string, rows: object[]) {
+        for (let i = 0; i < rows.length; i += 500) fail((await sb.from(table).insert(rows.slice(i, i + 500))).error)
+      }
+      try {
+        // No patients exist, so the lists can be replaced without orphaning anything.
+        for (const t of ['conditions', 'medicines', 'rx_templates', 'investigations', 'investigation_panels']) fail((await sb.from(t).delete().neq('id', everything)).error)
+        fail((await sb.from('clinic_settings').upsert(b.clinic, { onConflict: 'owner_id' })).error)
+        await put('conditions', b.conditions)
+        await put('medicines', b.medicines)
+        await put('rx_templates', b.templates)
+        await put('investigations', b.investigations)
+        await put('investigation_panels', b.panels)
+        const consent = new Map(b.consents.map((c) => [c.patient_id, c]))
+        await put('patients', b.patients.map((p) => {
+          // The visit summary columns are left out: the database rebuilds them as visits arrive.
+          const { condition_ids: _tags, last_visit_on: _l, next_review_on: _n, visit_count: _c, ...row } = p
+          const c = consent.get(p.id)
+          return { ...row, photo_consent_on: c?.on ?? null, photo_consent_by: c?.by ?? '' }
+        }))
+        await put('patient_conditions', b.patients.flatMap((p) => p.condition_ids.map((condition_id) => ({ patient_id: p.id, condition_id }))))
+        await put('visits', b.visits)
+        await put('results', b.results)
+        await put('photos', b.photos)
+        fail((await sb.rpc('sync_patient_mrn_sequence')).error)
+      } catch (e) {
+        // Leave the account empty again so the restore can simply be retried.
+        await sb.from('patients').delete().neq('id', everything)
+        throw e
+      }
     },
 
     async getClinic() {

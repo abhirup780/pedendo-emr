@@ -66,7 +66,7 @@ export default function GrowthChart({ points, reference, label, unit }: { points
           <g key={p.date + i}>
             <circle cx={x(p.age)} cy={y(p.value)} r={i === points.length - 1 ? 6 : 4.5} className="gc-dot" />
             <circle
-              cx={x(p.age)} cy={y(p.value)} r={14} className="gc-hit" tabIndex={0}
+              cx={x(p.age)} cy={y(p.value)} r={14} className="gc-hit" tabIndex={0} role="img"
               aria-label={`${formatDate(p.date)}, age ${ageLabel(p.age)}: ${p.value} ${unit}`}
               onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
             />

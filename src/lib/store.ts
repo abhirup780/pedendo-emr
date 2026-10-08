@@ -1,11 +1,19 @@
-import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Backup, Clinic, Condition, Dump, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { createDemoStore } from './store.demo'
 import { createSupabaseStore } from './store.supabase'
+
+export type PatientSort = 'recent' | 'registered' | 'name'
+/** 'overdue': review date has passed with no visit since. 'week': review due within 7 days. */
+export type DueFilter = 'overdue' | 'week'
 
 export interface ListOptions {
   q?: string
   conditionId?: string | null
   limit?: number
+  sort?: PatientSort
+  due?: DueFilter | null
+  /** The device's date (YYYY-MM-DD); needed for `due`. */
+  today?: string
 }
 
 export interface Store {
@@ -21,6 +29,8 @@ export interface Store {
   deleteCondition(id: string): Promise<void>
 
   listPatients(opts?: ListOptions): Promise<{ rows: Patient[]; total: number }>
+  /** How many patients have a review overdue, and due within the next 7 days. */
+  followupCounts(today: string): Promise<{ overdue: number; week: number }>
   getPatient(id: string): Promise<Patient | null>
   savePatient(input: PatientInput, id?: string): Promise<Patient>
   deletePatient(id: string): Promise<void>
@@ -60,7 +70,12 @@ export interface Store {
   setPhotoConsent(patientId: string, consent: PhotoConsent): Promise<void>
 
   /** Every patient, visit and result of this account, for export and backup. */
-  dump(): Promise<{ patients: Patient[]; visits: Visit[]; results: Result[] }>
+  dump(): Promise<Dump>
+  /**
+   * Loads a backup into this account. Refuses unless the account has no patients; the
+   * account's own tags, medicine list, templates and investigation list are replaced.
+   */
+  restore(backup: Backup): Promise<void>
 
   getClinic(): Promise<Clinic>
   saveClinic(c: Clinic): Promise<Clinic>

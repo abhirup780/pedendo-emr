@@ -182,7 +182,7 @@ export default function Registry() {
             </div>
 
             <div className="row" style={{ paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-              <button type="button" className="switch" role="switch" aria-checked={deid} aria-pressed={deid} onClick={() => setDeid(!deid)} style={{ flex: '1 1 280px', textAlign: 'left' }}>
+              <button type="button" className="switch" role="switch" aria-checked={deid} onClick={() => setDeid(!deid)} style={{ flex: '1 1 280px', textAlign: 'left' }}>
                 <span className="track" />
                 <span>
                   <span style={{ display: 'block' }}>De-identify for research</span>
@@ -207,7 +207,7 @@ export default function Registry() {
                 <h2 className="grow">Preview · {first.name} sheet</h2>
                 <span className="muted">{first.rows.length === 0 ? 'No rows' : `First ${Math.min(8, first.rows.length)} of ${first.rows.length} rows`}</span>
               </div>
-              <div className="table-wrap">
+              <div className="table-wrap" tabIndex={0} role="region" aria-label="Export preview">
                 <table className="preview">
                   <thead><tr>{first.columns.map((c) => <th key={c.header}>{c.header}</th>)}</tr></thead>
                   <tbody>

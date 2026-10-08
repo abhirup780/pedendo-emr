@@ -42,7 +42,7 @@ export default function PrintRx() {
   const noHeader = !c.doctor_name.trim()
 
   return (
-    <div className="sheet-wrap">
+    <main className="sheet-wrap">
       <div className="sheet-tools no-print">
         <Link to={`/patients/${id}`} className="btn">Back to patient</Link>
         <Link to={`/patients/${id}/visits/${vid}`} className="btn">Edit visit</Link>
@@ -62,7 +62,7 @@ export default function PrintRx() {
       <article className="sheet">
         <div className="letterhead">
           <div>
-            <div className="doctor">{c.doctor_name || 'Doctor’s name'}</div>
+            <h1 className="doctor">{c.doctor_name || 'Doctor’s name'}</h1>
             {c.qualifications && <div>{c.qualifications}</div>}
             {c.reg_no && <div>Reg. No. {c.reg_no}</div>}
           </div>
@@ -148,6 +148,6 @@ export default function PrintRx() {
           </div>
         </div>
       </article>
-    </div>
+    </main>
   )
 }

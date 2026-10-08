@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import Results from '../components/Results'
 import { initials } from '../components/Shell'
 import { Tag } from '../components/Tag'
-import { formatAge, formatDate, midParentalHeight } from '../lib/age'
+import { formatAge, formatDate, midParentalHeight, targetRange } from '../lib/age'
 import { bmi } from '../lib/clinical'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
@@ -98,7 +98,7 @@ export default function PatientProfile() {
         {visits.length === 0 ? (
           <div className="empty">No visits yet. Start the first one with "New visit".</div>
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Visit history">
             <div className="vtable">
               <div className="vrow head">
                 <div>Date</div>
@@ -151,7 +151,7 @@ export default function PatientProfile() {
             {p.father_height_cm || p.mother_height_cm ? `Father ${p.father_height_cm ?? '—'} cm · Mother ${p.mother_height_cm ?? '—'} cm` : '—'}
           </dd>
           <dt>Mid-parental height</dt>
-          <dd className="mono">{mph == null ? '—' : `${mph.toFixed(1)} cm (target ${(mph - 8).toFixed(1)}–${(mph + 8).toFixed(1)} cm)`}</dd>
+          <dd className="mono">{mph == null ? '—' : `${mph.toFixed(1)} cm (target ${targetRange(mph)})`}</dd>
           <dt>Notes</dt>
           <dd style={{ whiteSpace: 'pre-wrap' }}>{p.notes || '—'}</dd>
           <dt>Registered</dt>

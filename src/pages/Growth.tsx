@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import GrowthChart from '../components/GrowthChart'
-import { decimalAge, formatAge, formatDate, midParentalHeight } from '../lib/age'
+import { decimalAge, formatAge, formatDate, midParentalHeight, targetRange } from '../lib/age'
 import { bmi, heightVelocity } from '../lib/clinical'
 import { findReference, growthPoints, MEASURES, sds } from '../lib/growth'
 import type { Measure } from '../lib/growth-reference'
@@ -81,7 +81,7 @@ export default function Growth() {
         <div>
           <div className="k">Mid-parental height</div>
           <div className="v">{mph == null ? '—' : `${mph.toFixed(1)} cm`}</div>
-          <div className="k">{mph == null ? 'add the parents’ heights' : `target ${(mph - 8).toFixed(1)}–${(mph + 8).toFixed(1)} cm`}</div>
+          <div className="k">{mph == null ? 'add the parents’ heights' : `target ${targetRange(mph)}`}</div>
         </div>
       </div>
 
@@ -108,7 +108,7 @@ export default function Growth() {
         {measured.length === 0 ? (
           <div className="empty">No measurements yet.</div>
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Measurements">
             <table className="preview">
               <thead><tr><th>Date</th><th>Age</th><th>Height (cm)</th>{anySds && <th>Height SDS</th>}<th>Velocity (cm/yr)</th><th>Weight (kg)</th><th>BMI</th></tr></thead>
               <tbody>

@@ -51,8 +51,25 @@ export function midParentalHeight(fatherCm: number | null, motherCm: number | nu
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** "8 Oct 2026", the same on every device. */
+/**
+ * The local calendar date of a stored value. A plain date stays as it is; a timestamp such as
+ * "2026-10-08T20:30:00Z" is read in the device's time zone (in India that is already 9 Oct).
+ */
+export function localDate(value: string): string {
+  if (!value.includes('T')) return value.slice(0, 10)
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? value.slice(0, 10) : todayISO(d)
+}
+
+/** Usual width of the target height range either side of mid-parental height, in cm. */
+export const TARGET_RANGE_CM = 8
+
+export function targetRange(mph: number): string {
+  return `${(mph - TARGET_RANGE_CM).toFixed(1)}–${(mph + TARGET_RANGE_CM).toFixed(1)} cm`
+}
+
 export function formatDate(iso: string): string {
-  const d = parseISODate(iso.slice(0, 10))
+  const d = parseISODate(localDate(iso))
   if (!d) return '—'
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }

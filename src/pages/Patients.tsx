@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Tag, TagChip } from '../components/Tag'
-import { formatAge, formatDate } from '../lib/age'
+import { formatAge, formatDate, todayISO } from '../lib/age'
+import { daysBetween } from '../lib/clinical'
 import { store } from '../lib/store'
+import type { DueFilter, PatientSort } from '../lib/store'
 import { tagColor } from '../lib/tags'
 import type { Condition, Patient } from '../lib/types'
+
+/** Review date with how far away it is; overdue dates are marked. */
+function Due({ on }: { on: string | null }) {
+  if (!on) return <span className="muted">—</span>
+  const days = daysBetween(todayISO(), on) ?? 0
+  if (days < 0) return <span className="pill warn" title={formatDate(on)}>Overdue {-days} d</span>
+  if (days <= 7) return <span className="pill ok" title={formatDate(on)}>{days === 0 ? 'Today' : `In ${days} d`}</span>
+  return <span className="muted">{formatDate(on)}</span>
+}
 
 function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
   return (
@@ -27,7 +38,8 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
         {p.condition_ids.length === 0 && <span className="muted">—</span>}
       </div>
       <div className="mono">{p.phone || '—'}</div>
-      <div className="muted">{formatDate(p.created_at)}</div>
+      <div className="muted">{p.last_visit_on ? formatDate(p.last_visit_on) : 'No visit yet'}</div>
+      <div><Due on={p.next_review_on} /></div>
     </div>
   )
 }
@@ -40,14 +52,21 @@ export default function Patients() {
   const [q, setQ] = useState('')
   const [tag, setTag] = useState<string | null>(null)
   const [grouped, setGrouped] = useState(false)
+  const [due, setDue] = useState<DueFilter | null>(null)
+  const [sort, setSort] = useState<PatientSort>('recent')
+  const [limit, setLimit] = useState(200)
+  const [follow, setFollow] = useState<{ overdue: number; week: number } | null>(null)
+  const [everyone, setEveryone] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    Promise.all([store.listConditions(), store.conditionCounts()]).then(
-      ([c, n]) => {
+    Promise.all([store.listConditions(), store.conditionCounts(), store.followupCounts(todayISO()), store.listPatients({ limit: 1 })]).then(
+      ([c, n, f, all]) => {
         setConditions(c)
         setCounts(n)
+        setFollow(f)
+        setEveryone(all.total)
       },
       (e: Error) => setError(e.message),
     )
@@ -57,7 +76,7 @@ export default function Patients() {
   useEffect(() => {
     let live = true
     const t = setTimeout(() => {
-      store.listPatients({ q, conditionId: tag }).then(
+      store.listPatients({ q, conditionId: tag, due, sort, limit, today: todayISO() }).then(
         (r) => {
           if (!live) return
           setRows(r.rows)
@@ -76,7 +95,7 @@ export default function Patients() {
       live = false
       clearTimeout(t)
     }
-  }, [q, tag])
+  }, [q, tag, due, sort, limit])
 
   const byId = useMemo(() => new Map(conditions.map((c) => [c.id, c])), [conditions])
   const groups = useMemo(() => {
@@ -90,10 +109,10 @@ export default function Patients() {
     return out
   }, [grouped, tag, conditions, rows])
 
-  const filtering = q.trim() !== '' || tag !== null
+  const filtering = q.trim() !== '' || tag !== null || due !== null
   let foot = ''
   if (!loading && rows.length > 0) {
-    foot = rows.length < total ? `Showing the ${rows.length} most recent of ${total}. Search to narrow down.` : `${total} ${total === 1 ? 'patient' : 'patients'}`
+    foot = rows.length < total ? `Showing ${rows.length} of ${total}.` : `${total} ${total === 1 ? 'patient' : 'patients'}`
     if (grouped) foot += ' · A patient with two tags appears under both.'
   }
 
@@ -116,6 +135,21 @@ export default function Patients() {
       </div>
 
       {error && <div className="alert">{error}</div>}
+
+      <div className="tiles">
+        <button type="button" className="tile" aria-pressed={due === null} onClick={() => setDue(null)}>
+          <span className="k">All patients</span>
+          <span className="v">{everyone ?? '…'}</span>
+        </button>
+        <button type="button" className="tile" aria-pressed={due === 'week'} onClick={() => setDue(due === 'week' ? null : 'week')}>
+          <span className="k">Review due in the next 7 days</span>
+          <span className="v">{follow?.week ?? '…'}</span>
+        </button>
+        <button type="button" className="tile" aria-pressed={due === 'overdue'} onClick={() => setDue(due === 'overdue' ? null : 'overdue')}>
+          <span className="k">Review overdue, not seen since</span>
+          <span className={follow && follow.overdue > 0 ? 'v warn' : 'v'}>{follow?.overdue ?? '…'}</span>
+        </button>
+      </div>
 
       <section className="card">
         <div className="card-head">
@@ -141,13 +175,21 @@ export default function Patients() {
               </Link>
             )}
           </div>
+          <label className="sort">
+            Sort
+            <select value={sort} onChange={(e) => setSort(e.target.value as PatientSort)}>
+              <option value="recent">Last seen</option>
+              <option value="registered">Newest registered</option>
+              <option value="name">Name</option>
+            </select>
+          </label>
           <button type="button" className="switch" aria-pressed={grouped} onClick={() => setGrouped(!grouped)}>
             <span className="track" />
             Group by condition
           </button>
         </div>
 
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Patient list">
           <div className="table">
             <div className="tr head">
               <div>MRN</div>
@@ -155,7 +197,8 @@ export default function Patients() {
               <div>Age · sex</div>
               <div>Conditions</div>
               <div>Phone</div>
-              <div>Registered</div>
+              <div>Last visit</div>
+              <div>Review due</div>
             </div>
             {groups
               ? groups.map((g) => (
@@ -179,10 +222,15 @@ export default function Patients() {
         {loading && <div className="empty">Loading patients…</div>}
         {!loading && rows.length === 0 && !error && (
           <div className="empty">
-            {filtering ? 'No patient matches this search.' : 'No patients yet. Add the first one with "New patient".'}
+            {due === 'overdue' && !q && !tag ? 'No overdue reviews.' : due === 'week' && !q && !tag ? 'No reviews due in the next 7 days.' : filtering ? 'No patient matches this search.' : 'No patients yet. Add the first one with "New patient".'}
           </div>
         )}
-        {foot && <div className="foot">{foot}</div>}
+        {foot && (
+          <div className="foot row">
+            <span className="grow">{foot}</span>
+            {!loading && rows.length < total && <button type="button" className="btn small" onClick={() => setLimit(limit + 200)}>Show 200 more</button>}
+          </div>
+        )}
       </section>
     </main>
   )

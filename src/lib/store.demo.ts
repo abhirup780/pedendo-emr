@@ -1,6 +1,7 @@
-import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Backup, Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { STARTER_INVESTIGATIONS, STARTER_PANELS } from './investigations'
 import type { ListOptions, Store } from './store'
+import { addDays } from './clinical'
 import { STARTER_MEDICINES } from './medicines'
 import { STARTER_CONDITIONS } from './tags'
 
@@ -8,7 +9,7 @@ import { STARTER_CONDITIONS } from './tags'
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v4'
+const KEY = 'pedendo-demo-v5'
 
 interface Db {
   signedIn: boolean
@@ -25,6 +26,11 @@ interface Db {
 }
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2))
+
+const addMonthsISO = (iso: string, n: number) => {
+  const d = new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1 + n, Number(iso.slice(8, 10)))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 function seed(): Db {
   const conditions: Condition[] = STARTER_CONDITIONS.map((c) => ({ id: uid(), ...c }))
@@ -55,6 +61,9 @@ function seed(): Db {
     mother_height_cm: i === 0 ? 155 : null,
     created_at: new Date(Date.UTC(2026, 8, 1 + i)).toISOString(),
     condition_ids: s[5].map(id),
+    last_visit_on: null,
+    next_review_on: null,
+    visit_count: 0,
   }))
   const medicines: Medicine[] = STARTER_MEDICINES.map((m) => ({ id: uid(), ...m }))
   const gh = (dose: string): RxItem => ({ ...STARTER_MEDICINES[0], dose })
@@ -72,7 +81,7 @@ function seed(): Db {
     plan: 'Continue rhGH, dose adjusted for weight.',
     print_plan: true,
     advice: 'Balanced diet and regular physical activity.',
-    review_date: null,
+    review_date: addMonthsISO(date, 3),
     medicines: [gh(dose)],
     investigations: date === '2026-07-14' ? ['IGF-1', 'TSH', 'Free T4'] : [],
     tanner: { g: 1, b: null, p: 1, testis_r: date < '2026-04-01' ? 2 : 3, testis_l: date < '2026-04-01' ? 2 : 3, signs: [] },
@@ -83,6 +92,17 @@ function seed(): Db {
     v('2026-04-08', 116.3, 22.0, '0.6 mg', 'GH deficiency on rhGH, growing well.'),
     v('2026-07-14', 118.7, 23.1, '0.7 mg', 'GH deficiency on rhGH, good catch-up growth.'),
   ]
+  // One overdue follow-up, so the patient list has something to show under "Overdue".
+  visits.push({
+    ...v('2026-06-20', 148.5, 41.2, '', 'Type 1 diabetes, HbA1c above target.'),
+    patient_id: patients[1].id,
+    complaint: 'Routine diabetes review.',
+    history: 'No hypoglycaemia. Checking glucose four times a day.',
+    plan: 'Adjust basal insulin; repeat HbA1c in 3 months.',
+    medicines: [{ ...STARTER_MEDICINES[3], dose: '14 units' }],
+    investigations: ['HbA1c'],
+    tanner: null,
+  })
   const templates: RxTemplate[] = [
     { id: uid(), name: 'GH therapy follow-up', medicines: [gh('')], advice: 'Store the cartridge in the refrigerator (2–8 °C). Bring the injection diary to the next visit.' },
   ]
@@ -139,6 +159,13 @@ export function createDemoStore(): Store {
   // Demo photographs live in memory only and disappear when the page reloads.
   let photos: Photo[] = []
   const consents = new Map<string, PhotoConsent>()
+  /** What the database trigger does for real: summarise a patient's visits onto the patient. */
+  const withSummary = (p: Patient): Patient => {
+    const vs = db.visits.filter((v) => v.patient_id === p.id).sort((a, b) => b.visit_date.localeCompare(a.visit_date) || b.created_at.localeCompare(a.created_at))
+    return { ...p, last_visit_on: vs[0]?.visit_date ?? null, next_review_on: vs[0]?.review_date ?? null, visit_count: vs.length }
+  }
+  const isDue = (p: Patient, due: 'overdue' | 'week', today: string) =>
+    !!p.next_review_on && (due === 'overdue' ? p.next_review_on < today : p.next_review_on >= today && p.next_review_on <= addDays(today, 7))
   const user = () => (db.signedIn ? DEMO_USER : null)
   const emit = () => listeners.forEach((l) => l(user()))
 
@@ -194,13 +221,22 @@ export function createDemoStore(): Store {
 
     async listPatients(opts: ListOptions = {}) {
       const term = (opts.q ?? '').trim().toLowerCase()
-      let rows = db.patients.filter((p) => !opts.conditionId || p.condition_ids.includes(opts.conditionId))
+      let rows = db.patients.map(withSummary).filter((p) => !opts.conditionId || p.condition_ids.includes(opts.conditionId))
       if (term) rows = rows.filter((p) => p.name.toLowerCase().includes(term) || p.phone.includes(term) || String(p.mrn) === term)
-      rows = [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))
+      if (opts.due && opts.today) rows = rows.filter((p) => isDue(p, opts.due!, opts.today!))
+      rows.sort((a, b) => b.created_at.localeCompare(a.created_at))
+      if (opts.sort === 'name') rows.sort((a, b) => a.name.localeCompare(b.name))
+      else if (opts.sort === 'recent') rows.sort((a, b) => (b.last_visit_on ?? '').localeCompare(a.last_visit_on ?? ''))
+      else if (opts.due) rows.sort((a, b) => (a.next_review_on ?? '').localeCompare(b.next_review_on ?? ''))
       return { rows: rows.slice(0, opts.limit ?? 200), total: rows.length }
     },
+    async followupCounts(today) {
+      const all = db.patients.map(withSummary)
+      return { overdue: all.filter((p) => isDue(p, 'overdue', today)).length, week: all.filter((p) => isDue(p, 'week', today)).length }
+    },
     async getPatient(id) {
-      return db.patients.find((p) => p.id === id) ?? null
+      const p = db.patients.find((x) => x.id === id)
+      return p ? withSummary(p) : null
     },
     async savePatient(input: PatientInput, id?: string) {
       let saved: Patient
@@ -210,7 +246,7 @@ export function createDemoStore(): Store {
         saved = { ...old, ...input }
         db.patients = db.patients.map((p) => (p.id === id ? saved : p))
       } else {
-        saved = { ...input, id: uid(), mrn: db.nextMrn++, created_at: new Date().toISOString() }
+        saved = { ...input, id: uid(), mrn: db.nextMrn++, created_at: new Date().toISOString(), last_visit_on: null, next_review_on: null, visit_count: 0 }
         db.patients.push(saved)
       }
       save()
@@ -220,6 +256,8 @@ export function createDemoStore(): Store {
       db.patients = db.patients.filter((p) => p.id !== id)
       db.visits = db.visits.filter((v) => v.patient_id !== id)
       db.results = db.results.filter((r) => r.patient_id !== id)
+      photos = photos.filter((p) => p.patient_id !== id)
+      consents.delete(id)
       save()
     },
 
@@ -353,7 +391,33 @@ export function createDemoStore(): Store {
     },
 
     async dump() {
-      return { patients: [...db.patients], visits: [...db.visits], results: [...db.results] }
+      return {
+        patients: db.patients.map(withSummary),
+        visits: [...db.visits],
+        results: [...db.results],
+        photos: [...photos],
+        consents: [...consents].filter(([, c]) => c.on).map(([patient_id, c]) => ({ patient_id, on: c.on as string, by: c.by })),
+      }
+    },
+    async restore(b: Backup) {
+      if (db.patients.length > 0) throw new Error('This account already has patients. A backup can only be restored into an empty account.')
+      db = {
+        ...db,
+        nextMrn: Math.max(10000, ...b.patients.map((p) => p.mrn)) + 1,
+        clinic: { ...b.clinic },
+        conditions: [...b.conditions],
+        medicines: [...b.medicines],
+        templates: [...b.templates],
+        investigations: [...b.investigations],
+        panels: [...b.panels],
+        patients: [...b.patients],
+        visits: [...b.visits],
+        results: [...b.results],
+      }
+      photos = [...b.photos]
+      consents.clear()
+      for (const c of b.consents) consents.set(c.patient_id, { on: c.on, by: c.by })
+      save()
     },
 
     async getClinic() {

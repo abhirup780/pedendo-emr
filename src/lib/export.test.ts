@@ -3,7 +3,7 @@ import { buildSheets, exportFileName, toWorkbook } from './export'
 import type { ExportData, ExportOptions } from './export'
 import type { Patient, Visit } from './types'
 
-const patient = (o: Partial<Patient>): Patient => ({ id: 'p1', mrn: 10001, name: 'Aarav Sharma', dob: '2017-05-12', sex: 'M', phone: '9876543210', guardian_name: 'Mr. Rohit Sharma', guardian_relation: 'Father', address: '1 Road', allergies: '', notes: '', father_height_cm: 168, mother_height_cm: 155, created_at: '2026-01-10T05:00:00Z', condition_ids: ['ghd'], ...o })
+const patient = (o: Partial<Patient>): Patient => ({ id: 'p1', mrn: 10001, name: 'Aarav Sharma', dob: '2017-05-12', sex: 'M', phone: '9876543210', guardian_name: 'Mr. Rohit Sharma', guardian_relation: 'Father', address: '1 Road', allergies: '', notes: '', father_height_cm: 168, mother_height_cm: 155, created_at: '2026-01-10T05:00:00Z', condition_ids: ['ghd'], last_visit_on: null, next_review_on: null, visit_count: 0, ...o })
 const visit = (o: Partial<Visit>): Visit => ({ id: 'v', patient_id: 'p1', visit_date: '2026-10-08', height_cm: 121, weight_kg: 24.2, bp: '102/68', complaint: '', history: '', assessment: 'GHD', plan: '', print_plan: true, advice: '', review_date: '2027-01-08', medicines: [], investigations: ['IGF-1', 'TSH'], tanner: null, created_at: '2026-10-08T05:00:00Z', ...o })
 const gh = { name: 'Somatropin', dose: '0.7 mg', frequency: 'Once daily', route: 'Subcutaneous', duration: 'Continue', instructions: '' }
 

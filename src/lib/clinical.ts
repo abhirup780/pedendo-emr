@@ -86,6 +86,15 @@ export function addMonths(iso: string, months: number): string | null {
   return `${target.getFullYear()}-${p(target.getMonth() + 1)}-${p(target.getDate())}`
 }
 
+/** Add days to an ISO date. */
+export function addDays(iso: string, days: number): string {
+  const d = parseISODate(iso)
+  if (!d) return iso
+  d.setDate(d.getDate() + days)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 export const EMPTY_RX = { name: '', dose: '', frequency: '', route: '', duration: '', instructions: '' }
 
 /** One-line directions for print: "0.7 mg subcutaneous once daily at bedtime, continue". */

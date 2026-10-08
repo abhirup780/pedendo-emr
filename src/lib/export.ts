@@ -1,4 +1,4 @@
-import { decimalAge, midParentalHeight, parseISODate, todayISO } from './age'
+import { decimalAge, localDate, midParentalHeight, parseISODate, todayISO } from './age'
 import { bmi, dosePerKg, heightVelocity } from './clinical'
 import { tannerSummary } from './tanner'
 import type { Condition, Patient, Result, Visit } from './types'
@@ -45,7 +45,7 @@ export interface ExportOptions {
  * Local midnight in India is the previous evening in UTC and would show a day early.
  */
 const date = (iso: string | null): Date | null => {
-  const d = iso ? parseISODate(iso.slice(0, 10)) : null
+  const d = iso ? parseISODate(localDate(iso)) : null
   return d ? new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) : null
 }
 const round = (n: number | null, dp: number): number | null => (n == null ? null : Math.round(n * 10 ** dp) / 10 ** dp)

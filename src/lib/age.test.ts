@@ -27,3 +27,20 @@ describe('age', () => {
     expect(midParentalHeight(null, 155, 'M')).toBeNull()
   })
 })
+
+describe('localDate', () => {
+  it('leaves a plain date alone', async () => {
+    const { localDate } = await import('./age')
+    expect(localDate('2026-10-08')).toBe('2026-10-08')
+  })
+  it('reads a timestamp in the device time zone', async () => {
+    const { localDate } = await import('./age')
+    const late = localDate('2026-10-08T20:30:00Z')
+    // 20:30 UTC is 02:00 next day in India and 13:30 the same day in Los Angeles.
+    expect(late).toBe(new Date('2026-10-08T20:30:00Z').getDate() === 9 ? '2026-10-09' : '2026-10-08')
+  })
+  it('gives the target range around mid-parental height', async () => {
+    const { targetRange } = await import('./age')
+    expect(targetRange(168)).toBe('160.0–176.0 cm')
+  })
+})

@@ -24,10 +24,15 @@ export interface Patient {
   mother_height_cm: number | null
   created_at: string
   condition_ids: string[]
+  /** Kept by the database from the patient's visits; read-only here. */
+  last_visit_on: string | null
+  /** The review date set at the latest visit, or null. */
+  next_review_on: string | null
+  visit_count: number
 }
 
 /** Fields the doctor fills in; id, mrn and created_at come from the store. */
-export type PatientInput = Omit<Patient, 'id' | 'mrn' | 'created_at'>
+export type PatientInput = Omit<Patient, 'id' | 'mrn' | 'created_at' | 'last_visit_on' | 'next_review_on' | 'visit_count'>
 
 export interface SessionUser {
   email: string
@@ -159,4 +164,27 @@ export type PhotoInput = Omit<Photo, 'id' | 'created_at'>
 export interface PhotoConsent {
   on: string | null
   by: string
+}
+
+/** Every clinical record of the account, as read for export and backup. */
+export interface Dump {
+  patients: Patient[]
+  visits: Visit[]
+  results: Result[]
+  /** Photograph records (Drive file IDs), not the images. */
+  photos: Photo[]
+  consents: { patient_id: string; on: string; by: string }[]
+}
+
+/** The backup file: the dump plus the doctor's settings and lists. */
+export interface Backup extends Dump {
+  app: 'pedendo-emr'
+  format: number
+  exported_at: string
+  clinic: Clinic
+  conditions: Condition[]
+  medicines: Medicine[]
+  templates: RxTemplate[]
+  investigations: Investigation[]
+  panels: Panel[]
 }

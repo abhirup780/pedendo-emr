@@ -18,7 +18,7 @@ export default function Login() {
   return (
     <>
       <DemoBanner />
-      <div className="login">
+      <main className="login">
         <div className="card">
           <h1>Pediatric Endocrinology</h1>
           <div className="muted">Patient records and prescriptions. Sign in with the clinic's Google account.</div>
@@ -27,7 +27,7 @@ export default function Login() {
             {store.mode === 'demo' ? 'Open the demo' : 'Sign in with Google'}
           </button>
         </div>
-      </div>
+      </main>
     </>
   )
 }
