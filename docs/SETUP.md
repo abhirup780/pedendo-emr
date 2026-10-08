@@ -24,25 +24,35 @@ and the photographs. No Google Cloud Console is needed.
    The email is only a sign-in name: no message is ever sent to it.
 3. Keep the password in a password manager or written down somewhere safe.
 
-## 3. Put the app online (Cloudflare Workers)
+## 3. Put the app online (Cloudflare Pages)
 
-1. In Cloudflare → Workers & Pages, create a Worker by importing this GitHub repository.
-   Build command `npm run build`, deploy command `npx wrangler deploy`. The rest (the `dist`
-   folder, and sending every address to the app) is read from `wrangler.jsonc` in the repository.
-2. Add these as **build** variables (the Worker's Settings → Build), not runtime variables:
-   they are read while the app is being built.
+1. In Cloudflare → Workers & Pages → Create application, follow the small "Looking to deploy
+   Pages?" link at the foot of the screen (the main choices there make a Worker instead) and
+   connect this GitHub repository. Framework preset None, build command `npm run build`, build
+   output directory `dist`.
+2. Add these under Environment variables. They are read while the app is being built, so
+   after changing one, deploy again:
 
    | Name | Value |
    |---|---|
    | `VITE_SUPABASE_URL` | the Project URL |
    | `VITE_SUPABASE_ANON_KEY` | the anon public key |
-   | `VITE_ALLOWED_EMAIL` | the clinic email address from step 2 (optional) |
+   | `VITE_ALLOWED_EMAIL` | the clinic email address from step 2 (optional; leave it out if more than one account signs in) |
 
-3. Deploy, open the address, and sign in with the email and password.
+3. Deploy, open the `pages.dev` address, and sign in with the email and password. Open a
+   patient and reload the page: it should come back, not "not found".
+4. Own address (optional; the live app is at `emr.drsayan.in`). In the Pages project → Custom
+   domains, add the address. Then, where the domain's DNS is kept (GoDaddy for `drsayan.in`),
+   add one record: type CNAME, name `emr`, value the project's `pages.dev` address. Nothing
+   else on the domain changes. Cloudflare first, the DNS record second.
 
-Do not add a `public/_redirects` file with `/* /index.html 200`, the usual rule on other static
-hosts: Cloudflare Workers refuses the deploy with "Infinite loop detected". The
-`not_found_handling` line in `wrangler.jsonc` does that job.
+After an update, a browser that had the app open may show the old copy until a hard reload
+(Ctrl+Shift+R).
+
+No `public/_redirects` file is needed: Pages sends unknown addresses to the app by itself.
+The app can also be deployed as a Cloudflare Worker (`npx wrangler deploy`, which reads
+`wrangler.jsonc`), but a Worker takes a custom address only when the whole domain's DNS is
+moved to Cloudflare, and it refuses a `_redirects` file with `/* /index.html 200`.
 
 ## 4. Lock the door
 

@@ -548,7 +548,7 @@ export default function Settings() {
   const tab = TABS.some((t) => t.key === wanted) ? wanted : 'clinic'
   const setTab = (key: string) => setParams({ tab: key }, { replace: true })
   return (
-    <main className={tab === 'print' ? 'page' : 'page narrow'}>
+    <main className="page">
       <h1>Settings</h1>
       <div className="tabs" role="tablist">
         {TABS.map((t) => (
