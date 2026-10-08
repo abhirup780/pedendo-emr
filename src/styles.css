@@ -1,4 +1,6 @@
 :root {
+  /* One committed light look: stop a dark-mode browser restyling form controls. */
+  color-scheme: light;
   --bg: #f3f5f4;
   --surface: #ffffff;
   --line: #dde3e1;
@@ -22,6 +24,8 @@ body { background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', s
 a { color: var(--primary); }
 a:hover { color: var(--primary-dark); }
 button, input, select, textarea { font: inherit; color: inherit; }
+input, select, textarea { background-color: #fff; color: var(--ink); }
+input::placeholder, textarea::placeholder { color: #6b7a80; opacity: 1; }
 button { cursor: pointer; }
 h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
 h2 { margin: 0; font-size: 16px; font-weight: 600; }
