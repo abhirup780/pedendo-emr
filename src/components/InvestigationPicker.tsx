@@ -14,8 +14,9 @@ interface Props {
 
 export default function InvestigationPicker({ catalog, panels, value, onChange, onSavePanel }: Props) {
   const [q, setQ] = useState('')
-  // On a phone the full list is several screens long, so it starts folded away there.
-  const [open, setOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia('(max-width: 700px)').matches)
+  // The full list is long, so it starts folded away: panels and search cover most visits, and
+  // the list opens like a dropdown (typing in the search box opens it too).
+  const [open, setOpen] = useState(false)
   const [panelName, setPanelName] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
 
@@ -91,12 +92,13 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
               }
             }}
           />
-          <button type="button" className="icon-btn" aria-expanded={open} aria-label={open ? 'Hide the list' : 'Show the list'} onClick={() => setOpen(!open)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : undefined }}><path d="M6 9l6 6 6-6" /></svg>
+          <button type="button" className="btn small list-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+            {open ? 'Hide list' : 'Browse list'}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : undefined }}><path d="m6 9 6 6 6-6" /></svg>
           </button>
         </div>
         {open && (
-          <div className="picker-list">
+          <div className="picker-list" role="group" aria-label="All investigations">
             {groups.map((g) => (
               <div key={g.category}>
                 <div className="cat">{g.category}</div>

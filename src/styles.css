@@ -127,6 +127,7 @@ main.narrow { max-width: 860px; }
 .cols { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .cols > .main { flex: 3 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .cols > .side { flex: 2 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.cols > .side.follow { position: sticky; top: var(--side-top, 16px); }
 .field input.num { font-family: var(--mono); font-size: 17px; }
 .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; margin-top: 14px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .calc > div { background: #f7f9f8; padding: 10px 12px; }
@@ -230,7 +231,8 @@ main.narrow { max-width: 860px; }
 .picker-box .icon-btn { width: 36px; height: 36px; flex: 0 0 36px; background: #eceFee; color: var(--ink); }
 .picked { display: inline-flex; align-items: center; padding-left: 10px; border-radius: 6px; background: #ddefee; color: #0a4f57; font-size: 13px; font-weight: 500; }
 .picked button { width: 32px; height: 32px; border: 0; background: transparent; color: inherit; font-size: 17px; line-height: 1; }
-.picker-list { margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfb; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 14px 18px; }
+.picker-box .list-toggle { flex: 0 0 auto; gap: 6px; }
+.picker-list { max-height: 400px; overflow-y: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfb; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 14px 18px; }
 .picker-list .cat { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
 .picker-list .opt { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; text-align: left; font-size: 13.5px; }
 .picker-list .opt:hover { background: #eef2f1; }
@@ -458,7 +460,7 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
   .bead { min-width: 40px; }
   .ph-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .dl { grid-template-columns: minmax(96px, 36%) 1fr; }
-  .picker-list { grid-template-columns: 1fr; }
+  .picker-list { grid-template-columns: 1fr; max-height: none; }
   .picker-list .opt { min-height: 44px; }
   .rrow .btn.small, .tag-row .btn.small { min-height: 40px; }
 

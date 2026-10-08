@@ -82,6 +82,17 @@ the single source of truth — commit and push finished work.
 - Printing uses `window.print()` with `@page` A4 and the `.sheet` layout in `styles.css`; the
   artifact preview cannot print, so `PrintRx` hides the button when `VITE_PREVIEW` is set.
 
+## Visit screen layout
+
+- Two columns on a wide screen, kept about the same height: left is the examination
+  (measurements, puberty, clinical notes), right is the plan (prescription, investigations,
+  latest results). The investigation list is folded by default and opens like a dropdown
+  ("Browse list", or by typing), 400 px tall with its own scroll. Do not put a long,
+  always-open section in one column again.
+- The right column is `position: sticky` (`.side.follow`); a small effect in `Visit.tsx` sets
+  `--side-top` from its height so that a column taller than the window sticks by its foot,
+  above the save bar. So the shorter column never leaves an empty area beside the longer one.
+
 ## Stage 3 notes
 
 - Investigations advised at a visit are a JSON array of names on the `visits` row; results are
@@ -204,7 +215,7 @@ the single source of truth — commit and push finished work.
   into cards by CSS grid areas (cell order in the markup matters: check `nth-child` rules
   before adding a column); chip rows and tabs scroll sideways; `.actions` bars stick to the
   foot of long forms (the visit screen's bar, `.vbar`, sticks on every screen size: delete on
-  the left, the two save buttons on the right, short labels on a phone); the investigation list starts folded; the print layout editor's preview
+  the left, the two save buttons on the right, short labels on a phone); the investigation list has no inner scroll (it starts folded on every screen size); the print layout editor's preview
   opens as a full-screen panel.
 - `components/FitSheet.tsx` shrinks a prescription sheet as a whole to fit the screen (CSS
   `zoom`), so the phone preview is the true layout; `@media print` cancels the shrink. A PDF

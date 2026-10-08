@@ -74,6 +74,22 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const [loaded, setLoaded] = useState(false)
   const [restoredAt, setRestoredAt] = useState('')
   const baseline = useRef<Editable | null>(null)
+  // The right-hand column follows the page as it scrolls, so no empty space is left beside a
+  // longer left-hand column. If it is taller than the window it scrolls with the page until its
+  // foot is in view and then stays there, above the save bar.
+  const [side, setSide] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!side) return
+    const place = () => side.style.setProperty('--side-top', `${Math.min(16, window.innerHeight - side.offsetHeight - 88)}px`)
+    place()
+    window.addEventListener('resize', place)
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place)
+    ro?.observe(side)
+    return () => {
+      window.removeEventListener('resize', place)
+      ro?.disconnect()
+    }
+  }, [side])
   const draftKey = `visit:${id}:${vid ?? 'new'}`
   const apply = (e: Editable) => {
     setF(e.f)
@@ -426,10 +442,9 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             </div>
           </section>
 
-          <InvestigationPicker catalog={testCatalog} panels={panels} value={tests} onChange={setTests} onSavePanel={savePanel} />
         </div>
 
-        <div className="side">
+        <div className="side follow" ref={setSide}>
           <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="row">
               <h2 className="grow">Prescription</h2>
@@ -532,6 +547,8 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               </div>
             )}
           </section>
+
+          <InvestigationPicker catalog={testCatalog} panels={panels} value={tests} onChange={setTests} onSavePanel={savePanel} />
 
           <Results patientId={id} catalog={testCatalog} mode="latest" />
 
