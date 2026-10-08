@@ -5,6 +5,7 @@ import { Swatches, TagChip } from '../components/Tag'
 import { formatAge, parseISODate, todayISO } from '../lib/age'
 import { store } from '../lib/store'
 import type { Condition, Patient, PatientInput, Sex } from '../lib/types'
+import DateField from '../components/DateField'
 
 const BLANK = {
   name: '',
@@ -218,7 +219,7 @@ export default function PatientForm() {
             </label>
             <label className="field">
               Date of birth
-              <input type="date" value={f.dob} max={todayISO()} onChange={(e) => set('dob', e.target.value)} />
+              <DateField value={f.dob} max={todayISO()} onChange={(v) => set('dob', v)} />
               {show('dob') ?? (dob && !errs.dob ? <span className="hint">Age today: {formatAge(f.dob)}</span> : null)}
             </label>
             <div className="field">

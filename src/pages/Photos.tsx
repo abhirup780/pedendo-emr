@@ -9,6 +9,7 @@ import { sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import { PHOTO_VIEWS } from '../lib/types'
 import type { Patient, Photo, PhotoConsent, Visit } from '../lib/types'
+import DateField from '../components/DateField'
 
 /** Loads one image from the file store and shows it; images are fetched only when on screen. */
 function Picture({ photo, large }: { photo: Photo; large?: boolean }) {
@@ -192,7 +193,7 @@ export default function Photos() {
                 </label>
                 <label className="field" style={{ flex: '0 1 190px' }}>
                   Date taken
-                  <input type="date" value={takenOn} max={todayISO()} onChange={(e) => setTakenOn(e.target.value || todayISO())} />
+                  <DateField value={takenOn} max={todayISO()} onChange={(v) => setTakenOn(v || todayISO())} />
                 </label>
                 <div className="row" style={{ alignSelf: 'flex-end', gap: 8 }}>
                   <button type="button" className="btn primary" disabled={!canAdd} onClick={() => camera.current?.click()}>Take photo</button>

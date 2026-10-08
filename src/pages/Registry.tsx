@@ -8,6 +8,7 @@ import type { ExportData, Sheet, SheetKey } from '../lib/export'
 import { store } from '../lib/store'
 import { tagColor } from '../lib/tags'
 import type { Backup, Condition } from '../lib/types'
+import DateField from '../components/DateField'
 
 const PREVIEW = !!import.meta.env.VITE_PREVIEW
 const RANGES = ['All dates', 'This year', 'Last 12 months', 'Custom'] as const
@@ -197,8 +198,8 @@ export default function Registry() {
             </div>
             {range === 'Custom' && (
               <div className="row">
-                <label className="field" style={{ flex: '0 1 180px' }}>From<input type="date" value={from} max={today} onChange={(e) => setFrom(e.target.value)} /></label>
-                <label className="field" style={{ flex: '0 1 180px' }}>To<input type="date" value={to} max={today} onChange={(e) => setTo(e.target.value)} /></label>
+                <label className="field" style={{ flex: '0 1 180px' }}>From<DateField value={from} max={today} onChange={setFrom} /></label>
+                <label className="field" style={{ flex: '0 1 180px' }}>To<DateField value={to} max={today} onChange={setTo} /></label>
                 {rangeBad && <span className="err" style={{ color: '#8c1d18', fontWeight: 500 }}>"From" must be on or before "To".</span>}
               </div>
             )}

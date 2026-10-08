@@ -3,6 +3,7 @@ import { formatDate, todayISO } from '../lib/age'
 import { latestPerTest } from '../lib/investigations'
 import { store } from '../lib/store'
 import type { Investigation, Result, ResultFlag } from '../lib/types'
+import DateField from './DateField'
 
 const FLAGS: { key: ResultFlag; label: string }[] = [
   { key: 'low', label: 'Low' },
@@ -97,7 +98,7 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
           </label>
           <label className="field">
             Report date
-            <input type="date" value={d.date} max={todayISO()} onChange={(e) => setD({ ...d, date: e.target.value })} />
+            <DateField value={d.date} max={todayISO()} onChange={(v) => setD({ ...d, date: v })} />
             {dateBad && <span className="err">Enter a date that is not in the future.</span>}
           </label>
           <div className="field wide">

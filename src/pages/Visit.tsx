@@ -15,6 +15,7 @@ import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
 import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
 import { NONE } from '../lib/text'
+import DateField from '../components/DateField'
 
 /** A template used on this visit: what it added, so it can be taken off again as a whole. */
 interface AppliedTemplate {
@@ -354,7 +355,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
         </div>
         <label className="field" style={{ flex: '0 1 190px' }}>
           Visit date
-          <input type="date" value={f.date} max={todayISO()} onChange={(e) => set('date', e.target.value)} />
+          <DateField value={f.date} max={todayISO()} onChange={(v) => set('date', v)} />
           {show('date')}
         </label>
       </div>
@@ -569,7 +570,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                     {n} {n === 1 ? 'month' : 'months'}
                   </button>
                 ))}
-                <input id="review" type="date" value={f.review} min={f.date} onChange={(e) => set('review', e.target.value)} style={{ flex: '1 1 160px', width: 'auto' }} />
+                <DateField id="review" value={f.review} min={f.date} onChange={(v) => set('review', v)} style={{ flex: '1 1 160px' }} />
               </div>
               {show('review')}
             </div>

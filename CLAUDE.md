@@ -199,6 +199,13 @@ the single source of truth — commit and push finished work.
 - `friendly()` in `store.supabase.ts` rewords database errors; UI code still matches
   `/duplicate key/` for unique violations, so leave that message alone.
 - Timestamps are shown with `localDate()`; plain dates never go through `new Date(string)`.
+- Every date box is `components/DateField.tsx`, never `<input type="date">`: the browser's own
+  calendar did not open inside the embedded preview and shows month first on US-English
+  devices. It reads and shows dd/mm/yyyy (`src/lib/dateinput.ts`, unit-tested: day always
+  first, slashes added while typing, "8 Oct 2026" and pasted ISO accepted) and has its own
+  calendar with month and year lists, drawn through a portal to `document.body` so a sticky
+  column or the save bar cannot cover it; on a phone it is a sheet at the foot of the screen.
+  The stored value stays `YYYY-MM-DD`.
 - `public/_headers`: security headers for Cloudflare Pages. The CSP is report-only until the
   owner's trial run shows a clean console with live Google sign-in and Drive.
 - An axe-core scan (wcag2a/aa + best-practice) was clean on every screen; keep it that way.
