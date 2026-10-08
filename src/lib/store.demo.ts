@@ -11,7 +11,7 @@ import { STARTER_CONDITIONS } from './tags'
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v8'
+const KEY = 'pedendo-demo-v9'
 
 interface Db {
   signedIn: boolean
@@ -36,7 +36,7 @@ const addMonthsISO = (iso: string, n: number) => {
 }
 
 function seed(): Db {
-  const conditions: Condition[] = STARTER_CONDITIONS.map((c) => ({ id: uid(), ...c }))
+  const conditions: Condition[] = STARTER_CONDITIONS.map((c) => ({ id: uid(), ...c, protocols: [] }))
   const id = (name: string) => conditions.find((c) => c.name === name)!.id
   const sample: [string, string, 'M' | 'F', string, string, string[]][] = [
     ['Aarav Sharma', '2017-05-12', 'M', '9876543210', 'Mr. Rohit Sharma', ['GH deficiency']],
@@ -236,10 +236,10 @@ export function createDemoStore(): Store {
         throw new Error(`A tag called "${name}" already exists.`)
       let saved: Condition
       if (c.id) {
-        saved = { id: c.id, name, color: c.color }
+        saved = { id: c.id, name, color: c.color, protocols: c.protocols ?? db.conditions.find((x) => x.id === c.id)?.protocols ?? [] }
         db.conditions = db.conditions.map((x) => (x.id === c.id ? saved : x))
       } else {
-        saved = { id: uid(), name, color: c.color }
+        saved = { id: uid(), name, color: c.color, protocols: c.protocols ?? [] }
         db.conditions.push(saved)
       }
       save()

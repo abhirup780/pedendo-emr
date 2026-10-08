@@ -26,7 +26,8 @@ export interface Store {
 
   listConditions(): Promise<Condition[]>
   conditionCounts(): Promise<Record<string, number>>
-  saveCondition(c: { id?: string; name: string; color: string }): Promise<Condition>
+  /** `protocols` left out keeps the tag's current links (none for a new tag). */
+  saveCondition(c: { id?: string; name: string; color: string; protocols?: string[] }): Promise<Condition>
   deleteCondition(id: string): Promise<void>
 
   listPatients(opts?: ListOptions): Promise<{ rows: Patient[]; total: number }>

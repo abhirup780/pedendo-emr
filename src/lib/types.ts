@@ -8,6 +8,11 @@ export interface Condition {
   name: string
   /** Key into TAG_COLORS. */
   color: string
+  /**
+   * Keys of the guideline protocols this tag brings up on a visit (src/lib/protocols.ts).
+   * Empty means "match by the tag's name".
+   */
+  protocols: string[]
 }
 
 export interface Patient {

@@ -11,9 +11,10 @@ import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
 import { addMonths, bmi, dosePerKg, heightVelocity, validBp } from '../lib/clinical'
 import { dropDraft, readDraft, saveDraft } from '../lib/device'
 import { refSex, sexLabel } from '../lib/sex'
+import { doseGuides, protocolsForTags } from '../lib/protocols'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
-import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
+import type { Condition, Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
 import { NONE } from '../lib/text'
 import DateField from '../components/DateField'
 
@@ -64,6 +65,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const [visits, setVisits] = useState<Visit[]>([])
   const [catalog, setCatalog] = useState<Medicine[]>([])
   const [templates, setTemplates] = useState<RxTemplate[]>([])
+  const [tags, setTags] = useState<Condition[]>([])
   const [f, setF] = useState({ ...BLANK, date: todayISO() })
   const [printPlan, setPrintPlan] = useState(true)
   const [tests, setTests] = useState<string[]>([])
@@ -112,9 +114,10 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   useEffect(() => {
     let live = true
     setLoaded(false)
-    Promise.all([store.getPatient(id), store.listVisits(id), store.listMedicines(), store.listTemplates(), store.listInvestigations(), store.listPanels()]).then(
-      ([p, vs, ms, ts, inv, pn]) => {
+    Promise.all([store.getPatient(id), store.listVisits(id), store.listMedicines(), store.listTemplates(), store.listInvestigations(), store.listPanels(), store.listConditions()]).then(
+      ([p, vs, ms, ts, inv, pn, cs]) => {
         if (!live) return
+        setTags(cs)
         setPatient(p)
         setVisits(vs)
         setCatalog(ms)
@@ -329,6 +332,8 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
     )
 
   const b = bmi(h, w)
+  // Guideline protocols for this patient's condition tags (thyroid so far): suggestions only.
+  const protocols = protocolsForTags(tags.filter((c) => patient.condition_ids.includes(c.id)))
   // Live SDS against the published reference for the child's age on the visit date.
   const ageDays = ageInDays(patient.dob, f.date)
   const z = visitSds({ visit_date: f.date, height_cm: h, weight_kg: w }, patient.dob, patient.sex)
@@ -542,6 +547,17 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                       </label>
                     ))}
                   </div>
+                  {/* The guideline's dose wording for this patient's protocols. Never printed, never filled in. */}
+                  {doseGuides(m.name, protocols).map((g) => (
+                    <span className="hint guide" key={g.protocol}>
+                      {g.verified && g.text ? (
+                        <><strong>Guide, {g.protocol}:</strong> {g.text}{g.max && ` ${g.max}`} <span className="src">({g.source}; draft, check the source)</span></>
+                      ) : (
+                        <><strong>{g.protocol}:</strong> no guideline dose is held for this medicine.</>
+                      )}
+                      {g.prescriberNote && <> {g.prescriberNote}</>}
+                    </span>
+                  ))}
                 </div>
               )
             })}
@@ -555,12 +571,28 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               onAdd={addMed}
               onRemove={(name) => dropMeds((m) => m.name !== name)}
               onTemplate={applyTemplate}
+              protocols={protocols}
             />
 
             <label className="field">
               Advice
               <textarea rows={3} value={f.advice} onChange={(e) => set('advice', e.target.value)} />
             </label>
+            {protocols.some((p) => p.advice.length > 0) && (
+              <details className="advice-more">
+                <summary>Advice lines from {protocols.filter((p) => p.advice.length > 0).map((p) => p.name).join(', ')} <span className="draft">draft</span></summary>
+                <div className="advice-lines">
+                  {protocols.flatMap((p) => p.advice.map((a) => ({ p, a }))).map(({ p, a }) => {
+                    const used = f.advice.includes(a.text)
+                    return (
+                      <button type="button" key={p.key + a.text} className="opt" aria-pressed={used} disabled={used} onClick={() => set('advice', f.advice.trim() ? `${f.advice.trim()}\n${a.text}` : a.text)}>
+                        <span className="grow">{used ? '✓' : '+'} {a.text}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </details>
+            )}
 
             <div className="field">
               <label htmlFor="review">Review date</label>
@@ -590,7 +622,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             )}
           </section>
 
-          <InvestigationPicker catalog={testCatalog} panels={panels} value={tests} onChange={setTests} onSavePanel={savePanel} />
+          <InvestigationPicker catalog={testCatalog} panels={panels} value={tests} onChange={setTests} onSavePanel={savePanel} protocols={protocols} />
 
           <Results patientId={id} catalog={testCatalog} mode="latest" />
 

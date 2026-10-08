@@ -108,6 +108,22 @@ the single source of truth — commit and push finished work.
   removes or renames by hand are forgotten by the template (`forget`), so removing the template
   can never take away something added by hand. Saved templates are deleted in Settings.
 
+## Guideline protocols
+
+- `reference-data/protocols/*.json` (see its README) -> `npm run build:protocols` ->
+  `src/lib/protocol-data.ts`; logic in `src/lib/protocols.ts`. Thyroid only so far; the content
+  is a DRAFT until the doctor has checked it, and the screens say so.
+- Hard rules: a protocol medicine is added with the dose blank; the guideline dose wording is
+  shown as a guide only (`doseGuides`), only when `verified`, never printed, never computed.
+  Never add a drug, dose or interval from memory: it goes into the JSON with its source,
+  quote and URL, or not at all.
+- Tags pick protocols: `Condition.protocols` (migration 0012) when set, otherwise by tag name
+  or alias (`protocolsForTags`). Linking is under Settings, Condition tags; the read-only
+  review page is Settings, Protocols.
+- On a visit the protocols feed `InvestigationPicker` (suggested sets, a "For <condition>"
+  group that the browse window opens on), `MedicinePicker` (suggestions, a "For <condition>"
+  group with dose guides) and the advice lines under Advice.
+
 ## Stage 3 notes
 
 - Investigations advised at a visit are a JSON array of names on the `visits` row; results are

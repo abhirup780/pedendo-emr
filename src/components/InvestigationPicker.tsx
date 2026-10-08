@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { bestMatch, categoryOrder, rankedMatches } from '../lib/investigations'
-import BrowseWindow from './BrowseWindow'
+import BrowseWindow, { ProtocolNote } from './BrowseWindow'
+import type { Protocol } from '../lib/protocols'
 import type { Investigation, Panel } from '../lib/types'
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   onChange: (next: string[]) => void
   /** Saves the current selection as a panel; resolves to a short confirmation. */
   onSavePanel: (name: string) => Promise<string>
+  /** Guideline protocols for this patient's condition tags; their test sets are offered first. */
+  protocols?: Protocol[]
 }
 
 export const Tick = ({ on }: { on: boolean }) => <span className="box" aria-hidden="true">{on ? '✓' : ''}</span>
@@ -20,7 +23,7 @@ export const Tick = ({ on }: { on: boolean }) => <span className="box" aria-hidd
  * chosen tests, and a search box that suggests as you type. The whole list, however long it
  * grows, is browsed in a window of its own ("Browse all").
  */
-export default function InvestigationPicker({ catalog, panels, value, onChange, onSavePanel }: Props) {
+export default function InvestigationPicker({ catalog, panels, value, onChange, onSavePanel, protocols = [] }: Props) {
   const [q, setQ] = useState('')
   const [browsing, setBrowsing] = useState(false)
   const [panelName, setPanelName] = useState<string | null>(null)
@@ -28,7 +31,8 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
 
   const has = (n: string) => value.includes(n)
   const toggle = (n: string) => onChange(has(n) ? value.filter((x) => x !== n) : [...value, n])
-  const names = useMemo(() => catalog.map((i) => i.name), [catalog])
+  // Tests named by the patient's protocols can be typed too, even if not on the doctor's list.
+  const names = useMemo(() => [...new Set([...catalog.map((i) => i.name), ...protocols.flatMap((p) => p.sets.flatMap((s) => s.items.map((i) => i.test)))])], [catalog, protocols])
 
   // What Enter will add: the best match from the list, or the typed text when nothing matches.
   const enterAdds = bestMatch(names, q) ?? q.trim()
@@ -58,6 +62,19 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
           {value.length === 0 ? 'None advised' : `${value.length} advised · printed on the prescription`}
         </span>
       </div>
+
+      {protocols.map((p) => (
+        <div key={p.key}>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>Suggested for {p.name} <span className="draft">draft</span></div>
+          <div className="suggest">
+            {p.sets.map((s) => (
+              <button type="button" key={s.name} className="panel-btn proto" title={s.when} onClick={() => onChange([...value, ...s.items.map((i) => i.test).filter((n) => !has(n))])}>
+                + {s.name} <span className="muted">({s.items.length})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
 
       {panels.length > 0 && (
         <div>
@@ -134,24 +151,31 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
         </div>
       )}
 
-      {browsing && <BrowseDialog catalog={catalog} panels={panels} value={value} onChange={onChange} onClose={() => setBrowsing(false)} />}
+      {browsing && <BrowseDialog catalog={catalog} panels={panels} protocols={protocols} value={value} onChange={onChange} onClose={() => setBrowsing(false)} />}
     </section>
   )
 }
 
 /** The whole investigation list in its own window: groups down the side, search across all. */
-function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props, 'onSavePanel'> & { onClose: () => void }) {
+function BrowseDialog({ catalog, panels, protocols = [], value, onChange, onClose }: Omit<Props, 'onSavePanel'> & { onClose: () => void }) {
   const [q, setQ] = useState('')
-  const [group, setGroup] = useState<string | null>(null)
+  // A patient with a protocol starts on it: that is what the doctor most likely wants.
+  const PKEY = (k: string) => `\u0000${k}`
+  const [group, setGroup] = useState<string | null>(protocols.length > 0 ? PKEY(protocols[0].key) : null)
+  const active = protocols.find((p) => PKEY(p.key) === group)
 
   const has = (n: string) => value.includes(n)
   const toggle = (n: string) => onChange(has(n) ? value.filter((x) => x !== n) : [...value, n])
   const categories = useMemo(() => categoryOrder(catalog.map((i) => i.category)), [catalog])
+  const allCategories = categoryOrder([...catalog.map((i) => i.category), ...protocols.flatMap((p) => p.sets.flatMap((st) => st.items.map((i) => i.category)))])
   const t = q.trim().toLowerCase()
   // Searching looks through every group; otherwise the chosen group (or all of them) is shown.
-  const shown = catalog.filter((i) => (t ? i.name.toLowerCase().includes(t) : group == null || i.category === group))
-  const groups = categories.map((c) => ({ category: c, items: shown.filter((i) => i.category === c) })).filter((g) => g.items.length > 0)
-  const exact = catalog.some((i) => i.name.toLowerCase() === t)
+  // While searching, tests that only the patient's protocols name are found as well.
+  const protoOnly: Investigation[] = protocols.flatMap((p) => p.sets.flatMap((st) => st.items)).filter((i, n, all) => all.findIndex((x) => x.test === i.test) === n && !catalog.some((c) => c.name === i.test)).map((i) => ({ id: `proto:${i.test}`, name: i.test, category: i.category, unit: i.unit }))
+  const pool = t ? [...catalog, ...protoOnly] : catalog
+  const shown = pool.filter((i) => (t ? i.name.toLowerCase().includes(t) : group == null || i.category === group))
+  const groups = active && !t ? [] : allCategories.map((c) => ({ category: c, items: shown.filter((i) => i.category === c) })).filter((g) => g.items.length > 0)
+  const exact = pool.some((i) => i.name.toLowerCase() === t)
   const extra = value.filter((n) => !catalog.some((i) => i.name === n))
 
   return (
@@ -162,6 +186,10 @@ function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props,
       q={q}
       onSearch={setQ}
       groups={[
+        ...protocols.map((p) => {
+          const tests = [...new Set(p.sets.flatMap((s) => s.items.map((i) => i.test)))]
+          return { key: PKEY(p.key), label: `For ${p.name}`, count: tests.length, chosen: tests.filter(has).length }
+        }),
         { key: null, label: 'All', count: catalog.length },
         ...categories.map((c) => ({ key: c, label: c, count: catalog.filter((i) => i.category === c).length, chosen: catalog.filter((i) => i.category === c && has(i.name)).length })),
       ]}
@@ -187,6 +215,33 @@ function BrowseDialog({ catalog, panels, value, onChange, onClose }: Omit<Props,
         )
       }
     >
+      {active && !t && (
+        <>
+          {active.sets.map((s) => (
+            <div className="inv-group" key={s.name}>
+              <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+                <div className="grow">
+                  <div className="cat" style={{ marginBottom: 2 }}>{s.name}</div>
+                  <div className="muted" style={{ fontSize: 13 }}>{s.when}</div>
+                </div>
+                <button type="button" className="btn small outline" onClick={() => onChange([...value, ...s.items.map((i) => i.test).filter((n) => !has(n))])}>Add all {s.items.length}</button>
+              </div>
+              <div className="inv-grid meds" style={{ marginTop: 8 }}>
+                {s.items.map((i) => (
+                  <button type="button" key={i.test} className="opt med-opt" aria-pressed={has(i.test)} onClick={() => toggle(i.test)}>
+                    <Tick on={has(i.test)} />
+                    <span className="grow">
+                      <span className="t">{i.test}</span>
+                      {i.note && <span className="d">{i.note}</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <ProtocolNote protocol={active} />
+        </>
+      )}
       {panels.length > 0 && !t && group == null && (
         <div className="inv-group">
           <div className="cat">Panels</div>

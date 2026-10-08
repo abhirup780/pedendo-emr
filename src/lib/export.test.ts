@@ -9,7 +9,7 @@ const visit = (o: Partial<Visit>): Visit => ({ id: 'v', patient_id: 'p1', visit_
 const gh = { name: 'Somatropin', dose: '0.7 mg', frequency: 'Once daily', route: 'Subcutaneous', duration: 'Continue', instructions: '' }
 
 const data: ExportData = {
-  conditions: [{ id: 'ghd', name: 'GH deficiency', color: 'teal' }, { id: 't1', name: 'Type 1 diabetes', color: 'orange' }],
+  conditions: [{ id: 'ghd', name: 'GH deficiency', color: 'teal', protocols: [] }, { id: 't1', name: 'Type 1 diabetes', color: 'orange', protocols: [] }],
   patients: [patient({}), patient({ id: 'p2', mrn: 10002, name: 'Riya Sen', sex: 'F', dob: '2014-07-30', condition_ids: ['t1'], father_height_cm: null, mother_height_cm: null })],
   visits: [
     visit({ id: 'v1', visit_date: '2026-07-14', height_cm: 118.7, weight_kg: 23.1, tanner: { g: 1, b: null, p: 1, testis_r: 3, testis_l: 3, signs: [] } }),

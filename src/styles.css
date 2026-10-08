@@ -304,6 +304,28 @@ html:has(dialog[open]) { overflow: hidden; }
 .med-opt .box { margin-top: 2px; }
 .med-opt .t { display: block; font-weight: 500; }
 .med-opt .d { display: block; font-size: 12.5px; color: var(--muted); }
+.tag-link { flex: 1 1 100%; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 8px; background: #f7f9f8; }
+details.proto > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 14px 16px; cursor: pointer; }
+details.proto[open] > summary { border-bottom: 1px solid var(--line); }
+.proto-body { display: flex; flex-direction: column; gap: 16px; padding: 16px; font-size: 14px; line-height: 1.5; }
+.proto-body .proto-h { margin: 0 0 6px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.proto-body ul { margin: 4px 0 0; padding-left: 20px; }
+.proto-body li { margin: 2px 0; overflow-wrap: anywhere; }
+.proto-set { margin-bottom: 10px; }
+.proto-meds { display: flex; flex-direction: column; gap: 6px; }
+.proto-med { border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.med-opt .g { display: block; margin-top: 4px; font-size: 12.5px; color: var(--ink); }
+.med-opt .g.none { color: var(--muted); font-style: italic; }
+.src { color: var(--muted); }
+.proto-note { padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-fg); font-size: 12.5px; }
+.proto-note a { color: inherit; }
+.draft { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn-fg); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.panel-btn.proto { border-style: dashed !important; }
+.guide { display: block; padding: 6px 8px; border-radius: 6px; background: #f1f6f6; color: var(--ink); font-size: 12.5px; line-height: 1.4; }
+.advice-more { font-size: 13px; }
+.advice-more summary { cursor: pointer; padding: 6px 0; color: var(--primary); font-weight: 500; }
+.advice-lines { display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
+.advice-lines .opt:disabled { color: var(--muted); }
 .inv-foot { display: flex; align-items: flex-end; gap: 14px; padding: 12px 20px; border-top: 1px solid var(--line); background: #f7f9f8; }
 .inv-chosen { flex: 1 1 auto; min-width: 0; max-height: 84px; overflow-y: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
 .result-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: #f7f9f8; }

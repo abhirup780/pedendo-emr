@@ -9,8 +9,86 @@ import { smallImageDataUrl } from '../lib/image'
 import { categoryOrder, STARTER_INVESTIGATIONS, STARTER_PANELS } from '../lib/investigations'
 import { STARTER_MEDICINES } from '../lib/medicines'
 import { Swatches } from '../components/Tag'
+import { cite, PROTOCOLS, protocolsByName } from '../lib/protocols'
 import { STARTER_CONDITIONS, tagColor } from '../lib/tags'
 import type { Clinic, Condition, Investigation, Medicine, Panel, RxItem, RxTemplate } from '../lib/types'
+
+/** The built-in guideline suggestions, laid out for the doctor to read and check. Read-only. */
+function ProtocolLibrary() {
+  return (
+    <>
+      <div className="note" style={{ fontWeight: 400 }}>
+        <strong>Draft content, for your review.</strong> These suggestions were compiled from the guidelines listed under each condition.
+        The wording was read through an automated reader, and some documents could only be read in part, so check each item against
+        the source before relying on it. The app never fills in a dose: the guideline range is shown beside the dose box as a guide only.
+      </div>
+      {PROTOCOLS.map((p) => (
+        <details className="card proto" key={p.key}>
+          <summary>
+            <span className="grow"><strong>{p.name}</strong> <span className="muted">· {p.sets.reduce((n, s) => n + s.items.length, 0)} investigations in {p.sets.length} sets · {p.medicines.length} {p.medicines.length === 1 ? 'medicine' : 'medicines'}</span></span>
+            <span className="muted" style={{ fontSize: 13 }}>compiled {p.compiledOn}</span>
+          </summary>
+          <div className="proto-body">
+            <div>
+              <h2 className="proto-h">Tag names that bring this up</h2>
+              <div className="muted">{[p.name, ...p.aliases].join(' · ')}. Any other tag can be linked under Condition tags.</div>
+            </div>
+            <div>
+              <h2 className="proto-h">Sources</h2>
+              <ul>
+                {p.sources.map((s) => (
+                  <li key={s.id}><strong>{s.org} {s.year}.</strong> <a href={s.url} target="_blank" rel="noreferrer">{s.title}</a></li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h2 className="proto-h">Investigations</h2>
+              {p.sets.map((s) => (
+                <div className="proto-set" key={s.name}>
+                  <div><strong>{s.name}.</strong> <span className="muted">{s.when}</span></div>
+                  <ul>
+                    {s.items.map((i) => (
+                      <li key={i.test}>{i.test}{i.note && <span className="muted">: {i.note}</span>} <span className="src">({cite(p, i.sources)})</span></li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <div>
+              <h2 className="proto-h">Medicines</h2>
+              {p.medicines.map((m) => (
+                <div className="proto-set" key={m.generic}>
+                  <div><strong>{m.rx.name}</strong>{m.strengths.length > 0 && <span className="muted"> · {m.strengths.join(', ')}</span>} {!m.verified && <span className="draft">dose not verified</span>}</div>
+                  <ul>
+                    <li><span className="muted">Used for:</span> {m.indication}</li>
+                    <li><span className="muted">Dose guide:</span> {m.verified && m.doseGuide ? <>{m.doseGuide}{m.max && ` ${m.max}`}</> : 'none held; the dose could not be read from a guideline'} <span className="src">({cite(p, m.sources)})</span></li>
+                    {m.quote && <li><span className="muted">Source wording:</span> "{m.quote}"</li>}
+                    <li><span className="muted">Put on the prescription:</span> {[m.rx.route, m.rx.frequency, m.rx.duration].filter(Boolean).join(', ') || 'name only'}{m.rx.instructions && `. ${m.rx.instructions}`}</li>
+                    {m.monitoring && <li><span className="muted">Monitoring:</span> {m.monitoring}</li>}
+                    {m.prescriberNote && <li><span className="muted">Note:</span> {m.prescriberNote}</li>}
+                    {m.note && <li><span className="muted">Compiler's note:</span> {m.note}</li>}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            {p.advice.length > 0 && (
+              <div>
+                <h2 className="proto-h">Advice lines</h2>
+                <ul>{p.advice.map((a) => <li key={a.text}>{a.text} <span className="src">({cite(p, a.sources)})</span></li>)}</ul>
+              </div>
+            )}
+            {p.caveats && (
+              <div>
+                <h2 className="proto-h">Read this before relying on it</h2>
+                <div>{p.caveats}</div>
+              </div>
+            )}
+          </div>
+        </details>
+      ))}
+    </>
+  )
+}
 
 function ConditionTags() {
   const [list, setList] = useState<Condition[] | null>(null)
@@ -18,6 +96,7 @@ function ConditionTags() {
   const [name, setName] = useState('')
   const [color, setColor] = useState('teal')
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [linking, setLinking] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function reload() {
@@ -90,6 +169,16 @@ function ConditionTags() {
               }}
             />
             <Swatches value={c.color} label={`Colour of ${c.name}`} onChange={(col) => void run(() => store.saveCondition({ id: c.id, name: c.name, color: col }))} />
+            {PROTOCOLS.length > 0 && (() => {
+              const chosen = c.protocols.filter((k) => PROTOCOLS.some((p) => p.key === k))
+              const byName = protocolsByName(c.name)
+              const n = chosen.length || byName.length
+              return (
+                <button type="button" className="btn small" aria-expanded={linking === c.id} onClick={() => setLinking(linking === c.id ? null : c.id)}>
+                  {n === 0 ? 'Link a protocol' : `${n} ${n === 1 ? 'protocol' : 'protocols'}`}
+                </button>
+              )
+            })()}
             {confirmId === c.id ? (
               <>
                 <span>Remove from {counts[c.id] ?? 0} patients?</span>
@@ -105,6 +194,26 @@ function ConditionTags() {
                 Delete
               </button>
             )}
+            {linking === c.id && (() => {
+              const chosen = c.protocols.filter((k) => PROTOCOLS.some((p) => p.key === k))
+              const byName = protocolsByName(c.name).map((p) => p.key)
+              // With nothing chosen the tag's name decides; the first click starts from that.
+              const current = chosen.length > 0 ? chosen : byName
+              const toggle = (key: string) => void run(() => store.saveCondition({ id: c.id, name: c.name, color: c.color, protocols: current.includes(key) ? current.filter((k) => k !== key) : [...current, key] }))
+              return (
+                <div className="tag-link" role="group" aria-label={`Protocols for ${c.name}`}>
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    Patients with this tag are offered these guideline suggestions on a visit.
+                    {chosen.length === 0 && (byName.length > 0 ? ' Matched by the tag name for now.' : ' None matches the tag name.')}
+                  </div>
+                  <div className="tags">
+                    {PROTOCOLS.map((p) => (
+                      <button type="button" key={p.key} className="chip plain" aria-pressed={current.includes(p.key)} onClick={() => toggle(p.key)}>{p.name}</button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         ))}
 
@@ -513,6 +622,7 @@ const TABS = [
   { key: 'clinic', label: 'Letterhead', el: <ClinicDetails /> },
   { key: 'print', label: 'Print layouts', el: <PrintLayouts /> },
   { key: 'tags', label: 'Condition tags', el: <ConditionTags /> },
+  { key: 'protocols', label: 'Protocols', el: <ProtocolLibrary /> },
   { key: 'meds', label: 'Medicines', el: <Medicines /> },
   { key: 'tests', label: 'Investigations', el: <Investigations /> },
   { key: 'templates', label: 'Templates', el: <Templates /> },

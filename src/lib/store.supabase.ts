@@ -93,7 +93,7 @@ export function createSupabaseStore(url: string, key: string): Store {
     },
 
     async listConditions() {
-      const { data, error } = await sb.from('conditions').select('id, name, color').order('name')
+      const { data, error } = await sb.from('conditions').select('id, name, color, protocols').order('name')
       fail(error)
       return (data ?? []) as Condition[]
     },
@@ -105,11 +105,11 @@ export function createSupabaseStore(url: string, key: string): Store {
       return out
     },
     async saveCondition(c) {
-      const body = { name: c.name.trim(), color: c.color }
+      const body = { name: c.name.trim(), color: c.color, ...(c.protocols ? { protocols: c.protocols } : {}) }
       const q = c.id
         ? sb.from('conditions').update(body).eq('id', c.id)
         : sb.from('conditions').insert(body)
-      const { data, error } = await q.select('id, name, color').single()
+      const { data, error } = await q.select('id, name, color, protocols').single()
       fail(error)
       return data as Condition
     },
