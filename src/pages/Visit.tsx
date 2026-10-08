@@ -16,6 +16,14 @@ import { tannerSummary } from '../lib/tanner'
 import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
 import { NONE } from '../lib/text'
 
+/** A template used on this visit: what it added, so it can be taken off again as a whole. */
+interface AppliedTemplate {
+  id: string
+  name: string
+  added: string[]
+  advice: string | null
+}
+
 const RX_FIELDS: { key: keyof RxItem; label: string; wide?: boolean }[] = [
   { key: 'dose', label: 'Dose' },
   { key: 'frequency', label: 'Frequency' },
@@ -65,6 +73,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const [panels, setPanels] = useState<Panel[]>([])
   const [meds, setMeds] = useState<RxItem[]>([])
   const [tplName, setTplName] = useState<string | null>(null)
+  const [applied, setApplied] = useState<AppliedTemplate[]>([])
   const [tried, setTried] = useState(false)
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -206,13 +215,43 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   function addMed(item: RxItem) {
     setMeds((old) => [...old, { name: item.name, dose: item.dose, frequency: item.frequency, route: item.route, duration: item.duration, instructions: item.instructions }])
   }
-  const editMed = (i: number, k: keyof RxItem, v: string) => setMeds((old) => old.map((m, j) => (j === i ? { ...m, [k]: v } : m)))
+  // When a medicine is removed or renamed by hand, a template stops claiming it. Otherwise
+  // "Remove template" could later take away a medicine of the same name added by hand.
+  const forget = (next: RxItem[]) =>
+    setApplied((old) => old.map((a) => ({ ...a, added: a.added.filter((n) => next.some((m) => m.name === n)) })).filter((a) => a.added.length > 0 || (!!a.advice && f.advice === a.advice)))
+  function dropMeds(keep: (m: RxItem, i: number) => boolean) {
+    const next = meds.filter(keep)
+    setMeds(next)
+    forget(next)
+  }
+  function editMed(i: number, k: keyof RxItem, v: string) {
+    const next = meds.map((m, j) => (j === i ? { ...m, [k]: v } : m))
+    setMeds(next)
+    if (k === 'name') forget(next)
+  }
 
   function applyTemplate(tid: string) {
     const t = templates.find((x) => x.id === tid)
     if (!t) return
-    setMeds((old) => [...old, ...t.medicines.filter((m) => !old.some((o) => o.name === m.name))])
-    if (t.advice && !f.advice.trim()) set('advice', t.advice)
+    const fresh = t.medicines.filter((m) => !meds.some((o) => o.name === m.name))
+    const advice = t.advice && !f.advice.trim() ? t.advice : null
+    setMeds((old) => [...old, ...fresh.map((m) => ({ ...m }))])
+    if (advice) set('advice', advice)
+    // Remembered so the whole template can be taken off again in one go.
+    setApplied((old) => {
+      // An earlier use counts only while something it added is still on the prescription.
+      const found = old.find((a) => a.id === t.id)
+      const before = found && (found.added.some((n) => meds.some((m) => m.name === n)) || (!!found.advice && f.advice === found.advice)) ? { ...found, added: found.added.filter((n) => meds.some((m) => m.name === n)) } : undefined
+      // Used a second time with nothing new to add: keep the first record, so it can still be undone.
+      if (before && fresh.length === 0 && !advice) return old
+      return [...old.filter((a) => a.id !== t.id), { id: t.id, name: t.name, added: [...(before?.added ?? []), ...fresh.map((m) => m.name)], advice: advice ?? before?.advice ?? null }]
+    })
+  }
+  function removeTemplate(a: AppliedTemplate) {
+    setMeds((old) => old.filter((m) => !a.added.includes(m.name)))
+    // The advice goes only if it is still exactly what the template put there.
+    if (a.advice && f.advice === a.advice) set('advice', '')
+    setApplied((old) => old.filter((x) => x.id !== a.id))
   }
 
   async function saveTemplate() {
@@ -457,6 +496,30 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               )}
             </div>
 
+            {applied.map((a) => {
+              const left = a.added.filter((n) => meds.some((m) => m.name === n)).length
+              const adviceLeft = !!a.advice && f.advice === a.advice
+              const nothing = a.added.length === 0 && !a.advice
+              // Once everything it added has been removed by hand there is nothing left to undo.
+              if (!nothing && left === 0 && !adviceLeft) return null
+              return (
+                <div className="tpl-strip" key={a.id} role="status">
+                  <span className="grow">
+                    {nothing ? (
+                      <>Template <strong>{a.name}</strong>: its medicines are already on this prescription, so nothing was added.</>
+                    ) : (
+                      <>Template <strong>{a.name}</strong> added {[left > 0 ? `${left} ${left === 1 ? 'medicine' : 'medicines'}` : '', adviceLeft ? 'the advice' : ''].filter(Boolean).join(' and ')}.</>
+                    )}
+                  </span>
+                  {nothing ? (
+                    <button type="button" className="btn small" onClick={() => setApplied((old) => old.filter((x) => x.id !== a.id))}>Dismiss</button>
+                  ) : (
+                    <button type="button" className="btn small danger" onClick={() => removeTemplate(a)}>Remove template</button>
+                  )}
+                </div>
+              )
+            })}
+
             {meds.map((m, i) => {
               const perKg = dosePerKg(m.dose, w)
               return (
@@ -464,8 +527,9 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                   <div className="med-head">
                     <span className="med-no" aria-hidden="true">{i + 1}</span>
                     <input aria-label={`Medicine ${i + 1} name`} value={m.name} onChange={(e) => editMed(i, 'name', e.target.value)} />
-                    <button type="button" className="icon-btn" aria-label={`Remove medicine ${i + 1}`} onClick={() => setMeds((old) => old.filter((_, j) => j !== i))}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></svg>
+                    <button type="button" className="med-remove" aria-label={`Remove medicine ${i + 1}`} title="Remove this medicine" onClick={() => dropMeds((_, j) => j !== i)}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></svg>
+                      <span className="wide-only">Remove</span>
                     </button>
                   </div>
                   <div className="med-grid">
@@ -488,7 +552,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               last={last && last.medicines.length > 0 ? { label: formatDate(last.visit_date), medicines: last.medicines } : null}
               templates={templates}
               onAdd={addMed}
-              onRemove={(name) => setMeds((old) => old.filter((m) => m.name !== name))}
+              onRemove={(name) => dropMeds((m) => m.name !== name)}
               onTemplate={applyTemplate}
             />
 

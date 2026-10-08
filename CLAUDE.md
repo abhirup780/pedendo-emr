@@ -103,6 +103,11 @@ the single source of truth — commit and push finished work.
   `--side-top` from its height so that a column taller than the window sticks by its foot,
   above the save bar. So the shorter column never leaves an empty area beside the longer one.
 
+- A template used on a visit is remembered in `applied` (what it added, and its advice if it
+  filled an empty box) and shown as a strip with "Remove template". Medicines the doctor then
+  removes or renames by hand are forgotten by the template (`forget`), so removing the template
+  can never take away something added by hand. Saved templates are deleted in Settings.
+
 ## Stage 3 notes
 
 - Investigations advised at a visit are a JSON array of names on the `visits` row; results are
