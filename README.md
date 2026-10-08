@@ -4,7 +4,7 @@ Patient records and prescription writing for a single pediatric endocrinologist.
 A web app: the doctor signs in with a dedicated Google account from any browser.
 
 **Status** — built: sign-in, patients with follow-up tracking, condition tags, visits with draft
-recovery, prescriptions with A4 ℞ print, investigations and results, Tanner staging, photographs
+recovery, prescriptions with customisable print layouts (any paper, pre-printed pads), investigations and results, Tanner staging, photographs
 on Google Drive, Excel export, backup and restore. Waiting: growth chart reference tables (the
 chart plots the child's own points). Not yet tried against the real services: Google sign-in
 and Google Drive.

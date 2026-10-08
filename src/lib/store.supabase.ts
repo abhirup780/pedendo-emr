@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import type { User } from '@supabase/supabase-js'
 import type { Backup, Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { addDays } from './clinical'
+import { normalize } from './printlayout'
+import type { PrintLayout } from './printlayout'
 import type { ListOptions, Store } from './store'
 
 const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, complaint, history, assessment, plan, print_plan, advice, review_date, medicines, investigations, tanner, created_at'
@@ -370,13 +372,14 @@ export function createSupabaseStore(url: string, key: string): Store {
       }
       try {
         // No patients exist, so the lists can be replaced without orphaning anything.
-        for (const t of ['conditions', 'medicines', 'rx_templates', 'investigations', 'investigation_panels']) fail((await sb.from(t).delete().neq('id', everything)).error)
+        for (const t of ['conditions', 'medicines', 'rx_templates', 'investigations', 'investigation_panels', 'print_layouts']) fail((await sb.from(t).delete().neq('id', everything)).error)
         fail((await sb.from('clinic_settings').upsert(b.clinic, { onConflict: 'owner_id' })).error)
         await put('conditions', b.conditions)
         await put('medicines', b.medicines)
         await put('rx_templates', b.templates)
         await put('investigations', b.investigations)
         await put('investigation_panels', b.panels)
+        await put('print_layouts', b.print_layouts)
         const consent = new Map(b.consents.map((c) => [c.patient_id, c]))
         await put('patients', b.patients.map((p) => {
           // The visit summary columns are left out: the database rebuilds them as visits arrive.
@@ -394,6 +397,30 @@ export function createSupabaseStore(url: string, key: string): Store {
         await sb.from('patients').delete().neq('id', everything)
         throw e
       }
+    },
+
+    async listPrintLayouts() {
+      const { data, error } = await sb.from('print_layouts').select('id, name, is_default, config').order('name')
+      fail(error)
+      return ((data ?? []) as PrintLayout[]).map((l) => ({ ...l, config: normalize(l.config) }))
+    },
+    async savePrintLayout(l) {
+      const body = { name: l.name.trim(), is_default: l.is_default, config: normalize(l.config) }
+      if (body.is_default) {
+        // Only one default is allowed, so clear the old one before setting the new.
+        let clear = sb.from('print_layouts').update({ is_default: false }).eq('is_default', true)
+        if (l.id) clear = clear.neq('id', l.id)
+        fail((await clear).error)
+      }
+      const q = l.id ? sb.from('print_layouts').update(body).eq('id', l.id) : sb.from('print_layouts').insert(body)
+      const { data, error } = await q.select('id, name, is_default, config').single()
+      fail(error)
+      const saved = data as PrintLayout
+      return { ...saved, config: normalize(saved.config) }
+    },
+    async deletePrintLayout(id) {
+      const { error } = await sb.from('print_layouts').delete().eq('id', id)
+      fail(error)
     },
 
     async getClinic() {

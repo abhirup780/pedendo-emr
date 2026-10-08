@@ -28,6 +28,7 @@ export default function App() {
         <Route path="/patients/:id/visits/new" element={<VisitPage />} />
         <Route path="/patients/:id/visits/:vid" element={<VisitPage />} />
         <Route path="/patients/:id/visits/:vid/print" element={<PrintRx />} />
+        <Route path="/print-sample/:layoutId" element={<PrintRx />} />
         <Route path="/registry" element={<Registry />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />

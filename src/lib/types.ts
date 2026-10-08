@@ -190,4 +190,5 @@ export interface Backup extends Dump {
   templates: RxTemplate[]
   investigations: Investigation[]
   panels: Panel[]
+  print_layouts: import('./printlayout').PrintLayout[]
 }

@@ -1,3 +1,4 @@
+import type { PrintLayout } from './printlayout'
 import type { Backup, Clinic, Condition, Dump, Investigation, Medicine, Panel, Patient, PatientInput, Photo, PhotoConsent, PhotoInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { createDemoStore } from './store.demo'
 import { createSupabaseStore } from './store.supabase'
@@ -76,6 +77,12 @@ export interface Store {
    * account's own tags, medicine list, templates and investigation list are replaced.
    */
   restore(backup: Backup): Promise<void>
+
+  /** Saved print layouts, by name. Configs are always returned in full, current form. */
+  listPrintLayouts(): Promise<PrintLayout[]>
+  /** Saving one as the default clears the flag on the others. */
+  savePrintLayout(l: Omit<PrintLayout, 'id'> & { id?: string }): Promise<PrintLayout>
+  deletePrintLayout(id: string): Promise<void>
 
   getClinic(): Promise<Clinic>
   saveClinic(c: Clinic): Promise<Clinic>

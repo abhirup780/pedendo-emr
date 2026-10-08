@@ -3,13 +3,15 @@ import { STARTER_INVESTIGATIONS, STARTER_PANELS } from './investigations'
 import type { ListOptions, Store } from './store'
 import { addDays } from './clinical'
 import { STARTER_MEDICINES } from './medicines'
+import { normalize, PRESETS } from './printlayout'
+import type { PrintLayout } from './printlayout'
 import { STARTER_CONDITIONS } from './tags'
 
 /**
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v6'
+const KEY = 'pedendo-demo-v7'
 
 interface Db {
   signedIn: boolean
@@ -23,6 +25,7 @@ interface Db {
   investigations: Investigation[]
   panels: Panel[]
   results: Result[]
+  layouts: PrintLayout[]
 }
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2))
@@ -117,6 +120,8 @@ function seed(): Db {
     logo: '',
     signature: '',
   }
+  // Two saved layouts so the print screen has something to choose between.
+  const layouts: PrintLayout[] = [PRESETS[1], PRESETS[2]].map((p) => ({ id: uid(), name: p.name, is_default: false, config: p.config }))
   const investigations: Investigation[] = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map(([name, unit]) => ({ id: uid(), name, category: g.category, unit })))
   const panels: Panel[] = STARTER_PANELS.map((p) => ({ id: uid(), ...p }))
   const res = (test: string, value: string, unit: string, date: string, flag: Result['flag'] = ''): Result => ({ id: uid(), patient_id: aarav, test, value, unit, result_date: date, flag, created_at: `${date}T06:00:00.000Z` })
@@ -129,7 +134,7 @@ function seed(): Db {
     res('Free T4', '1.2', 'ng/dL', '2026-04-08'),
     res('25-OH vitamin D', '18', 'ng/mL', '2026-07-14', 'low'),
   ]
-  return { signedIn: false, nextMrn: 10001 + patients.length, conditions, patients, visits, medicines, templates, clinic, investigations, panels, results }
+  return { signedIn: false, nextMrn: 10001 + patients.length, conditions, patients, visits, medicines, templates, clinic, investigations, panels, results, layouts }
 }
 
 function load(): Db {
@@ -412,6 +417,7 @@ export function createDemoStore(): Store {
         templates: [...b.templates],
         investigations: [...b.investigations],
         panels: [...b.panels],
+        layouts: [...b.print_layouts],
         patients: [...b.patients],
         visits: [...b.visits],
         results: [...b.results],
@@ -419,6 +425,24 @@ export function createDemoStore(): Store {
       photos = [...b.photos]
       consents.clear()
       for (const c of b.consents) consents.set(c.patient_id, { on: c.on, by: c.by })
+      save()
+    },
+
+    async listPrintLayouts() {
+      return db.layouts.map((l) => ({ ...l, config: normalize(l.config) })).sort((a, b) => a.name.localeCompare(b.name))
+    },
+    async savePrintLayout(l) {
+      const name = l.name.trim()
+      if (!name) throw new Error('Give the layout a name.')
+      if (db.layouts.some((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== l.id)) throw new Error(`A layout called "${name}" already exists.`)
+      const saved: PrintLayout = { id: l.id ?? uid(), name, is_default: l.is_default, config: normalize(l.config) }
+      const others = db.layouts.filter((x) => x.id !== saved.id).map((x) => (saved.is_default ? { ...x, is_default: false } : x))
+      db.layouts = [...others, saved]
+      save()
+      return saved
+    },
+    async deletePrintLayout(id) {
+      db.layouts = db.layouts.filter((l) => l.id !== id)
       save()
     },
 

@@ -1,158 +1,100 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { formatAge, formatDate } from '../lib/age'
-import { bmi, rxLine } from '../lib/clinical'
+import RxSheet from '../components/RxSheet'
+import { describe, pageCss, rememberLayout, rememberedLayout, STANDARD } from '../lib/printlayout'
+import type { PrintConfig, PrintLayout } from '../lib/printlayout'
+import { SAMPLE_PATIENT, SAMPLE_VISIT, sampleClinic } from '../lib/printsample'
 import { EMPTY_CLINIC, store } from '../lib/store'
-import { tannerSummary } from '../lib/tanner'
 import type { Clinic, Patient, Visit } from '../lib/types'
 
 const PREVIEW = !!import.meta.env.VITE_PREVIEW
+const BUILT_IN = 'standard'
 
+/**
+ * The print screen. With a patient and visit in the address it prints that prescription;
+ * as `/print-sample/:layoutId` it prints a made-up one, for lining a layout up with a pad.
+ */
 export default function PrintRx() {
-  const { id = '', vid = '' } = useParams()
+  const { id = '', vid = '', layoutId } = useParams()
+  const sample = !vid
   const [data, setData] = useState<{ p: Patient; v: Visit; c: Clinic } | null | undefined>(undefined)
+  const [layouts, setLayouts] = useState<PrintLayout[]>([])
+  const [chosen, setChosen] = useState<string>(layoutId ?? '')
+  const [guides, setGuides] = useState(sample)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    Promise.all([store.getPatient(id), store.getVisit(vid), store.getClinic()]).then(
-      ([p, v, c]) => setData(p && v && v.patient_id === p.id ? { p, v, c: c ?? EMPTY_CLINIC } : null),
+    const record = sample ? Promise.resolve([SAMPLE_PATIENT, SAMPLE_VISIT] as const) : Promise.all([store.getPatient(id), store.getVisit(vid)])
+    Promise.all([record, store.getClinic(), store.listPrintLayouts()]).then(
+      ([[p, v], c, ls]) => {
+        setLayouts(ls)
+        setData(p && v && v.patient_id === p.id ? { p, v, c: sample ? sampleClinic(c ?? EMPTY_CLINIC) : (c ?? EMPTY_CLINIC) } : null)
+        // The pad last used on this computer wins; otherwise the account's default.
+        const wanted = layoutId ?? rememberedLayout()
+        setChosen(ls.some((l) => l.id === wanted) ? (wanted as string) : wanted === BUILT_IN ? BUILT_IN : (ls.find((l) => l.is_default)?.id ?? BUILT_IN))
+      },
       (e: Error) => {
         setError(e.message)
         setData(null)
       },
     )
-  }, [id, vid])
+  }, [id, vid, layoutId, sample])
+
+  const config: PrintConfig = useMemo(() => layouts.find((l) => l.id === chosen)?.config ?? STANDARD, [layouts, chosen])
 
   if (data === undefined) return <main className="page muted">Loading…</main>
   if (data === null)
     return (
       <main className="page">
         <div className="alert">{error || 'This prescription could not be found.'}</div>
-        <Link to={`/patients/${id}`}>Back to the patient</Link>
+        <Link to={sample ? '/settings?tab=print' : `/patients/${id}`}>Go back</Link>
       </main>
     )
 
   const { p, v, c } = data
-  const b = bmi(v.height_cm, v.weight_kg)
-  const vitals: [string, string][] = []
-  if (v.height_cm != null) vitals.push(['Height', `${v.height_cm} cm`])
-  if (v.weight_kg != null) vitals.push(['Weight', `${v.weight_kg} kg`])
-  if (b != null) vitals.push(['BMI', `${b} kg/m²`])
-  if (v.bp) vitals.push(['BP', `${v.bp} mmHg`])
-  const noHeader = !c.doctor_name.trim()
+  const noHeader = !sample && !c.doctor_name.trim() && config.sections.some((s) => s.key === 'letterhead' && s.show)
 
   return (
     <main className="sheet-wrap">
+      {/* Paper size and margins for the browser's print engine, from the chosen layout. */}
+      <style>{pageCss(config)}</style>
       <div className="sheet-tools no-print">
-        <Link to={`/patients/${id}`} className="btn">Back to patient</Link>
-        <Link to={`/patients/${id}/visits/${vid}`} className="btn">Edit visit</Link>
-        <span className="grow" />
+        {sample ? (
+          <Link to="/settings?tab=print" className="btn">Back to layouts</Link>
+        ) : (
+          <>
+            <Link to={`/patients/${id}`} className="btn">Back to patient</Link>
+            <Link to={`/patients/${id}/visits/${vid}`} className="btn">Edit visit</Link>
+          </>
+        )}
+        <label className="sort" style={{ flex: '1 1 220px' }}>
+          Layout
+          <select value={chosen} onChange={(e) => { setChosen(e.target.value); rememberLayout(e.target.value) }} style={{ flex: 1, minWidth: 0 }}>
+            <option value={BUILT_IN}>Standard A4</option>
+            {layouts.map((l) => <option key={l.id} value={l.id}>{l.name}{l.is_default ? ' (default)' : ''}</option>)}
+          </select>
+        </label>
+        <button type="button" className="switch" role="switch" aria-checked={guides} onClick={() => setGuides(!guides)}>
+          <span className="track" />
+          Margin guides
+        </button>
         {PREVIEW ? (
           <span className="muted">Printing is switched off in this preview; it works in the deployed app.</span>
         ) : (
           <button type="button" className="btn primary" onClick={() => window.print()}>Print</button>
         )}
       </div>
+      <div className="sheet-tools no-print muted" style={{ fontSize: 13 }}>
+        <span className="grow">{describe(config)}. In the print window choose the same paper size, set margins to "Default" and scale to 100%.</span>
+        {!sample && <Link to="/settings?tab=print">Customise layouts</Link>}
+      </div>
+      {sample && <div className="note no-print" style={{ width: '100%', maxWidth: '210mm' }}>A made-up prescription. Print it on the real pad with "Margin guides" on to see where the text will fall, then adjust the layout's margins.</div>}
       {noHeader && (
         <div className="alert no-print" style={{ width: '100%', maxWidth: '210mm' }}>
           The letterhead is empty. Add the doctor and clinic details under <Link to="/settings">Settings</Link>.
         </div>
       )}
-
-      <article className="sheet">
-        <div className="letterhead">
-          <div className="lh-left">
-            {c.logo && <img className="lh-logo" src={c.logo} alt="" />}
-            <div>
-            <h1 className="doctor">{c.doctor_name || 'Doctor’s name'}</h1>
-            {c.qualifications && <div>{c.qualifications}</div>}
-            {c.reg_no && <div>Reg. No. {c.reg_no}</div>}
-            </div>
-          </div>
-          <div className="right">
-            {c.clinic_name && <div style={{ fontWeight: 600 }}>{c.clinic_name}</div>}
-            {c.address && <div style={{ whiteSpace: 'pre-line' }}>{c.address}</div>}
-            {c.phone && <div>Phone: {c.phone}</div>}
-            {c.email && <div>{c.email}</div>}
-          </div>
-        </div>
-
-        <div className="who-row">
-          <div>
-            <strong>{p.name}</strong> · {formatAge(p.dob, v.visit_date)} · {p.sex === 'M' ? 'Male' : 'Female'}
-          </div>
-          <div>
-            <span className="mono">MRN {p.mrn}</span> · {formatDate(v.visit_date)}
-          </div>
-        </div>
-
-        {vitals.length > 0 && (
-          <div className="vitals">
-            {vitals.map(([k, val]) => (
-              <div key={k}>
-                <div className="k">{k}</div>
-                <div className="mono">{val}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tannerSummary(v.tanner, p.sex) && <div><strong>Pubertal stage:</strong> {tannerSummary(v.tanner, p.sex)}</div>}
-        {p.allergies && <div><strong>Drug allergy:</strong> {p.allergies}</div>}
-        {v.assessment && <div style={{ whiteSpace: 'pre-wrap' }}><strong>Diagnosis:</strong> {v.assessment}</div>}
-
-        <div className="rx">
-          <div className="rx-mark" role="img" aria-label="Prescription">℞</div>
-          <ol className="rx-list">
-            {v.medicines.map((m, i) => (
-              <li key={i}>
-                <div style={{ fontWeight: 600 }}>{i + 1}. {m.name}</div>
-                {rxLine(m) && <div>{rxLine(m)}</div>}
-                {m.instructions && <div>{m.instructions}</div>}
-              </li>
-            ))}
-            {v.medicines.length === 0 && <li className="muted">No medicines prescribed at this visit.</li>}
-          </ol>
-        </div>
-
-        {v.investigations.length > 0 && (
-          <div className="block">
-            <div style={{ fontWeight: 600 }}>Investigations advised</div>
-            {v.investigations.join(' · ')}
-          </div>
-        )}
-
-        {v.print_plan && v.plan && (
-          <div className="block">
-            <div style={{ fontWeight: 600 }}>Plan</div>
-            {v.plan}
-          </div>
-        )}
-
-        {v.advice && (
-          <div className="block">
-            <div style={{ fontWeight: 600 }}>Advice</div>
-            {v.advice}
-          </div>
-        )}
-
-        <div className="bottom">
-          {v.review_date ? (
-            <div className="review">
-              <div className="k" style={{ color: '#44545b', fontSize: '10pt' }}>Next review</div>
-              <div style={{ fontWeight: 600, fontSize: '13pt' }}>{formatDate(v.review_date)}</div>
-            </div>
-          ) : (
-            <span />
-          )}
-          <div className="sign">
-            <div className="line">{c.signature && <img src={c.signature} alt="Signature" />}</div>
-            <div style={{ fontWeight: 600, marginTop: '1.5mm' }}>{c.doctor_name}</div>
-            {/* Repeats who this is for beside the signature, so a second page is never anonymous. */}
-            <div style={{ fontSize: '9pt', color: '#44545b' }}>{p.name} · MRN {p.mrn} · {formatDate(v.visit_date)}</div>
-          </div>
-        </div>
-      </article>
+      <RxSheet config={config} patient={p} visit={v} clinic={c} guides={guides} />
     </main>
   )
 }

@@ -134,6 +134,24 @@ the single source of truth — commit and push finished work.
   owner's trial run shows a clean console with live Google sign-in and Drive.
 - An axe-core scan (wcag2a/aa + best-practice) was clean on every screen; keep it that way.
 
+## Print layouts
+
+- A print layout is plain data (`PrintConfig` in `src/lib/printlayout.ts`): paper size, margins
+  (first page and later pages separately, for pre-printed pads), type size and spacing, accent
+  colour, optional side column, the ordered list of sections with show / space-above / side,
+  and per-section options. `normalize()` brings any stored config to the current shape and
+  clamps it; both stores call it on read and write. Adding an option = add it to the type,
+  `STANDARD`, `normalize`, the editor and `RxSheet`; old saved layouts then keep working.
+- `components/RxSheet.tsx` is the only thing that draws a prescription: the print screen, the
+  sample page (`/print-sample/:layoutId`) and the editor's live preview all use it.
+- The page size and margins go to the browser as an injected `<style>` from `pageCss()`
+  (`@page` + `@page :first`). Margins belong to the page, not the sheet, so later pages keep
+  them. `--inner-h` keeps a one-page prescription's signature at the foot without a blank page.
+- Layouts live in `print_layouts` (migration 0010), at most one default per account; each
+  device also remembers the layout it last printed with (`rememberLayout`), which wins.
+- Check a layout change by printing to PDF with Playwright (`prefer_css_page_size=True`) and
+  looking at the pages; wait for `.sheet-wrap .sheet`, not `.sheet` (the editor preview has one).
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)

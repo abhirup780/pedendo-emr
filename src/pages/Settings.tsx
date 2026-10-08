@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import PrintLayouts from './PrintLayouts'
 import { store } from '../lib/store'
 import { EMPTY_RX } from '../lib/clinical'
 import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../lib/device'
@@ -519,6 +520,7 @@ function ThisDevice() {
 
 const TABS = [
   { key: 'clinic', label: 'Letterhead', el: <ClinicDetails /> },
+  { key: 'print', label: 'Print layouts', el: <PrintLayouts /> },
   { key: 'tags', label: 'Condition tags', el: <ConditionTags /> },
   { key: 'meds', label: 'Medicines', el: <Medicines /> },
   { key: 'tests', label: 'Investigations', el: <Investigations /> },
@@ -532,7 +534,7 @@ export default function Settings() {
   const tab = TABS.some((t) => t.key === wanted) ? wanted : 'clinic'
   const setTab = (key: string) => setParams({ tab: key }, { replace: true })
   return (
-    <main className="page narrow">
+    <main className={tab === 'print' ? 'page' : 'page narrow'}>
       <h1>Settings</h1>
       <div className="tabs" role="tablist">
         {TABS.map((t) => (

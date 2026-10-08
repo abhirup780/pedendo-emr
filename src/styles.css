@@ -150,43 +150,66 @@ main.narrow { max-width: 860px; }
 
 .sheet-wrap { padding: 24px 16px 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .sheet-tools { width: 100%; max-width: 210mm; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.sheet { width: 100%; max-width: 210mm; min-height: 297mm; background: #fff; color: #14242b; border: 1px solid var(--line); padding: 14mm 16mm; font-size: 12pt; line-height: 1.4; display: flex; flex-direction: column; gap: 5mm; }
-.sheet .letterhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6mm; padding-bottom: 4mm; border-bottom: 2px solid var(--primary); }
-.sheet .doctor { margin: 0; font-size: 19pt; font-weight: 600; color: var(--primary); letter-spacing: -0.01em; }
-.sheet .right { text-align: right; }
-.sheet .who-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2mm 8mm; }
-.sheet .vitals { display: flex; flex-wrap: wrap; border: 1px solid #8a979c; border-radius: 6px; }
-.sheet .vitals > div { flex: 1 1 28mm; padding: 2mm 3mm; border-right: 1px solid #c9d2cf; }
-.sheet .vitals > div:last-child { border-right: 0; }
-.sheet .vitals .k { color: #44545b; font-size: 10pt; }
-.sheet .rx { display: flex; gap: 6mm; }
-.sheet .rx-mark { font-size: 36pt; line-height: 1; color: var(--primary); flex: 0 0 14mm; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'Arial Unicode MS', serif; }
-.sheet .rx-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4mm; margin: 0; padding: 0; list-style: none; }
-.sheet .rx-list li { break-inside: avoid; }
-.sheet .block { border-top: 1px solid #c9d2cf; padding-top: 3mm; white-space: pre-wrap; }
-.sheet .bottom { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8mm; break-inside: avoid; }
-.sheet .review { padding: 2.5mm 4mm; border: 1.5px solid var(--primary); border-radius: 6px; }
-.sheet .sign { text-align: center; min-width: 55mm; }
-.sheet .sign .line { height: 18mm; border-bottom: 1px solid #14242b; display: flex; align-items: flex-end; justify-content: center; }
-.sheet .sign .line img { max-height: 17mm; max-width: 52mm; object-fit: contain; }
-.sheet .lh-left { display: flex; align-items: center; gap: 5mm; }
-.sheet .lh-logo { max-height: 22mm; max-width: 34mm; object-fit: contain; }
 
-/* The margin belongs to the page, not the sheet, so a prescription that runs onto a second
-   page keeps its margins there too. 268mm is just under the printable height of A4 with these
-   margins: a one-page prescription still has its signature at the foot, with no blank page. */
-@page {
-  size: A4;
-  margin: 13mm 15mm 15mm;
-  /* Page numbers, where the browser supports them (recent Chrome and Edge do). */
-  @bottom-right { content: 'Page ' counter(page) ' of ' counter(pages); font-family: 'IBM Plex Sans', sans-serif; font-size: 8.5pt; color: #55656c; }
-}
+/* The prescription sheet. Size, margins, type and spacing all come from the print layout as
+   CSS variables set on the element; inner sizes are in em so they follow the font size. */
+.sheet { position: relative; box-sizing: border-box; width: var(--w); max-width: 100%; min-height: var(--h); background: #fff; color: #14242b; border: 1px solid var(--line); padding: var(--mt) var(--mr) var(--mb) var(--ml); font-size: var(--font); line-height: var(--lh); display: flex; flex-direction: column; gap: var(--gap); overflow-wrap: anywhere; }
+.sheet .sec { min-width: 0; }
+.sheet .sec.at-foot { margin-top: auto; }
+.sheet .t { font-weight: 600; }
+.sheet .t.big { font-size: 1.1em; }
+.sheet .k { color: #44545b; font-size: 0.84em; }
+.sheet .small { color: #44545b; font-size: 0.76em; }
+.sheet .pre { white-space: pre-wrap; }
+.sheet .letterhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.4em 1.5em; }
+.sheet .letterhead.rule { padding-bottom: 0.9em; border-bottom: 2px solid var(--accent); }
+.sheet .letterhead.centred { flex-direction: column; align-items: center; text-align: center; }
+.sheet .letterhead.centred .lh-left { flex-direction: column; gap: 0.4em; }
+.sheet .doctor { margin: 0; font-size: 1.6em; line-height: 1.25; font-weight: 600; color: var(--accent); letter-spacing: -0.01em; }
+.sheet .right { text-align: right; }
+.sheet .letterhead.centred .right { text-align: center; }
+.sheet .lh-left { display: flex; align-items: center; gap: 1.1em; }
+.sheet .lh-logo { max-height: 5em; max-width: 8em; object-fit: contain; }
+.sheet .who-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.2em 2em; }
+.sheet .vitals { display: flex; flex-wrap: wrap; border: 1px solid #8a979c; border-radius: 6px; }
+.sheet .vitals > div { flex: 1 1 6em; padding: 0.4em 0.7em; border-right: 1px solid #c9d2cf; }
+.sheet .vitals > div:last-child { border-right: 0; }
+.sheet .vitals-inline { display: flex; flex-wrap: wrap; gap: 0.1em 1.4em; }
+.sheet .rx { display: flex; gap: 1em; }
+.sheet .rx-mark { font-size: 3em; line-height: 1; color: var(--accent); flex: 0 0 1.05em; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'Arial Unicode MS', serif; }
+.sheet .rx-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.75em; margin: 0; padding: 0; list-style: none; }
+.sheet .rx-list.compact { gap: 0.3em; }
+.sheet .rx-list li { break-inside: avoid; }
+.sheet .block { border-top: 1px solid #c9d2cf; padding-top: 0.6em; white-space: pre-wrap; }
+.sheet .review { display: inline-block; padding: 0.45em 0.9em; border: 1.5px solid var(--accent); border-radius: 6px; }
+.sheet .sig-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 0.8em 2em; break-inside: avoid; }
+.sheet .sign { margin-left: auto; width: 17em; max-width: 100%; text-align: center; }
+.sheet .sign .line { height: 3.4em; border-bottom: 1px solid #14242b; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 0.3em; }
+.sheet .sign .line img { max-height: 3.3em; max-width: 13em; object-fit: contain; }
+.sheet .foot-note { border-top: 1px solid #c9d2cf; padding-top: 0.5em; font-size: 0.84em; color: #44545b; white-space: pre-wrap; text-align: center; }
+.sheet .cols { display: flex; gap: 1.2em; align-items: flex-start; }
+.sheet .cols .side { flex: 0 0 var(--side); min-width: 0; display: flex; flex-direction: column; gap: var(--gap); }
+.sheet .cols .side.rule { border-right: 1px solid #c9d2cf; padding-right: 1em; align-self: stretch; }
+.sheet .cols .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--gap); }
+.sheet .cols .side .vitals > div { flex-basis: 100%; border-right: 0; border-bottom: 1px solid #c9d2cf; }
+.sheet .cols .side .vitals > div:last-child { border-bottom: 0; }
+.sheet .cols .side .vitals-inline { flex-direction: column; }
+.sheet .preprint { position: absolute; left: 0; right: 0; top: 0; height: var(--mt); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; font-size: 12px; color: #44545b; background: repeating-linear-gradient(135deg, #eceFee 0 10px, #f7f9f8 10px 20px); border-bottom: 1px dashed #8a979c; }
+.sheet.guides::before { content: ''; position: absolute; top: var(--mt); right: var(--mr); bottom: var(--mb); left: var(--ml); border: 1px dashed #b4500b; pointer-events: none; }
+
+/* The page size and margins are written by the print layout (see pageCss) into a <style>
+   element beside the sheet. The margin belongs to the page, not the sheet, so a prescription
+   that runs onto a second page keeps its margins there too. */
 @media print {
   body { background: #fff; }
   .topbar, .demo-banner, .no-print { display: none !important; }
   .sheet-wrap { padding: 0; display: block; }
-  .sheet { border: 0; max-width: none; width: auto; padding: 0; min-height: 268mm; }
-  .sheet .block, .sheet .rx-list li, .sheet .vitals { break-inside: avoid; }
+  /* --inner-h is just under the first page's printable height: a one-page prescription
+     keeps its signature at the foot, with no blank page after it. */
+  .sheet { border: 0; max-width: none; width: auto; padding: 0; min-height: var(--inner-h); }
+  .sheet.flow { min-height: 0; }
+  .sheet.guides::before { top: 0; right: 0; bottom: 0; left: 0; }
+  .sheet .block, .sheet .rx-list li, .sheet .vitals, .sheet .review { break-inside: avoid; }
 }
 
 .switch.compact { align-self: flex-start; font-size: 13px; font-weight: 400; color: #44545b; padding: 0; gap: 8px; }
@@ -316,3 +339,22 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid #edf0ef; white-sp
 .checklist { list-style: none; margin: 0; padding: 0; }
 .checklist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 0; border-top: 1px solid #edf0ef; }
 .checklist li:first-child { border-top: 0; }
+
+/* Print layout editor */
+.pl-card { display: flex; flex-direction: column; gap: 12px; }
+.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.pl-side { position: sticky; top: 12px; align-self: flex-start; max-height: calc(100vh - 24px); overflow: auto; }
+.pl-preview { border: 1px solid var(--line); border-radius: 8px; background: #dfe4e2; padding: 10px; overflow: hidden; }
+.pl-preview .sheet { max-width: none; box-shadow: 0 1px 4px rgb(0 0 0 / 0.18); }
+.pl-sections { list-style: none; margin: 0; padding: 0; }
+.pl-sections li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 0; border-top: 1px solid #edf0ef; }
+.pl-sections li.off .t { color: var(--muted); font-weight: 400; }
+.pl-move { display: flex; }
+.pl-move .icon-btn { width: 36px; height: 40px; flex: 0 0 36px; }
+.pl-move .icon-btn:disabled { opacity: 0.3; cursor: default; }
+.pl-name { flex: 1 1 200px; text-align: left; align-self: center !important; }
+.pl-name .t { display: block; font-weight: 600; color: var(--ink); font-size: 14px; }
+.pl-name .hint { display: block; font-size: 12.5px; color: var(--muted); }
+.pl-space { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.pl-space input { width: 68px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; font-family: var(--mono); }
+@media (max-width: 900px) { .pl-side { position: static; max-height: none; } }

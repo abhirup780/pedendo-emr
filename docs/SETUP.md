@@ -47,6 +47,9 @@ an account at all. `VITE_ALLOWED_EMAIL` is a convenience on top, not the lock.
 The patient list shows a "Still to set up" card until these are done:
 
 - **Settings → Letterhead**: doctor and clinic details, optional logo and signature.
+- **Settings → Print layouts**: one layout for each paper or pre-printed pad. Measure the pad's
+  printed header and footer with a ruler, enter them as the top and bottom margins, then use
+  "Save and print a sample" on a real sheet with margin guides on, and adjust.
 - **Settings → Condition tags, Medicines, Investigations**: each offers a starter list. Review
   the starter medicines' default directions and the investigation panels before relying on them.
 - **Settings → This device**: how long before the app signs itself out when left untouched.
@@ -77,7 +80,8 @@ not be tried during development and need a look on the live site:
 
 - [ ] Google sign-in works, and a different Google account is turned away.
 - [ ] A patient, a visit and a result save and reappear after signing out and in.
-- [ ] A prescription prints correctly on the clinic's printer (try a two-page one).
+- [ ] A prescription prints correctly on each clinic's printer and pad (try a two-page one). In
+      the print window: the same paper size as the layout, margins "Default", scale 100%.
 - [ ] A photograph uploads, shows, and appears in the Drive folder.
 - [ ] The Excel export opens in Excel with correct dates.
 - [ ] A backup downloads. (If you ever need it: restore into a spare, empty Supabase project.)

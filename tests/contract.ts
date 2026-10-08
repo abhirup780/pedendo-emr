@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildBackup, parseBackup } from '../src/lib/backup'
+import { normalize, PRESETS, STANDARD } from '../src/lib/printlayout'
 import type { Store } from '../src/lib/store'
 import type { PatientInput, VisitInput } from '../src/lib/types'
 
@@ -23,6 +24,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
     for (const x of await s.listTemplates()) await s.deleteTemplate(x.id)
     for (const x of await s.listInvestigations()) await s.deleteInvestigation(x.id)
     for (const x of await s.listPanels()) await s.deletePanel(x.id)
+    for (const x of await s.listPrintLayouts()) await s.deletePrintLayout(x.id)
   }
 
   describe(`${name}: store contract`, () => {
@@ -160,6 +162,31 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       expect(await s.getClinic()).toEqual({ ...c, doctor_name: 'Dr. A. B.' })
     })
 
+    it('print layouts: save, edit, one default at a time, stored in full form', async () => {
+      const { store: s } = await make()
+      await wipe(s)
+      const a = await s.savePrintLayout({ name: 'Clinic A pad', is_default: true, config: PRESETS[1].config })
+      const b = await s.savePrintLayout({ name: 'Clinic B A5', is_default: false, config: PRESETS[2].config })
+      expect(a.config).toEqual(PRESETS[1].config)
+      await expect(s.savePrintLayout({ name: 'Clinic A pad', is_default: false, config: STANDARD })).rejects.toThrow()
+      expect((await s.listPrintLayouts()).map((l) => `${l.name}:${l.is_default}`)).toEqual(['Clinic A pad:true', 'Clinic B A5:false'])
+
+      // Making B the default takes the flag from A.
+      await s.savePrintLayout({ ...b, is_default: true })
+      expect((await s.listPrintLayouts()).map((l) => `${l.name}:${l.is_default}`)).toEqual(['Clinic A pad:false', 'Clinic B A5:true'])
+      // Re-saving the default as default is allowed.
+      const edited = await s.savePrintLayout({ ...b, is_default: true, name: 'Clinic B small pad', config: { ...b.config, font_pt: 11, margin: { ...b.config.margin, top: 44 } } })
+      expect([edited.id, edited.name, edited.config.font_pt, edited.config.margin.top]).toEqual([b.id, 'Clinic B small pad', 11, 44])
+
+      // A partial or out-of-range config comes back complete and within limits.
+      const odd = await s.savePrintLayout({ name: 'Odd', is_default: false, config: { font_pt: 99, sections: [{ key: 'rx', show: true }] } as never })
+      expect(odd.config).toEqual(normalize({ font_pt: 99, sections: [{ key: 'rx', show: true }] }))
+      expect(odd.config.font_pt).toBe(16)
+
+      await s.deletePrintLayout(a.id)
+      expect((await s.listPrintLayouts()).map((l) => l.name)).toEqual(['Clinic B small pad', 'Odd'])
+    })
+
     it('photograph records and consent', async () => {
       const { store: s } = await make()
       await wipe(s)
@@ -184,6 +211,8 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       await s.saveTemplate({ name: 'GH follow-up', medicines: [rx], advice: '' })
       await s.saveInvestigation({ name: 'IGF-1', category: 'Growth and GH axis', unit: 'ng/mL' })
       await s.savePanel({ name: 'GH monitoring', items: ['IGF-1'] })
+      await s.savePrintLayout({ name: 'Clinic A pad', is_default: true, config: PRESETS[1].config })
+      await s.savePrintLayout({ name: 'Two column', is_default: false, config: PRESETS[3].config })
       await s.saveClinic({ doctor_name: 'Dr. A', qualifications: 'MD', reg_no: '1', clinic_name: 'Clinic', address: 'Addr', phone: '1', email: 'a@b.c', logo: '', signature: 'data:image/png;base64,AAAA' })
       const a = await s.savePatient(patient({ condition_ids: [tag.id] }))
       const b = await s.savePatient(patient({ name: 'Riya Sen', sex: 'F' }))
@@ -196,7 +225,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       const sorted = <T extends { id: string }>(rows: T[]) => [...rows].sort((x, y) => x.id.localeCompare(y.id))
       const snapshot = async () => {
         const d = await buildBackup(s)
-        return { clinic: d.clinic, conditions: sorted(d.conditions), medicines: sorted(d.medicines), templates: sorted(d.templates), investigations: sorted(d.investigations), panels: sorted(d.panels), patients: sorted(d.patients), visits: sorted(d.visits), results: sorted(d.results), photos: sorted(d.photos), consents: d.consents }
+        return { clinic: d.clinic, conditions: sorted(d.conditions), medicines: sorted(d.medicines), templates: sorted(d.templates), investigations: sorted(d.investigations), panels: sorted(d.panels), print_layouts: sorted(d.print_layouts), patients: sorted(d.patients), visits: sorted(d.visits), results: sorted(d.results), photos: sorted(d.photos), consents: d.consents }
       }
       const before = await snapshot()
       const file = JSON.stringify(await buildBackup(s))
@@ -220,6 +249,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       await wipe(s)
       await wipe(other)
       const tag = await s.saveCondition({ name: 'GH deficiency', color: 'teal' })
+      const layout = await s.savePrintLayout({ name: 'Mine', is_default: true, config: STANDARD })
       const p = await s.savePatient(patient({ condition_ids: [tag.id] }))
       const v = await s.saveVisit(visit(p.id, { review_date: '2026-09-01' }))
       const r = await s.saveResult({ patient_id: p.id, test: 'TSH', value: '2.4', unit: '', result_date: '2026-04-08', flag: '' })
@@ -234,6 +264,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       expect(await other.listResults(p.id)).toEqual([])
       expect(await other.listPhotos(p.id)).toEqual([])
       expect(await other.listConditions()).toEqual([])
+      expect(await other.listPrintLayouts()).toEqual([])
       expect(await other.conditionCounts()).toEqual({})
       expect(await other.followupCounts(TODAY)).toEqual({ overdue: 0, week: 0 })
       expect((await other.getClinic()).doctor_name).toBe('')
@@ -249,6 +280,9 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       await other.deleteResult(r.id)
       await other.deletePhoto(ph.id)
       await other.deleteCondition(tag.id)
+      await other.deletePrintLayout(layout.id)
+      // Each account may have its own default; one does not unseat the other's.
+      await other.savePrintLayout({ name: 'Theirs', is_default: true, config: STANDARD })
       await other.setPhotoConsent(p.id, { on: null, by: '' })
       await other.saveClinic({ doctor_name: 'Dr. B', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '', logo: '', signature: '' })
 
@@ -259,6 +293,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       expect(await s.listPhotos(p.id)).toHaveLength(1)
       expect((await s.getPhotoConsent(p.id)).on).toBe('2026-10-08')
       expect((await s.getClinic()).doctor_name).toBe('Dr. A')
+      expect((await s.listPrintLayouts()).map((l) => `${l.name}:${l.is_default}`)).toEqual(['Mine:true'])
     })
   })
 }

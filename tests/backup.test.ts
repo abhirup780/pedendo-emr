@@ -23,6 +23,7 @@ describe('parseBackup', () => {
     const b = parseBackup(JSON.stringify(old))
     expect(b.photos).toEqual([])
     expect(b.consents).toEqual([])
+    expect(b.print_layouts).toEqual([])
   })
   it('refuses files that are not backups', () => {
     expect(() => parseBackup('not json')).toThrow(/could not be read/)

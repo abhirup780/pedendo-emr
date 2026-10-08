@@ -1,9 +1,10 @@
 import { todayISO } from './age'
+import { normalize } from './printlayout'
 import type { Store } from './store'
 import type { Backup } from './types'
 
 /** Version of the backup file layout written by this app. */
-export const BACKUP_FORMAT = 2
+export const BACKUP_FORMAT = 3
 
 /**
  * Everything in the account as one JSON document. The free database plan keeps no backups,
@@ -11,7 +12,7 @@ export const BACKUP_FORMAT = 2
  * Photograph records are included; the image files themselves stay in Google Drive.
  */
 export async function buildBackup(store: Store): Promise<Backup> {
-  const [dump, conditions, medicines, templates, investigations, panels, clinic] = await Promise.all([
+  const [dump, conditions, medicines, templates, investigations, panels, clinic, print_layouts] = await Promise.all([
     store.dump(),
     store.listConditions(),
     store.listMedicines(),
@@ -19,8 +20,9 @@ export async function buildBackup(store: Store): Promise<Backup> {
     store.listInvestigations(),
     store.listPanels(),
     store.getClinic(),
+    store.listPrintLayouts(),
   ])
-  return { app: 'pedendo-emr', format: BACKUP_FORMAT, exported_at: new Date().toISOString(), clinic, conditions, medicines, templates, investigations, panels, ...dump }
+  return { app: 'pedendo-emr', format: BACKUP_FORMAT, exported_at: new Date().toISOString(), clinic, conditions, medicines, templates, investigations, panels, print_layouts, ...dump }
 }
 
 const LISTS = ['conditions', 'medicines', 'templates', 'investigations', 'panels', 'patients', 'visits', 'results'] as const
@@ -47,7 +49,9 @@ export function parseBackup(text: string): Backup {
   if (problems.length) throw new Error(`This backup is incomplete: ${problems.join(', ')}.`)
 
   // Format 1 had no photograph records or consent.
-  const out = { ...b, photos: Array.isArray(b.photos) ? b.photos : [], consents: Array.isArray(b.consents) ? b.consents : [] } as Backup
+  // Format 1 had no photograph records or consent; print layouts arrived in format 3.
+  const out = { ...b, photos: Array.isArray(b.photos) ? b.photos : [], consents: Array.isArray(b.consents) ? b.consents : [], print_layouts: Array.isArray(b.print_layouts) ? b.print_layouts : [] } as Backup
+  out.print_layouts = out.print_layouts.map((l) => ({ ...l, config: normalize(l.config) }))
   // Older files lack fields added since; fill them so every record has the current shape.
   out.patients = out.patients.map((p) => ({ ...p, last_visit_on: p.last_visit_on ?? null, next_review_on: p.next_review_on ?? null, visit_count: p.visit_count ?? 0 }))
   out.clinic = { ...out.clinic, logo: out.clinic.logo ?? '', signature: out.clinic.signature ?? '' }
