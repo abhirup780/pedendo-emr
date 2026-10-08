@@ -18,6 +18,15 @@
   --ok-fg: #22602a;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
+/* The app is light only. Scrollbars are coloured here so that a device in dark mode, or a page
+   that embeds the app, cannot turn them black. The setting is inherited by every scrolling area. */
+html { color-scheme: light only; scrollbar-color: #b4c0bf #eef1f0; }
+dialog, dialog::backdrop { color-scheme: light only; }
+::-webkit-scrollbar { width: 12px; height: 12px; background: #eef1f0; }
+::-webkit-scrollbar-thumb { background: #b4c0bf; border-radius: 6px; border: 3px solid #eef1f0; }
+::-webkit-scrollbar-thumb:hover { background: #8a979c; }
+::-webkit-scrollbar-corner { background: #eef1f0; }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.45; }
