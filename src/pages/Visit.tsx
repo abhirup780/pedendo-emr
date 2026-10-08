@@ -58,7 +58,8 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const [printPlan, setPrintPlan] = useState(true)
   const [tests, setTests] = useState<string[]>([])
   const [tanner, setTanner] = useState<Tanner | null>(null)
-  const [staging, setStaging] = useState(false)
+  // The staging pictures are open from the start; the doctor can fold them away.
+  const [staging, setStaging] = useState(true)
   const [testCatalog, setTestCatalog] = useState<Investigation[]>([])
   const [panels, setPanels] = useState<Panel[]>([])
   const [meds, setMeds] = useState<RxItem[]>([])
@@ -392,7 +393,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                 <button type="button" className="btn small" onClick={() => setTanner({ ...lastStaged.tanner!, signs: [...lastStaged.tanner!.signs] })}>Same as last</button>
               )}
               <button type="button" className="btn small outline" aria-expanded={staging} onClick={() => setStaging(!staging)}>
-                {staging ? 'Hide staging' : tanner ? 'Change staging' : 'Stage now'}
+                {staging ? 'Hide staging' : 'Show staging'}
               </button>
             </div>
             {staging && <TannerPicker value={tanner} onChange={setTanner} sex={patient.sex} ageYears={decimalAge(patient.dob, f.date)} />}
