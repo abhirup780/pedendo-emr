@@ -110,6 +110,13 @@ export default function PrintRx() {
           </ol>
         </div>
 
+        {v.investigations.length > 0 && (
+          <div className="block">
+            <div style={{ fontWeight: 600 }}>Investigations advised</div>
+            {v.investigations.join(' · ')}
+          </div>
+        )}
+
         {v.print_plan && v.plan && (
           <div className="block">
             <div style={{ fontWeight: 600 }}>Plan</div>

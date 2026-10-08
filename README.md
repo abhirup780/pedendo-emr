@@ -3,8 +3,9 @@
 Patient records and prescription writing for a single pediatric endocrinologist.
 A web app: the doctor signs in with a dedicated Google account from any browser.
 
-**Status: stage 2 of 8** — sign-in, patient records, condition tags, visits with measurements
-and notes, prescription writing with a medicine list and templates, and A4 ℞ print.
+**Status: stage 3 of 8** — sign-in, patient records, condition tags, visits with measurements
+and notes, prescription writing with a medicine list and templates, A4 ℞ print, a grouped
+investigation list with one-tap panels, and result entry.
 
 ## Run it
 

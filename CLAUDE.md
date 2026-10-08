@@ -59,11 +59,22 @@ the single source of truth — commit and push finished work.
 - Printing uses `window.print()` with `@page` A4 and the `.sheet` layout in `styles.css`; the
   artifact preview cannot print, so `PrintRx` hides the button when `VITE_PREVIEW` is set.
 
+## Stage 3 notes
+
+- Investigations advised at a visit are a JSON array of names on the `visits` row; results are
+  rows in `results`, keyed to the patient (not the visit) because reports arrive later.
+- A result's value is text ("142", "<0.1", "7y 6m") and its low/high flag is set by the doctor
+  against the reporting lab's range. The app holds no reference ranges and must not invent any.
+- `src/lib/investigations.ts` holds the starter list, panels, `bestMatch` (what Enter adds) and
+  `latestPerTest`. Starter units are common ones only and stay editable per result.
+- `components/Results.tsx` is deliberately not a `<form>`: it sits inside the visit form. The
+  visit form also blocks Enter-in-a-text-box from saving the visit.
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)
 2. ~~Visit and prescription: measurements, notes, medicines, templates, A4 print~~ (done)
-3. Investigations: grouped master list, one-click panels, result entry
+3. ~~Investigations: grouped master list, one-click panels, result entry~~ (done)
 4. Growth: reference tables, SDS and velocity, chart
 5. Tanner staging per visit
 6. Photographs on Google Drive, compare view

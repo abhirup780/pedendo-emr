@@ -1,4 +1,5 @@
-import type { Clinic, Condition, Medicine, Patient, PatientInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import { STARTER_INVESTIGATIONS, STARTER_PANELS } from './investigations'
 import type { ListOptions, Store } from './store'
 import { STARTER_MEDICINES } from './medicines'
 import { STARTER_CONDITIONS } from './tags'
@@ -7,7 +8,7 @@ import { STARTER_CONDITIONS } from './tags'
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v2'
+const KEY = 'pedendo-demo-v3'
 
 interface Db {
   signedIn: boolean
@@ -18,6 +19,9 @@ interface Db {
   medicines: Medicine[]
   templates: RxTemplate[]
   clinic: Clinic
+  investigations: Investigation[]
+  panels: Panel[]
+  results: Result[]
 }
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2))
@@ -70,6 +74,7 @@ function seed(): Db {
     advice: 'Balanced diet and regular physical activity.',
     review_date: null,
     medicines: [gh(dose)],
+    investigations: date === '2026-07-14' ? ['IGF-1', 'TSH', 'Free T4'] : [],
     created_at: `${date}T05:00:00.000Z`,
   })
   const visits: Visit[] = [
@@ -89,7 +94,19 @@ function seed(): Db {
     phone: '0000000000',
     email: 'clinic@example.com',
   }
-  return { signedIn: false, nextMrn: 10001 + patients.length, conditions, patients, visits, medicines, templates, clinic }
+  const investigations: Investigation[] = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map(([name, unit]) => ({ id: uid(), name, category: g.category, unit })))
+  const panels: Panel[] = STARTER_PANELS.map((p) => ({ id: uid(), ...p }))
+  const res = (test: string, value: string, unit: string, date: string, flag: Result['flag'] = ''): Result => ({ id: uid(), patient_id: aarav, test, value, unit, result_date: date, flag, created_at: `${date}T06:00:00.000Z` })
+  const results: Result[] = [
+    res('IGF-1', '96', 'ng/mL', '2026-01-10', 'low'),
+    res('TSH', '2.9', 'mIU/L', '2026-01-10'),
+    res('Bone age X-ray (left hand and wrist)', '7y 6m', '', '2026-01-10'),
+    res('IGF-1', '142', 'ng/mL', '2026-04-08'),
+    res('TSH', '2.4', 'mIU/L', '2026-04-08'),
+    res('Free T4', '1.2', 'ng/dL', '2026-04-08'),
+    res('25-OH vitamin D', '18', 'ng/mL', '2026-07-14', 'low'),
+  ]
+  return { signedIn: false, nextMrn: 10001 + patients.length, conditions, patients, visits, medicines, templates, clinic, investigations, panels, results }
 }
 
 function load(): Db {
@@ -198,6 +215,7 @@ export function createDemoStore(): Store {
     async deletePatient(id) {
       db.patients = db.patients.filter((p) => p.id !== id)
       db.visits = db.visits.filter((v) => v.patient_id !== id)
+      db.results = db.results.filter((r) => r.patient_id !== id)
       save()
     },
 
@@ -259,6 +277,56 @@ export function createDemoStore(): Store {
     },
     async deleteTemplate(id) {
       db.templates = db.templates.filter((t) => t.id !== id)
+      save()
+    },
+
+    async listInvestigations() {
+      return [...db.investigations].sort((a, b) => a.name.localeCompare(b.name))
+    },
+    async saveInvestigation(i) {
+      const name = i.name.trim()
+      if (!name) throw new Error('Give the investigation a name.')
+      if (db.investigations.some((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== i.id)) throw new Error(`"${name}" is already in your list.`)
+      const saved: Investigation = { id: i.id ?? uid(), name, category: i.category.trim() || 'General', unit: i.unit }
+      db.investigations = i.id ? db.investigations.map((x) => (x.id === i.id ? saved : x)) : [...db.investigations, saved]
+      save()
+      return saved
+    },
+    async deleteInvestigation(id) {
+      db.investigations = db.investigations.filter((i) => i.id !== id)
+      save()
+    },
+
+    async listPanels() {
+      return [...db.panels].sort((a, b) => a.name.localeCompare(b.name))
+    },
+    async savePanel(p) {
+      const name = p.name.trim()
+      if (!name) throw new Error('Give the panel a name.')
+      if (db.panels.some((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== p.id)) throw new Error(`A panel called "${name}" already exists.`)
+      const saved: Panel = { id: p.id ?? uid(), name, items: [...p.items] }
+      db.panels = p.id ? db.panels.map((x) => (x.id === p.id ? saved : x)) : [...db.panels, saved]
+      save()
+      return saved
+    },
+    async deletePanel(id) {
+      db.panels = db.panels.filter((p) => p.id !== id)
+      save()
+    },
+
+    async listResults(patientId) {
+      return db.results
+        .filter((r) => r.patient_id === patientId)
+        .sort((a, b) => b.result_date.localeCompare(a.result_date) || b.created_at.localeCompare(a.created_at))
+    },
+    async saveResult(input: ResultInput) {
+      const saved: Result = { ...input, id: uid(), created_at: new Date().toISOString() }
+      db.results.push(saved)
+      save()
+      return saved
+    },
+    async deleteResult(id) {
+      db.results = db.results.filter((r) => r.id !== id)
       save()
     },
 

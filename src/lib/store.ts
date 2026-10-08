@@ -1,4 +1,4 @@
-import type { Clinic, Condition, Medicine, Patient, PatientInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import { createDemoStore } from './store.demo'
 import { createSupabaseStore } from './store.supabase'
 
@@ -38,6 +38,19 @@ export interface Store {
   listTemplates(): Promise<RxTemplate[]>
   saveTemplate(t: Omit<RxTemplate, 'id'> & { id?: string }): Promise<RxTemplate>
   deleteTemplate(id: string): Promise<void>
+
+  listInvestigations(): Promise<Investigation[]>
+  saveInvestigation(i: Omit<Investigation, 'id'> & { id?: string }): Promise<Investigation>
+  deleteInvestigation(id: string): Promise<void>
+
+  listPanels(): Promise<Panel[]>
+  savePanel(p: Omit<Panel, 'id'> & { id?: string }): Promise<Panel>
+  deletePanel(id: string): Promise<void>
+
+  /** Newest first. */
+  listResults(patientId: string): Promise<Result[]>
+  saveResult(input: ResultInput): Promise<Result>
+  deleteResult(id: string): Promise<void>
 
   getClinic(): Promise<Clinic>
   saveClinic(c: Clinic): Promise<Clinic>

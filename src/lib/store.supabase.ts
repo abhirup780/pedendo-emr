@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import type { User } from '@supabase/supabase-js'
-import type { Clinic, Condition, Medicine, Patient, PatientInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
+import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import type { ListOptions, Store } from './store'
 
-const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, complaint, history, assessment, plan, print_plan, advice, review_date, medicines, created_at'
+const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, complaint, history, assessment, plan, print_plan, advice, review_date, medicines, investigations, created_at'
+const RESULT_COLS = 'id, patient_id, test, value, unit, result_date, flag, created_at'
 const MED_COLS = 'id, name, dose, frequency, route, duration, instructions'
 const CLINIC_COLS = 'doctor_name, qualifications, reg_no, clinic_name, address, phone, email'
 const BLANK_CLINIC: Clinic = { doctor_name: '', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '' }
@@ -15,6 +16,7 @@ function toVisit(r: Visit): Visit {
     weight_kg: r.weight_kg == null ? null : Number(r.weight_kg),
     print_plan: r.print_plan !== false,
     medicines: Array.isArray(r.medicines) ? r.medicines : [],
+    investigations: Array.isArray(r.investigations) ? r.investigations : [],
   }
 }
 
@@ -203,6 +205,63 @@ export function createSupabaseStore(url: string, key: string): Store {
     },
     async deleteTemplate(id) {
       const { error } = await sb.from('rx_templates').delete().eq('id', id)
+      fail(error)
+    },
+
+    async listInvestigations() {
+      const { data, error } = await sb.from('investigations').select('id, name, category, unit').order('name')
+      fail(error)
+      return (data ?? []) as Investigation[]
+    },
+    async saveInvestigation(i) {
+      const { id, ...body } = i
+      body.name = body.name.trim()
+      body.category = body.category.trim() || 'General'
+      const q = id ? sb.from('investigations').update(body).eq('id', id) : sb.from('investigations').insert(body)
+      const { data, error } = await q.select('id, name, category, unit').single()
+      fail(error)
+      return data as Investigation
+    },
+    async deleteInvestigation(id) {
+      const { error } = await sb.from('investigations').delete().eq('id', id)
+      fail(error)
+    },
+
+    async listPanels() {
+      const { data, error } = await sb.from('investigation_panels').select('id, name, items').order('name')
+      fail(error)
+      return (data ?? []) as Panel[]
+    },
+    async savePanel(p) {
+      const { id, ...body } = p
+      body.name = body.name.trim()
+      const q = id ? sb.from('investigation_panels').update(body).eq('id', id) : sb.from('investigation_panels').insert(body)
+      const { data, error } = await q.select('id, name, items').single()
+      fail(error)
+      return data as Panel
+    },
+    async deletePanel(id) {
+      const { error } = await sb.from('investigation_panels').delete().eq('id', id)
+      fail(error)
+    },
+
+    async listResults(patientId) {
+      const { data, error } = await sb
+        .from('results')
+        .select(RESULT_COLS)
+        .eq('patient_id', patientId)
+        .order('result_date', { ascending: false })
+        .order('created_at', { ascending: false })
+      fail(error)
+      return (data ?? []) as Result[]
+    },
+    async saveResult(input: ResultInput) {
+      const { data, error } = await sb.from('results').insert(input).select(RESULT_COLS).single()
+      fail(error)
+      return data as Result
+    },
+    async deleteResult(id) {
+      const { error } = await sb.from('results').delete().eq('id', id)
       fail(error)
     },
 

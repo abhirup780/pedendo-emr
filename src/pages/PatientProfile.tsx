@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import Results from '../components/Results'
 import { initials } from '../components/Shell'
 import { Tag } from '../components/Tag'
 import { formatAge, formatDate, midParentalHeight } from '../lib/age'
 import { bmi } from '../lib/clinical'
 import { store } from '../lib/store'
-import type { Condition, Patient, Visit } from '../lib/types'
+import type { Condition, Investigation, Patient, Visit } from '../lib/types'
 
 export default function PatientProfile() {
   const { id = '' } = useParams()
@@ -13,6 +14,7 @@ export default function PatientProfile() {
   const [p, setP] = useState<Patient | null | undefined>(undefined)
   const [conditions, setConditions] = useState<Condition[]>([])
   const [visits, setVisits] = useState<Visit[]>([])
+  const [catalog, setCatalog] = useState<Investigation[]>([])
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState('')
 
@@ -22,6 +24,7 @@ export default function PatientProfile() {
         setP(pt)
         setConditions(cs)
         setVisits(vs)
+        store.listInvestigations().then(setCatalog, () => {})
       },
       (e: Error) => {
         setError(e.message)
@@ -122,6 +125,8 @@ export default function PatientProfile() {
           </div>
         )}
       </section>
+
+      <Results patientId={p.id} catalog={catalog} mode="all" />
 
       <section className="card pad">
         <h2 style={{ marginBottom: 12 }}>Patient details</h2>

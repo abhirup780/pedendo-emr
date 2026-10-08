@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import InvestigationPicker from '../components/InvestigationPicker'
+import Results from '../components/Results'
 import { formatAge, formatDate, todayISO } from '../lib/age'
 import { addMonths, bmi, dosePerKg, EMPTY_RX, heightVelocity, validBp } from '../lib/clinical'
 import { store } from '../lib/store'
-import type { Medicine, Patient, RxItem, RxTemplate, Visit, VisitInput } from '../lib/types'
+import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Visit, VisitInput } from '../lib/types'
 
 const RX_FIELDS: { key: keyof RxItem; label: string; wide?: boolean }[] = [
   { key: 'dose', label: 'Dose' },
@@ -29,6 +31,9 @@ export default function VisitPage() {
   const [templates, setTemplates] = useState<RxTemplate[]>([])
   const [f, setF] = useState({ date: todayISO(), height: '', weight: '', bp: '', complaint: '', history: '', assessment: '', plan: '', advice: '', review: '' })
   const [printPlan, setPrintPlan] = useState(true)
+  const [tests, setTests] = useState<string[]>([])
+  const [testCatalog, setTestCatalog] = useState<Investigation[]>([])
+  const [panels, setPanels] = useState<Panel[]>([])
   const [meds, setMeds] = useState<RxItem[]>([])
   const [q, setQ] = useState('')
   const [tplName, setTplName] = useState<string | null>(null)
@@ -40,13 +45,15 @@ export default function VisitPage() {
 
   useEffect(() => {
     let live = true
-    Promise.all([store.getPatient(id), store.listVisits(id), store.listMedicines(), store.listTemplates()]).then(
-      ([p, vs, ms, ts]) => {
+    Promise.all([store.getPatient(id), store.listVisits(id), store.listMedicines(), store.listTemplates(), store.listInvestigations(), store.listPanels()]).then(
+      ([p, vs, ms, ts, inv, pn]) => {
         if (!live) return
         setPatient(p)
         setVisits(vs)
         setCatalog(ms)
         setTemplates(ts)
+        setTestCatalog(inv)
+        setPanels(pn)
         const v = vid ? vs.find((x) => x.id === vid) : undefined
         if (vid && !v) setError('This visit could not be found.')
         if (v) {
@@ -63,6 +70,7 @@ export default function VisitPage() {
             review: v.review_date ?? '',
           })
           setPrintPlan(v.print_plan)
+          setTests(v.investigations)
           setMeds(v.medicines)
         }
       },
@@ -132,6 +140,13 @@ export default function VisitPage() {
     }
   }
 
+  async function savePanel(name: string): Promise<string> {
+    const existing = panels.find((x) => x.name.toLowerCase() === name.toLowerCase())
+    const saved = await store.savePanel({ id: existing?.id, name, items: tests })
+    setPanels((old) => [...old.filter((x) => x.id !== saved.id), saved].sort((a, b) => a.name.localeCompare(b.name)))
+    return `Panel "${saved.name}" ${existing ? 'updated' : 'saved'}.`
+  }
+
   async function save(thenPrint: boolean) {
     setTried(true)
     if (invalid) return
@@ -148,6 +163,7 @@ export default function VisitPage() {
       assessment: f.assessment.trim(),
       plan: f.plan.trim(),
       print_plan: printPlan,
+      investigations: tests,
       advice: f.advice.trim(),
       review_date: f.review || null,
       medicines: meds.map((m) => ({ name: m.name.trim(), dose: m.dose.trim(), frequency: m.frequency.trim(), route: m.route.trim(), duration: m.duration.trim(), instructions: m.instructions.trim() })),
@@ -205,7 +221,13 @@ export default function VisitPage() {
       {error && <div className="alert">{error}</div>}
       {notice && <div className="pill ok" role="status">{notice}</div>}
 
-      <form className="cols" noValidate onSubmit={(e: FormEvent) => { e.preventDefault(); void save(false) }}>
+      <form
+        className="cols"
+        noValidate
+        onSubmit={(e: FormEvent) => { e.preventDefault(); void save(false) }}
+        // Enter in a text box must never save the visit by accident; only the buttons do.
+        onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') e.preventDefault() }}
+      >
         <div className="main">
           <section className="card pad">
             <div className="row" style={{ marginBottom: 12 }}>
@@ -275,6 +297,8 @@ export default function VisitPage() {
               </div>
             </div>
           </section>
+
+          <InvestigationPicker catalog={testCatalog} panels={panels} value={tests} onChange={setTests} onSavePanel={savePanel} />
         </div>
 
         <div className="side">
@@ -374,12 +398,14 @@ export default function VisitPage() {
               )
             ) : (
               <div className="row" style={{ gap: 8 }}>
-                <input aria-label="Template name" placeholder="Template name" value={tplName} onChange={(e) => setTplName(e.target.value)} style={{ flex: '1 1 160px', minHeight: 40, padding: '6px 10px', border: '1px solid var(--line-strong)', borderRadius: 8 }} />
+                <input aria-label="Template name" placeholder="Template name" value={tplName} onChange={(e) => setTplName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); void saveTemplate() } }} style={{ flex: '1 1 160px', minHeight: 40, padding: '6px 10px', border: '1px solid var(--line-strong)', borderRadius: 8 }} />
                 <button type="button" className="btn small primary" disabled={!tplName.trim()} onClick={saveTemplate}>Save template</button>
                 <button type="button" className="btn small" onClick={() => setTplName(null)}>Cancel</button>
               </div>
             )}
           </section>
+
+          <Results patientId={id} catalog={testCatalog} mode="latest" />
 
           {tried && invalid && <div className="alert">Some entries need correcting before this visit can be saved.</div>}
           <div className="row">

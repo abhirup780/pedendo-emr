@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { store } from '../lib/store'
 import { EMPTY_RX } from '../lib/clinical'
+import { categoryOrder, STARTER_INVESTIGATIONS, STARTER_PANELS } from '../lib/investigations'
 import { STARTER_MEDICINES } from '../lib/medicines'
 import { STARTER_CONDITIONS, TAG_COLORS, tagColor } from '../lib/tags'
-import type { Clinic, Condition, Medicine, RxItem, RxTemplate } from '../lib/types'
+import type { Clinic, Condition, Investigation, Medicine, Panel, RxItem, RxTemplate } from '../lib/types'
 
 function Swatches({ value, onChange, label }: { value: string; onChange: (c: string) => void; label: string }) {
   return (
@@ -333,10 +334,132 @@ function Templates() {
   )
 }
 
+function Investigations() {
+  const [list, setList] = useState<Investigation[] | null>(null)
+  const [panels, setPanels] = useState<Panel[]>([])
+  const [draft, setDraft] = useState({ name: '', category: '', unit: '' })
+  const [confirm, setConfirm] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  async function reload() {
+    try {
+      const [i, p] = await Promise.all([store.listInvestigations(), store.listPanels()])
+      setList(i)
+      setPanels(p)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load investigations.')
+      setList([])
+    }
+  }
+  useEffect(() => {
+    void reload()
+  }, [])
+  async function run(job: () => Promise<unknown>) {
+    setError('')
+    try {
+      await job()
+      await reload()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Something went wrong.'
+      setError(/duplicate key/i.test(msg) ? 'That name is already in your list.' : msg)
+    }
+  }
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!draft.name.trim()) return
+    void run(async () => {
+      await store.saveInvestigation(draft)
+      setDraft({ name: '', category: draft.category, unit: '' })
+    })
+  }
+  const cats = categoryOrder((list ?? []).map((i) => i.category))
+
+  return (
+    <>
+      {error && <div className="alert">{error}</div>}
+      <section className="card">
+        <div className="card-head">
+          <div className="grow">
+            <h2>Your investigations</h2>
+            <div className="muted">Shown grouped on the visit screen. The unit is pre-filled when you enter a result.</div>
+          </div>
+          {list && list.length === 0 && (
+            <button
+              type="button"
+              className="btn outline small"
+              onClick={() => run(async () => {
+                for (const g of STARTER_INVESTIGATIONS) for (const [name, unit] of g.items) await store.saveInvestigation({ name, unit, category: g.category })
+                if (panels.length === 0) for (const p of STARTER_PANELS) await store.savePanel(p)
+              })}
+            >
+              Add the starter list and panels
+            </button>
+          )}
+        </div>
+        {list === null && <div className="empty">Loading…</div>}
+        {list && list.length === 0 && <div className="empty">No investigations yet. Add your own below, or begin with the starter list and edit it.</div>}
+        {cats.map((c) => (
+          <div key={c}>
+            <div className="group-head">{c}</div>
+            {list!.filter((i) => i.category === c).map((i) => (
+              <div className="tag-row" key={i.id} style={{ padding: '6px 16px' }}>
+                <div className="grow">{i.name}</div>
+                <span className="muted mono">{i.unit}</span>
+                {confirm === i.id ? (
+                  <>
+                    <button type="button" className="btn small" onClick={() => setConfirm(null)}>Keep</button>
+                    <button type="button" className="btn danger small" onClick={() => { setConfirm(null); void run(() => store.deleteInvestigation(i.id)) }}>Remove</button>
+                  </>
+                ) : (
+                  <button type="button" className="btn small" aria-label={`Remove ${i.name}`} onClick={() => setConfirm(i.id)}>Remove</button>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+        <form className="tag-row" onSubmit={submit} style={{ borderBottom: 0 }}>
+          <input type="text" aria-label="New investigation name" placeholder="New investigation" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+          <input type="text" aria-label="Category" placeholder="Category" list="inv-cats" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} style={{ flex: '1 1 150px' }} />
+          <datalist id="inv-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist>
+          <input type="text" aria-label="Unit" placeholder="Unit" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} style={{ flex: '0 1 100px' }} />
+          <button type="submit" className="btn primary small" disabled={!draft.name.trim()}>Add</button>
+        </form>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <div className="grow">
+            <h2>Panels</h2>
+            <div className="muted">Create a panel from any visit with "Save this selection as a panel".</div>
+          </div>
+        </div>
+        {panels.length === 0 && <div className="empty">No panels yet.</div>}
+        {panels.map((p) => (
+          <div className="tag-row" key={p.id}>
+            <div className="grow">
+              <div style={{ fontWeight: 600 }}>{p.name}</div>
+              <div className="muted" style={{ fontSize: 13 }}>{p.items.join(' · ')}</div>
+            </div>
+            {confirm === p.id ? (
+              <>
+                <button type="button" className="btn small" onClick={() => setConfirm(null)}>Keep</button>
+                <button type="button" className="btn danger small" onClick={() => { setConfirm(null); void run(() => store.deletePanel(p.id)) }}>Delete</button>
+              </>
+            ) : (
+              <button type="button" className="btn small" aria-label={`Delete panel ${p.name}`} onClick={() => setConfirm(p.id)}>Delete</button>
+            )}
+          </div>
+        ))}
+      </section>
+    </>
+  )
+}
+
 const TABS = [
   { key: 'clinic', label: 'Letterhead', el: <ClinicDetails /> },
   { key: 'tags', label: 'Condition tags', el: <ConditionTags /> },
   { key: 'meds', label: 'Medicines', el: <Medicines /> },
+  { key: 'tests', label: 'Investigations', el: <Investigations /> },
   { key: 'templates', label: 'Templates', el: <Templates /> },
 ]
 

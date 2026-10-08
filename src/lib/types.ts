@@ -74,6 +74,8 @@ export interface Visit {
   advice: string
   review_date: string | null
   medicines: RxItem[]
+  /** Names of investigations advised at this visit. */
+  investigations: string[]
   created_at: string
 }
 
@@ -89,3 +91,35 @@ export interface Clinic {
   phone: string
   email: string
 }
+
+/** An entry in the doctor's own investigation list. */
+export interface Investigation {
+  id: string
+  name: string
+  category: string
+  unit: string
+}
+
+/** A named set of investigations added to a visit with one tap. */
+export interface Panel {
+  id: string
+  name: string
+  items: string[]
+}
+
+export type ResultFlag = '' | 'low' | 'high'
+
+export interface Result {
+  id: string
+  patient_id: string
+  test: string
+  /** As reported: "142", "<0.1", "Positive", "7y 6m". */
+  value: string
+  unit: string
+  /** ISO date, YYYY-MM-DD. */
+  result_date: string
+  flag: ResultFlag
+  created_at: string
+}
+
+export type ResultInput = Omit<Result, 'id' | 'created_at'>
