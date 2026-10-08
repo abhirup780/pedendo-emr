@@ -29,3 +29,22 @@ export async function compressImage(file: Blob, maxEdge: number = MAX_EDGE, qual
   if (!blob) throw new Error('The photo could not be converted.')
   return { blob, ...size }
 }
+
+/**
+ * A logo or signature for the letterhead: shrunk to fit and returned as a PNG data URL, small
+ * enough to keep in the settings row. Transparency is kept so a signature sits on the paper.
+ */
+export async function smallImageDataUrl(file: Blob, maxWidth: number, maxHeight: number): Promise<string> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  const k = Math.min(1, maxWidth / bitmap.width, maxHeight / bitmap.height)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(bitmap.width * k))
+  canvas.height = Math.max(1, Math.round(bitmap.height * k))
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('This browser cannot process images.')
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  const url = canvas.toDataURL('image/png')
+  if (url.length > 350000) throw new Error('This image is too detailed to store. Use a simpler or smaller one.')
+  return url
+}

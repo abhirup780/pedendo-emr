@@ -8,8 +8,8 @@ const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, compla
 const PHOTO_COLS = 'id, patient_id, taken_on, view, note, file_id, width, height, bytes, created_at'
 const RESULT_COLS = 'id, patient_id, test, value, unit, result_date, flag, created_at'
 const MED_COLS = 'id, name, dose, frequency, route, duration, instructions'
-const CLINIC_COLS = 'doctor_name, qualifications, reg_no, clinic_name, address, phone, email'
-const BLANK_CLINIC: Clinic = { doctor_name: '', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '' }
+const CLINIC_COLS = 'doctor_name, qualifications, reg_no, clinic_name, address, phone, email, logo, signature'
+const BLANK_CLINIC: Clinic = { doctor_name: '', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '', logo: '', signature: '' }
 
 function toVisit(r: Visit): Visit {
   return {

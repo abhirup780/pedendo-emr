@@ -1,0 +1,27 @@
+{
+  "name": "Pediatric Endocrinology EMR",
+  "short_name": "PedEndo EMR",
+  "description": "Patient records and prescriptions for a pediatric endocrinology clinic.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f5f4",
+  "theme_color": "#0f2a31",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

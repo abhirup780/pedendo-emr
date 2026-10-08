@@ -3,7 +3,7 @@ import { parseBackup } from '../src/lib/backup'
 
 const good = () => ({
   app: 'pedendo-emr', format: 2, exported_at: '2026-10-08T00:00:00Z',
-  clinic: { doctor_name: '', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '' },
+  clinic: { doctor_name: '', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '', logo: '', signature: '' },
   conditions: [{ id: 'c1', name: 'GHD', color: 'teal' }], medicines: [], templates: [], investigations: [], panels: [],
   patients: [{ id: 'p1', mrn: 10001, name: 'A', dob: '2017-05-12', sex: 'M', condition_ids: ['c1'] }],
   visits: [{ id: 'v1', patient_id: 'p1', visit_date: '2026-07-14', medicines: [] }],

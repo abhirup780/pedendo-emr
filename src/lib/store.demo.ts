@@ -9,7 +9,7 @@ import { STARTER_CONDITIONS } from './tags'
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v5'
+const KEY = 'pedendo-demo-v6'
 
 interface Db {
   signedIn: boolean
@@ -114,6 +114,8 @@ function seed(): Db {
     address: '1 Example Road, Kolkata 700001',
     phone: '0000000000',
     email: 'clinic@example.com',
+    logo: '',
+    signature: '',
   }
   const investigations: Investigation[] = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map(([name, unit]) => ({ id: uid(), name, category: g.category, unit })))
   const panels: Panel[] = STARTER_PANELS.map((p) => ({ id: uid(), ...p }))
@@ -421,7 +423,7 @@ export function createDemoStore(): Store {
     },
 
     async getClinic() {
-      return db.clinic
+      return { ...db.clinic, logo: db.clinic.logo ?? '', signature: db.clinic.signature ?? '' }
     },
     async saveClinic(c) {
       db.clinic = { ...c }

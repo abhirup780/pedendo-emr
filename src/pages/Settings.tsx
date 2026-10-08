@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { store } from '../lib/store'
 import { EMPTY_RX } from '../lib/clinical'
+import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../lib/device'
+import { smallImageDataUrl } from '../lib/image'
 import { categoryOrder, STARTER_INVESTIGATIONS, STARTER_PANELS } from '../lib/investigations'
 import { STARTER_MEDICINES } from '../lib/medicines'
 import { STARTER_CONDITIONS, TAG_COLORS, tagColor } from '../lib/tags'
@@ -125,7 +128,7 @@ function ConditionTags() {
   )
 }
 
-const CLINIC_FIELDS: { key: keyof Clinic; label: string; hint?: string; wide?: boolean }[] = [
+const CLINIC_FIELDS: { key: Exclude<keyof Clinic, 'logo' | 'signature'>; label: string; hint?: string; wide?: boolean }[] = [
   { key: 'doctor_name', label: 'Doctor\u2019s name', hint: 'As it should print, e.g. Dr. R. K. Mehta' },
   { key: 'qualifications', label: 'Qualifications' },
   { key: 'reg_no', label: 'Registration number' },
@@ -135,7 +138,13 @@ const CLINIC_FIELDS: { key: keyof Clinic; label: string; hint?: string; wide?: b
   { key: 'email', label: 'Email' },
 ]
 
+const IMAGES: { key: 'logo' | 'signature'; label: string; hint: string; w: number; h: number }[] = [
+  { key: 'logo', label: 'Clinic logo', hint: 'Optional. Printed beside the doctor\u2019s name.', w: 360, h: 240 },
+  { key: 'signature', label: 'Signature', hint: 'Optional. Printed above the signature line on every prescription; leave empty to sign by hand.', w: 480, h: 200 },
+]
+
 function ClinicDetails() {
+  const inputs = useRef<Record<string, HTMLInputElement | null>>({})
   const [c, setC] = useState<Clinic | null>(null)
   const [state, setState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState('')
@@ -170,9 +179,39 @@ function ClinicDetails() {
             {CLINIC_FIELDS.map((fd) => (
               <label key={fd.key} className={fd.wide ? 'field wide' : 'field'}>
                 {fd.label}
-                <input value={c[fd.key]} onChange={(e) => { setC({ ...c, [fd.key]: e.target.value }); setState('idle') }} autoComplete="off" />
+                <input value={c[fd.key] as string} onChange={(e) => { setC({ ...c, [fd.key]: e.target.value }); setState('idle') }} autoComplete="off" />
                 {fd.hint && <span className="hint">{fd.hint}</span>}
               </label>
+            ))}
+          </div>
+        )}
+        {c !== null && (
+          <div className="form-grid">
+            {IMAGES.map((im) => (
+              <div className="field" key={im.key}>
+                <span>{im.label}</span>
+                <div className="img-slot">
+                  {c[im.key] ? <img src={c[im.key]} alt={`Current ${im.label.toLowerCase()}`} /> : <span className="muted">None</span>}
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <button type="button" className="btn small" onClick={() => inputs.current[im.key]?.click()}>{c[im.key] ? 'Change' : 'Choose image'}</button>
+                  {c[im.key] && <button type="button" className="btn small" onClick={() => { setC({ ...c, [im.key]: '' }); setState('idle') }}>Remove</button>}
+                </div>
+                <input
+                  ref={(el) => { inputs.current[im.key] = el }}
+                  type="file" accept="image/*" hidden aria-label={`Choose ${im.label.toLowerCase()} image`}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    e.target.value = ''
+                    if (!file) return
+                    smallImageDataUrl(file, im.w, im.h).then(
+                      (url) => { setC({ ...c, [im.key]: url }); setState('idle'); setError('') },
+                      (err: Error) => setError(err.message),
+                    )
+                  }}
+                />
+                <span className="hint">{im.hint}</span>
+              </div>
             ))}
           </div>
         )}
@@ -455,16 +494,43 @@ function Investigations() {
   )
 }
 
+function ThisDevice() {
+  const [idle, setIdle] = useState(idleMinutes())
+  return (
+    <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div>
+        <h2>This device</h2>
+        <div className="muted">These choices are remembered on this computer or phone only.</div>
+      </div>
+      <div className="field">
+        <span id="idle-label">Sign out automatically when the app has not been touched for</span>
+        <div className="seg" role="group" aria-labelledby="idle-label">
+          {IDLE_CHOICES.map((n) => (
+            <button type="button" key={n} aria-pressed={idle === n} onClick={() => { setIdleMinutes(n); setIdle(n) }}>
+              {n === 0 ? 'Never' : `${n} min`}
+            </button>
+          ))}
+        </div>
+        <span className="hint">{idle === 0 ? 'Not recommended on a shared or clinic computer.' : 'Unsaved visit notes are kept in the tab and come back after signing in again.'}</span>
+      </div>
+    </section>
+  )
+}
+
 const TABS = [
   { key: 'clinic', label: 'Letterhead', el: <ClinicDetails /> },
   { key: 'tags', label: 'Condition tags', el: <ConditionTags /> },
   { key: 'meds', label: 'Medicines', el: <Medicines /> },
   { key: 'tests', label: 'Investigations', el: <Investigations /> },
   { key: 'templates', label: 'Templates', el: <Templates /> },
+  { key: 'device', label: 'This device', el: <ThisDevice /> },
 ]
 
 export default function Settings() {
-  const [tab, setTab] = useState('clinic')
+  const [params, setParams] = useSearchParams()
+  const wanted = params.get('tab') ?? ''
+  const tab = TABS.some((t) => t.key === wanted) ? wanted : 'clinic'
+  const setTab = (key: string) => setParams({ tab: key }, { replace: true })
   return (
     <main className="page narrow">
       <h1>Settings</h1>

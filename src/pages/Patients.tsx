@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import SetupChecklist from '../components/SetupChecklist'
 import { Tag, TagChip } from '../components/Tag'
 import { formatAge, formatDate, todayISO } from '../lib/age'
 import { daysBetween } from '../lib/clinical'
@@ -151,6 +152,8 @@ export default function Patients() {
         </button>
       </div>
 
+      <SetupChecklist patients={everyone} />
+
       <section className="card">
         <div className="card-head">
           <div className="muted" style={{ fontSize: 13, fontWeight: 500 }}>
@@ -170,7 +173,7 @@ export default function Patients() {
               <TagChip key={c.id} label={c.name} color={c.color} count={counts[c.id] ?? 0} pressed={tag === c.id} onClick={() => setTag(tag === c.id ? null : c.id)} />
             ))}
             {conditions.length === 0 && !loading && (
-              <Link to="/settings" style={{ alignSelf: 'center' }}>
+              <Link to="/settings?tab=tags" style={{ alignSelf: 'center' }}>
                 Set up condition tags
               </Link>
             )}

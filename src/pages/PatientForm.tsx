@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { TagChip } from '../components/Tag'
 import { formatAge, parseISODate, todayISO } from '../lib/age'
 import { store } from '../lib/store'
-import type { Condition, PatientInput, Sex } from '../lib/types'
+import type { Condition, Patient, PatientInput, Sex } from '../lib/types'
 
 const BLANK = {
   name: '',
@@ -36,6 +36,8 @@ export default function PatientForm() {
   const [busy, setBusy] = useState(false)
   const [tried, setTried] = useState(false)
   const [error, setError] = useState('')
+  const [twins, setTwins] = useState<Patient[]>([])
+  const [touched, setTouched] = useState(false)
 
   useEffect(() => {
     store.listConditions().then(setConditions, (e: Error) => setError(e.message))
@@ -69,7 +71,39 @@ export default function PatientForm() {
     )
   }, [id])
 
-  const set = <K extends keyof typeof BLANK>(k: K, v: (typeof BLANK)[K]) => setF((old) => ({ ...old, [k]: v }))
+  const set = <K extends keyof typeof BLANK>(k: K, v: (typeof BLANK)[K]) => {
+    setTouched(true)
+    setF((old) => ({ ...old, [k]: v }))
+  }
+
+  // Warn before the tab is closed with a half-filled form.
+  useEffect(() => {
+    if (!touched || busy) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [touched, busy])
+
+  // The same child registered twice is easy to do and hard to undo: look for a match as the
+  // name and date of birth are typed.
+  const nameKey = f.name.trim().toLowerCase().replace(/\s+/g, ' ')
+  useEffect(() => {
+    if (nameKey.length < 3 || !parseISODate(f.dob)) {
+      setTwins([])
+      return
+    }
+    let live = true
+    const t = setTimeout(() => {
+      store.listPatients({ q: nameKey, limit: 20 }).then(
+        (r) => live && setTwins(r.rows.filter((p) => p.id !== id && p.dob === f.dob && p.name.trim().toLowerCase().replace(/\s+/g, ' ') === nameKey)),
+        () => live && setTwins([]),
+      )
+    }, 400)
+    return () => {
+      live = false
+      clearTimeout(t)
+    }
+  }, [nameKey, f.dob, id])
 
   const dob = parseISODate(f.dob)
   const errs = {
@@ -117,6 +151,15 @@ export default function PatientForm() {
     <main className="page narrow">
       <h1>{id ? 'Edit patient' : 'New patient'}</h1>
       {error && <div className="alert">{error}</div>}
+      {twins.length > 0 && (
+        <div className="note" role="status">
+          A patient with this name and date of birth is already registered:{' '}
+          {twins.map((t, i) => (
+            <span key={t.id}>{i > 0 && ', '}<Link to={`/patients/${t.id}`}>{t.name}, MRN {t.mrn}</Link></span>
+          ))}
+          . Open that record unless this is a different child.
+        </div>
+      )}
       <form onSubmit={submit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <section className="card pad">
           <h2 style={{ marginBottom: 12 }}>Patient</h2>

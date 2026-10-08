@@ -1,0 +1,23 @@
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - name: Unit tests, in Indian time
+        run: TZ=Asia/Kolkata npm test
+      - name: Database tests (local Postgres + PostgREST)
+        run: PGBIN=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1) npm run test:db

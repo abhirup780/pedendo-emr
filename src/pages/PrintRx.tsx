@@ -61,10 +61,13 @@ export default function PrintRx() {
 
       <article className="sheet">
         <div className="letterhead">
-          <div>
+          <div className="lh-left">
+            {c.logo && <img className="lh-logo" src={c.logo} alt="" />}
+            <div>
             <h1 className="doctor">{c.doctor_name || 'Doctor’s name'}</h1>
             {c.qualifications && <div>{c.qualifications}</div>}
             {c.reg_no && <div>Reg. No. {c.reg_no}</div>}
+            </div>
           </div>
           <div className="right">
             {c.clinic_name && <div style={{ fontWeight: 600 }}>{c.clinic_name}</div>}
@@ -143,8 +146,10 @@ export default function PrintRx() {
             <span />
           )}
           <div className="sign">
-            <div className="line" />
+            <div className="line">{c.signature && <img src={c.signature} alt="Signature" />}</div>
             <div style={{ fontWeight: 600, marginTop: '1.5mm' }}>{c.doctor_name}</div>
+            {/* Repeats who this is for beside the signature, so a second page is never anonymous. */}
+            <div style={{ fontSize: '9pt', color: '#44545b' }}>{p.name} · MRN {p.mrn} · {formatDate(v.visit_date)}</div>
           </div>
         </div>
       </article>

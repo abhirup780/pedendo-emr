@@ -43,9 +43,13 @@ the single source of truth — commit and push finished work.
   tables (IAP 2015 for 5–18 y, WHO for under 5), each with a unit test. The design mockup's
   centile curves were approximations and must not be copied.
 - Touch targets at least 44 px; every screen must work at phone width without sideways scroll.
-- Verify before pushing: `npm run build`, `npm test`, and click through the changed screens.
-  Stage 1's database code was tested against a local Postgres + PostgREST, including that a
-  second account can neither read nor change the first account's rows.
+- Verify before pushing: `npm run lint`, `npm run build`, `TZ=Asia/Kolkata npm test`,
+  `npm run test:db`, and click through the changed screens (Playwright + the built app).
+- `tests/contract.ts` is the single list of what a `Store` must do. It runs against the demo
+  store (`npm test`) and the Supabase store (`npm run test:db`, local Postgres + PostgREST,
+  two accounts). Every new `Store` method gets a case there, so the demo cannot drift.
+- Give each screen that holds unsaved input a `key` from its route params (see `VisitPage`),
+  or state leaks from one record to the next.
 
 ## Stage 2 notes
 
@@ -112,6 +116,24 @@ the single source of truth — commit and push finished work.
 - `components/GrowthChart.tsx` draws centile curves when a table is present. That path has only
   been exercised by unit tests on the maths, not by eye: look at it when the first table lands.
 
+## Audit round (after stage 7)
+
+- `supabase/migrations/0007`: a trigger keeps `last_visit_on`, `next_review_on`, `visit_count`
+  on each patient; the patient list sorts and filters on them ("overdue" = review date passed
+  and no visit since). The demo store computes the same in `withSummary`.
+- `0008`: `sync_patient_mrn_sequence()` for restore. `0009`: letterhead logo and signature as
+  small data URLs on `clinic_settings`.
+- `src/lib/backup.ts`: `parseBackup` validates a file before `store.restore`, which refuses
+  unless the account has no patients and empties it again if it fails part-way.
+- `src/lib/device.ts`: idle sign-out minutes, visit drafts (sessionStorage, cleared on a
+  deliberate sign-out, kept on idle sign-out), one-off sign-in notices.
+- `friendly()` in `store.supabase.ts` rewords database errors; UI code still matches
+  `/duplicate key/` for unique violations, so leave that message alone.
+- Timestamps are shown with `localDate()`; plain dates never go through `new Date(string)`.
+- `public/_headers`: security headers for Cloudflare Pages. The CSP is report-only until the
+  owner's trial run shows a clean console with live Google sign-in and Drive.
+- An axe-core scan (wcag2a/aa + best-practice) was clean on every screen; keep it that way.
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)
@@ -121,7 +143,7 @@ the single source of truth — commit and push finished work.
    supply the published reference tables; then fill `src/lib/growth-reference.ts`
 5. ~~Tanner staging per visit~~ (done)
 6. ~~Photographs on Google Drive, compare view~~ (done; Drive calls unit-tested with a stand-in, never run against Google)
-7. ~~Excel export per condition group; backup~~ (done; backup is a downloaded file, not yet sent to Drive)
-8. Trial run alongside the current system
+7. ~~Excel export per condition group; backup~~ (done, with restore; backup is a downloaded file, not yet sent to Drive)
+8. Trial run alongside the current system — checklist in `docs/SETUP.md`
 
 The clickable design for all screens is a Claude design canvas titled "Pediatric Endocrine EMR".

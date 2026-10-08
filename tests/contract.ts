@@ -154,7 +154,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       await s.savePanel({ id: pn.id, name: 'GH monitoring', items: ['IGF-1', 'TSH', 'Free T4'] })
       expect((await s.listPanels())[0].items).toEqual(['IGF-1', 'TSH', 'Free T4'])
 
-      const c = { doctor_name: 'Dr. A', qualifications: 'MD', reg_no: '1', clinic_name: 'Clinic', address: 'Addr', phone: '1', email: 'a@b.c' }
+      const c = { doctor_name: 'Dr. A', qualifications: 'MD', reg_no: '1', clinic_name: 'Clinic', address: 'Addr', phone: '1', email: 'a@b.c', logo: '', signature: 'data:image/png;base64,AAAA' }
       await s.saveClinic(c)
       await s.saveClinic({ ...c, doctor_name: 'Dr. A. B.' })
       expect(await s.getClinic()).toEqual({ ...c, doctor_name: 'Dr. A. B.' })
@@ -184,7 +184,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       await s.saveTemplate({ name: 'GH follow-up', medicines: [rx], advice: '' })
       await s.saveInvestigation({ name: 'IGF-1', category: 'Growth and GH axis', unit: 'ng/mL' })
       await s.savePanel({ name: 'GH monitoring', items: ['IGF-1'] })
-      await s.saveClinic({ doctor_name: 'Dr. A', qualifications: 'MD', reg_no: '1', clinic_name: 'Clinic', address: 'Addr', phone: '1', email: 'a@b.c' })
+      await s.saveClinic({ doctor_name: 'Dr. A', qualifications: 'MD', reg_no: '1', clinic_name: 'Clinic', address: 'Addr', phone: '1', email: 'a@b.c', logo: '', signature: 'data:image/png;base64,AAAA' })
       const a = await s.savePatient(patient({ condition_ids: [tag.id] }))
       const b = await s.savePatient(patient({ name: 'Riya Sen', sex: 'F' }))
       await s.saveVisit(visit(a.id, { review_date: '2026-10-12', medicines: [rx], investigations: ['IGF-1'], tanner: { g: 1, b: null, p: 1, testis_r: 3, testis_l: 3, signs: [] } }))
@@ -225,7 +225,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       const r = await s.saveResult({ patient_id: p.id, test: 'TSH', value: '2.4', unit: '', result_date: '2026-04-08', flag: '' })
       const ph = await s.addPhoto({ patient_id: p.id, taken_on: '2026-10-08', view: 'Hands', note: '', file_id: 'drive-1', width: 1, height: 1, bytes: 1 })
       await s.setPhotoConsent(p.id, { on: '2026-10-08', by: 'Father' })
-      await s.saveClinic({ doctor_name: 'Dr. A', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '' })
+      await s.saveClinic({ doctor_name: 'Dr. A', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '', logo: '', signature: '' })
 
       expect((await other.listPatients()).total).toBe(0)
       expect(await other.getPatient(p.id)).toBeNull()
@@ -250,7 +250,7 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       await other.deletePhoto(ph.id)
       await other.deleteCondition(tag.id)
       await other.setPhotoConsent(p.id, { on: null, by: '' })
-      await other.saveClinic({ doctor_name: 'Dr. B', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '' })
+      await other.saveClinic({ doctor_name: 'Dr. B', qualifications: '', reg_no: '', clinic_name: '', address: '', phone: '', email: '', logo: '', signature: '' })
 
       const mine = (await s.getPatient(p.id))!
       expect(mine.condition_ids).toEqual([tag.id])

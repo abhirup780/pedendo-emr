@@ -1,6 +1,9 @@
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import { dropAllDrafts, idleMinutes, leaveNotice } from '../lib/device'
 import { store } from '../lib/store'
+import ErrorBoundary from './ErrorBoundary'
 import type { SessionUser } from '../lib/types'
 
 export function DemoBanner() {
@@ -17,7 +20,32 @@ export function initials(name: string): string {
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?'
 }
 
+/** Signs out after a stretch with no typing, clicking or touching, so an open clinic PC locks itself. */
+function useIdleSignOut() {
+  useEffect(() => {
+    let last = Date.now()
+    const touch = () => {
+      last = Date.now()
+    }
+    const events = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const
+    events.forEach((e) => window.addEventListener(e, touch, { passive: true }))
+    const timer = setInterval(() => {
+      const minutes = idleMinutes()
+      if (minutes > 0 && Date.now() - last > minutes * 60000) {
+        clearInterval(timer)
+        leaveNotice(`Signed out after ${minutes} minutes without activity. Unsaved visit notes are kept in this tab.`)
+        void store.signOut()
+      }
+    }, 15000)
+    return () => {
+      clearInterval(timer)
+      events.forEach((e) => window.removeEventListener(e, touch))
+    }
+  }, [])
+}
+
 export default function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
+  useIdleSignOut()
   return (
     <>
       <DemoBanner />
@@ -40,12 +68,12 @@ export default function Shell({ user, children }: { user: SessionUser; children:
             {initials(user.name)}
           </span>
           {user.name}
-          <button type="button" onClick={() => void store.signOut()}>
+          <button type="button" onClick={() => { dropAllDrafts(); void store.signOut() }}>
             Sign out
           </button>
         </div>
       </header>
-      {children}
+      <ErrorBoundary>{children}</ErrorBoundary>
     </>
   )
 }

@@ -97,6 +97,9 @@ export interface Clinic {
   address: string
   phone: string
   email: string
+  /** Small images as data URLs, or '' when not set. */
+  logo: string
+  signature: string
 }
 
 /** An entry in the doctor's own investigation list. */

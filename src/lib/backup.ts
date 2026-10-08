@@ -50,6 +50,7 @@ export function parseBackup(text: string): Backup {
   const out = { ...b, photos: Array.isArray(b.photos) ? b.photos : [], consents: Array.isArray(b.consents) ? b.consents : [] } as Backup
   // Older files lack fields added since; fill them so every record has the current shape.
   out.patients = out.patients.map((p) => ({ ...p, last_visit_on: p.last_visit_on ?? null, next_review_on: p.next_review_on ?? null, visit_count: p.visit_count ?? 0 }))
+  out.clinic = { ...out.clinic, logo: out.clinic.logo ?? '', signature: out.clinic.signature ?? '' }
   out.visits = out.visits.map((v) => ({ ...v, print_plan: v.print_plan !== false, investigations: v.investigations ?? [], tanner: v.tanner ?? null }))
 
   const ids = new Set<string>()

@@ -167,14 +167,26 @@ main.narrow { max-width: 860px; }
 .sheet .bottom { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8mm; break-inside: avoid; }
 .sheet .review { padding: 2.5mm 4mm; border: 1.5px solid var(--primary); border-radius: 6px; }
 .sheet .sign { text-align: center; min-width: 55mm; }
-.sheet .sign .line { height: 16mm; border-bottom: 1px solid #14242b; }
+.sheet .sign .line { height: 18mm; border-bottom: 1px solid #14242b; display: flex; align-items: flex-end; justify-content: center; }
+.sheet .sign .line img { max-height: 17mm; max-width: 52mm; object-fit: contain; }
+.sheet .lh-left { display: flex; align-items: center; gap: 5mm; }
+.sheet .lh-logo { max-height: 22mm; max-width: 34mm; object-fit: contain; }
 
-@page { size: A4; margin: 0; }
+/* The margin belongs to the page, not the sheet, so a prescription that runs onto a second
+   page keeps its margins there too. 268mm is just under the printable height of A4 with these
+   margins: a one-page prescription still has its signature at the foot, with no blank page. */
+@page {
+  size: A4;
+  margin: 13mm 15mm 15mm;
+  /* Page numbers, where the browser supports them (recent Chrome and Edge do). */
+  @bottom-right { content: 'Page ' counter(page) ' of ' counter(pages); font-family: 'IBM Plex Sans', sans-serif; font-size: 8.5pt; color: #55656c; }
+}
 @media print {
   body { background: #fff; }
   .topbar, .demo-banner, .no-print { display: none !important; }
-  .sheet-wrap { padding: 0; }
-  .sheet { border: 0; max-width: none; width: 210mm; min-height: 297mm; }
+  .sheet-wrap { padding: 0; display: block; }
+  .sheet { border: 0; max-width: none; width: auto; padding: 0; min-height: 268mm; }
+  .sheet .block, .sheet .rx-list li, .sheet .vitals { break-inside: avoid; }
 }
 
 .switch.compact { align-self: flex-start; font-size: 13px; font-weight: 400; color: #44545b; padding: 0; gap: 8px; }
@@ -297,3 +309,10 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid #edf0ef; white-sp
 .sort { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); font-weight: 500; }
 .sort select { min-height: 40px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 14px; }
 .tr .pill, .vrow .pill { padding: 3px 8px; font-size: 12.5px; white-space: nowrap; }
+
+.img-slot { height: 96px; border: 1px dashed var(--line-strong); border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 8px; }
+.img-slot img { max-height: 100%; max-width: 100%; object-fit: contain; }
+
+.checklist { list-style: none; margin: 0; padding: 0; }
+.checklist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 0; border-top: 1px solid #edf0ef; }
+.checklist li:first-child { border-top: 0; }

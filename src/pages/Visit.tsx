@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import InvestigationPicker from '../components/InvestigationPicker'
@@ -6,6 +6,7 @@ import Results from '../components/Results'
 import TannerPicker from '../components/TannerPicker'
 import { decimalAge, formatAge, formatDate, todayISO } from '../lib/age'
 import { addMonths, bmi, dosePerKg, EMPTY_RX, heightVelocity, validBp } from '../lib/clinical'
+import { dropDraft, readDraft, saveDraft } from '../lib/device'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
 import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
@@ -18,20 +19,38 @@ const RX_FIELDS: { key: keyof RxItem; label: string; wide?: boolean }[] = [
   { key: 'instructions', label: 'Instructions', wide: true },
 ]
 
+const BLANK = { date: '', height: '', weight: '', bp: '', complaint: '', history: '', assessment: '', plan: '', advice: '', review: '' }
+/** Everything the doctor can change on the screen; what a draft holds. */
+interface Editable {
+  f: typeof BLANK
+  meds: RxItem[]
+  printPlan: boolean
+  tests: string[]
+  tanner: Tanner | null
+}
+
 function num(s: string, min: number, max: number): number | null | 'bad' {
   if (!s.trim()) return null
   const n = Number(s)
   return Number.isFinite(n) && n >= min && n <= max ? n : 'bad'
 }
 
+/**
+ * Each visit gets a fresh screen. Without the key, moving from one visit straight to another
+ * would carry the first one's unsaved text across and file it as a draft of the second.
+ */
 export default function VisitPage() {
   const { id = '', vid } = useParams()
+  return <VisitScreen key={`${id}:${vid ?? 'new'}`} id={id} vid={vid} />
+}
+
+function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const nav = useNavigate()
   const [patient, setPatient] = useState<Patient | null | undefined>(undefined)
   const [visits, setVisits] = useState<Visit[]>([])
   const [catalog, setCatalog] = useState<Medicine[]>([])
   const [templates, setTemplates] = useState<RxTemplate[]>([])
-  const [f, setF] = useState({ date: todayISO(), height: '', weight: '', bp: '', complaint: '', history: '', assessment: '', plan: '', advice: '', review: '' })
+  const [f, setF] = useState({ ...BLANK, date: todayISO() })
   const [printPlan, setPrintPlan] = useState(true)
   const [tests, setTests] = useState<string[]>([])
   const [tanner, setTanner] = useState<Tanner | null>(null)
@@ -47,8 +66,21 @@ export default function VisitPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
+  const [loaded, setLoaded] = useState(false)
+  const [restoredAt, setRestoredAt] = useState('')
+  const baseline = useRef<Editable | null>(null)
+  const draftKey = `visit:${id}:${vid ?? 'new'}`
+  const apply = (e: Editable) => {
+    setF(e.f)
+    setMeds(e.meds)
+    setPrintPlan(e.printPlan)
+    setTests(e.tests)
+    setTanner(e.tanner)
+  }
+
   useEffect(() => {
     let live = true
+    setLoaded(false)
     Promise.all([store.getPatient(id), store.listVisits(id), store.listMedicines(), store.listTemplates(), store.listInvestigations(), store.listPanels()]).then(
       ([p, vs, ms, ts, inv, pn]) => {
         if (!live) return
@@ -60,24 +92,36 @@ export default function VisitPage() {
         setPanels(pn)
         const v = vid ? vs.find((x) => x.id === vid) : undefined
         if (vid && !v) setError('This visit could not be found.')
-        if (v) {
-          setF({
-            date: v.visit_date,
-            height: v.height_cm == null ? '' : String(v.height_cm),
-            weight: v.weight_kg == null ? '' : String(v.weight_kg),
-            bp: v.bp,
-            complaint: v.complaint,
-            history: v.history,
-            assessment: v.assessment,
-            plan: v.plan,
-            advice: v.advice,
-            review: v.review_date ?? '',
-          })
-          setPrintPlan(v.print_plan)
-          setTests(v.investigations)
-          setTanner(v.tanner)
-          setMeds(v.medicines)
+        const saved: Editable = v
+          ? {
+              f: {
+                date: v.visit_date,
+                height: v.height_cm == null ? '' : String(v.height_cm),
+                weight: v.weight_kg == null ? '' : String(v.weight_kg),
+                bp: v.bp,
+                complaint: v.complaint,
+                history: v.history,
+                assessment: v.assessment,
+                plan: v.plan,
+                advice: v.advice,
+                review: v.review_date ?? '',
+              },
+              meds: v.medicines,
+              printPlan: v.print_plan,
+              tests: v.investigations,
+              tanner: v.tanner,
+            }
+          : { f: { ...BLANK, date: todayISO() }, meds: [], printPlan: true, tests: [], tanner: null }
+        baseline.current = saved
+        // Notes typed earlier but never saved (a reload, a crash, an idle sign-out) come back.
+        const draft = readDraft<Editable>(draftKey)
+        if (draft && JSON.stringify(draft.data) !== JSON.stringify(saved)) {
+          apply(draft.data)
+          setRestoredAt(draft.at)
+        } else {
+          apply(saved)
         }
+        setLoaded(true)
       },
       (e: Error) => {
         if (!live) return
@@ -88,7 +132,31 @@ export default function VisitPage() {
     return () => {
       live = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, vid])
+
+  const current: Editable = { f, meds, printPlan, tests, tanner }
+  const snapshot = JSON.stringify(current)
+  const dirty = loaded && baseline.current != null && snapshot !== JSON.stringify(baseline.current)
+
+  // Keep a draft while there are unsaved changes, and warn before the tab is closed.
+  useEffect(() => {
+    if (!loaded) return
+    if (dirty) saveDraft(draftKey, JSON.parse(snapshot) as Editable)
+    else dropDraft(draftKey)
+  }, [loaded, dirty, snapshot, draftKey])
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
+  function discardDraft() {
+    if (baseline.current) apply(baseline.current)
+    dropDraft(draftKey)
+    setRestoredAt('')
+  }
 
   const set = (k: keyof typeof f, v: string) => setF((old) => ({ ...old, [k]: v }))
   const height = num(f.height, 20, 230)
@@ -176,6 +244,8 @@ export default function VisitPage() {
     }
     try {
       const saved = await store.saveVisit(input, vid)
+      dropDraft(draftKey)
+      baseline.current = current
       nav(thenPrint ? `/patients/${id}/visits/${saved.id}/print` : `/patients/${id}`, { replace: !vid })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save the visit.')
@@ -187,6 +257,7 @@ export default function VisitPage() {
     if (!vid) return
     try {
       await store.deleteVisit(vid)
+      dropDraft(draftKey)
       nav(`/patients/${id}`, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not delete the visit.')
@@ -203,6 +274,7 @@ export default function VisitPage() {
     )
 
   const b = bmi(h, w)
+  const sameDay = visits.find((v) => v.id !== vid && v.visit_date === f.date)
   const lastStaged = earlier.find((v) => v.tanner)
   const dH = h != null && lastWithHeight?.height_cm != null ? h - lastWithHeight.height_cm : null
 
@@ -227,6 +299,18 @@ export default function VisitPage() {
 
       {error && <div className="alert">{error}</div>}
       {notice && <div className="pill ok" role="status">{notice}</div>}
+      {restoredAt && (
+        <div className="note row" role="status">
+          <span className="grow">Unsaved changes from {new Date(restoredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} were brought back. They are not saved yet.</span>
+          <button type="button" className="btn small" onClick={discardDraft}>Discard them</button>
+        </div>
+      )}
+      {!vid && sameDay && (
+        <div className="note" role="status">
+          A visit is already recorded for {formatDate(sameDay.visit_date)}. <Link to={`/patients/${id}/visits/${sameDay.id}`}>Open that visit</Link> instead of adding a second one.
+        </div>
+      )}
+      {vid && f.date < todayISO() && <div className="note" role="status">You are editing a past visit, dated {formatDate(f.date)}. Changes replace what was recorded then.</div>}
 
       <form
         className="cols"

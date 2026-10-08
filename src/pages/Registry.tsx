@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { formatDate, todayISO } from '../lib/age'
-import { backupFileName, buildBackup, lastBackup, noteBackup } from '../lib/backup'
+import { backupFileName, buildBackup, lastBackup, noteBackup, parseBackup } from '../lib/backup'
 import { daysBetween } from '../lib/clinical'
 import { buildSheets, downloadBlob, exportFileName, SHEETS, toWorkbook } from '../lib/export'
 import type { ExportData, Sheet, SheetKey } from '../lib/export'
 import { store } from '../lib/store'
 import { tagColor } from '../lib/tags'
-import type { Condition } from '../lib/types'
+import type { Backup, Condition } from '../lib/types'
 
 const PREVIEW = !!import.meta.env.VITE_PREVIEW
 const RANGES = ['All dates', 'This year', 'Last 12 months', 'Custom'] as const
@@ -33,6 +34,8 @@ export default function Registry() {
   const [error, setError] = useState('')
   const [done, setDone] = useState('')
   const [backedUp, setBackedUp] = useState(lastBackup())
+  const [pending, setPending] = useState<Backup | null>(null)
+  const restoreInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     Promise.all([store.listConditions(), store.conditionCounts(), store.listPatients({ limit: 1 })]).then(
@@ -106,6 +109,44 @@ export default function Registry() {
       setDone(PREVIEW ? `Backup built (${Math.round(json.length / 1024)} KB). Downloads are switched off in this preview.` : `Downloaded ${backupFileName()}. Keep it somewhere safe.`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not build the backup.')
+    }
+    setBusy('')
+  }
+
+  function chooseBackup(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setError('')
+    setDone('')
+    file.text().then(
+      (text) => {
+        try {
+          setPending(parseBackup(text))
+        } catch (err) {
+          setPending(null)
+          setError(err instanceof Error ? err.message : 'This file could not be read.')
+        }
+      },
+      () => setError('This file could not be read.'),
+    )
+  }
+
+  async function restore() {
+    if (!pending) return
+    setBusy('Restoring… keep this page open.')
+    setError('')
+    try {
+      await store.restore(pending)
+      const [c, n, p] = await Promise.all([store.listConditions(), store.conditionCounts(), store.listPatients({ limit: 1 })])
+      setConditions(c)
+      setCounts(n)
+      setTotal(p.total)
+      setData(null)
+      setDone(`Restored ${pending.patients.length} patients, ${pending.visits.length} visits and ${pending.results.length} results.`)
+      setPending(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'The restore did not complete. Nothing was kept; it can be tried again.')
     }
     setBusy('')
   }
@@ -230,6 +271,30 @@ export default function Registry() {
               </span>
               <span className="grow" />
               <button type="button" className="btn outline" disabled={!!busy} onClick={() => void backup()}>Download full backup</button>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 600 }}>Restore from a backup file</div>
+                <div className="muted">For starting again on an empty account, for example after the database was lost. It will not run while this account has patients.</div>
+              </div>
+              <input ref={restoreInput} type="file" accept=".json,application/json" hidden onChange={chooseBackup} aria-label="Choose a backup file" />
+              {!pending ? (
+                <div className="row end">
+                  <button type="button" className="btn" disabled={!!busy} onClick={() => restoreInput.current?.click()}>Choose a backup file</button>
+                </div>
+              ) : (
+                <>
+                  <div className="note" style={{ background: '#eceFee', color: 'var(--ink)', fontWeight: 400 }}>
+                    Backup of {formatDate(pending.exported_at)}: <strong>{pending.patients.length}</strong> patients, <strong>{pending.visits.length}</strong> visits, <strong>{pending.results.length}</strong> results, {pending.photos.length} photograph records, {pending.conditions.length} tags, {pending.medicines.length} medicines.
+                    {(total ?? 0) > 0 && <> This account has {total} patients, so it cannot be restored here.</>}
+                  </div>
+                  <div className="row end">
+                    <button type="button" className="btn" disabled={!!busy} onClick={() => setPending(null)}>Cancel</button>
+                    <button type="button" className="btn primary" disabled={!!busy || (total ?? 1) > 0} onClick={() => void restore()}>Restore into this account</button>
+                  </div>
+                </>
+              )}
             </div>
           </section>
         </div>

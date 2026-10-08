@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DemoBanner } from '../components/Shell'
+import { clearNotice, peekNotice } from '../lib/device'
 import { store } from '../lib/store'
 
 export default function Login() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [notice] = useState(peekNotice)
+  useEffect(() => clearNotice(), [])
   async function go() {
     setBusy(true)
     setError('')
@@ -22,6 +25,7 @@ export default function Login() {
         <div className="card">
           <h1>Pediatric Endocrinology</h1>
           <div className="muted">Patient records and prescriptions. Sign in with the clinic's Google account.</div>
+          {notice && <div className="note" role="status">{notice}</div>}
           {error && <div className="alert">{error}</div>}
           <button type="button" className="btn primary" onClick={go} disabled={busy}>
             {store.mode === 'demo' ? 'Open the demo' : 'Sign in with Google'}
