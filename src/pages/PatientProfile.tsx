@@ -6,6 +6,7 @@ import { Tag } from '../components/Tag'
 import { formatAge, formatDate, midParentalHeight } from '../lib/age'
 import { bmi } from '../lib/clinical'
 import { store } from '../lib/store'
+import { tannerSummary } from '../lib/tanner'
 import type { Condition, Investigation, Patient, Visit } from '../lib/types'
 
 export default function PatientProfile() {
@@ -99,6 +100,7 @@ export default function PatientProfile() {
                 <div>Height</div>
                 <div>Weight</div>
                 <div>BMI</div>
+                <div>Tanner</div>
                 <div>Assessment</div>
                 <div>℞</div>
               </div>
@@ -113,6 +115,7 @@ export default function PatientProfile() {
                   <div className="mono">{v.height_cm == null ? '—' : `${v.height_cm} cm`}</div>
                   <div className="mono">{v.weight_kg == null ? '—' : `${v.weight_kg} kg`}</div>
                   <div className="mono">{bmi(v.height_cm, v.weight_kg) ?? '—'}</div>
+                  <div className="mono clip" title={tannerSummary(v.tanner, p.sex)}>{tannerSummary(v.tanner, p.sex).split(' · ')[0] || '—'}</div>
                   <div className="clip" title={v.assessment}>{v.assessment || '—'}</div>
                   <div>
                     <Link to={`/patients/${p.id}/visits/${v.id}/print`} style={{ display: 'inline-block', padding: '4px 0' }}>

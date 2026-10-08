@@ -8,7 +8,7 @@ import { STARTER_CONDITIONS } from './tags'
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v3'
+const KEY = 'pedendo-demo-v4'
 
 interface Db {
   signedIn: boolean
@@ -75,6 +75,7 @@ function seed(): Db {
     review_date: null,
     medicines: [gh(dose)],
     investigations: date === '2026-07-14' ? ['IGF-1', 'TSH', 'Free T4'] : [],
+    tanner: { g: 1, b: null, p: 1, testis_r: date < '2026-04-01' ? 2 : 3, testis_l: date < '2026-04-01' ? 2 : 3, signs: [] },
     created_at: `${date}T05:00:00.000Z`,
   })
   const visits: Visit[] = [

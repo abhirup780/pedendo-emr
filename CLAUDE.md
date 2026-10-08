@@ -70,13 +70,21 @@ the single source of truth — commit and push finished work.
 - `components/Results.tsx` is deliberately not a `<form>`: it sits inside the visit form. The
   visit form also blocks Enter-in-a-text-box from saving the visit.
 
+## Stage 5 notes
+
+- Staging is one JSON object on the visit (`tanner`), null when not staged. Rules live in
+  `src/lib/tanner.ts`: onset is genital stage 2 or a testis of 4 mL in boys, breast stage 2 in
+  girls; pubic hair alone never decides. The early/late prompt uses 8/13 years (girls) and
+  9/14 years (boys) and is worded as "consider", never as a diagnosis.
+- The tiles are schematic pictograms built from plain shapes in CSS (`TannerPicker.tsx`).
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)
 2. ~~Visit and prescription: measurements, notes, medicines, templates, A4 print~~ (done)
 3. ~~Investigations: grouped master list, one-click panels, result entry~~ (done)
 4. Growth: reference tables, SDS and velocity, chart
-5. Tanner staging per visit
+5. ~~Tanner staging per visit~~ (done)
 6. Photographs on Google Drive, compare view
 7. Excel export per condition group; backup
 8. Trial run alongside the current system

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { formatAge, formatDate } from '../lib/age'
 import { bmi, rxLine } from '../lib/clinical'
 import { EMPTY_CLINIC, store } from '../lib/store'
+import { tannerSummary } from '../lib/tanner'
 import type { Clinic, Patient, Visit } from '../lib/types'
 
 const PREVIEW = !!import.meta.env.VITE_PREVIEW
@@ -93,6 +94,7 @@ export default function PrintRx() {
           </div>
         )}
 
+        {tannerSummary(v.tanner, p.sex) && <div><strong>Pubertal stage:</strong> {tannerSummary(v.tanner, p.sex)}</div>}
         {p.allergies && <div><strong>Drug allergy:</strong> {p.allergies}</div>}
         {v.assessment && <div style={{ whiteSpace: 'pre-wrap' }}><strong>Diagnosis:</strong> {v.assessment}</div>}
 

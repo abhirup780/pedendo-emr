@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Clinic, Condition, Investigation, Medicine, Panel, Patient, PatientInput, Result, ResultInput, RxItem, RxTemplate, SessionUser, Visit, VisitInput } from './types'
 import type { ListOptions, Store } from './store'
 
-const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, complaint, history, assessment, plan, print_plan, advice, review_date, medicines, investigations, created_at'
+const VISIT_COLS = 'id, patient_id, visit_date, height_cm, weight_kg, bp, complaint, history, assessment, plan, print_plan, advice, review_date, medicines, investigations, tanner, created_at'
 const RESULT_COLS = 'id, patient_id, test, value, unit, result_date, flag, created_at'
 const MED_COLS = 'id, name, dose, frequency, route, duration, instructions'
 const CLINIC_COLS = 'doctor_name, qualifications, reg_no, clinic_name, address, phone, email'
@@ -17,6 +17,7 @@ function toVisit(r: Visit): Visit {
     print_plan: r.print_plan !== false,
     medicines: Array.isArray(r.medicines) ? r.medicines : [],
     investigations: Array.isArray(r.investigations) ? r.investigations : [],
+    tanner: r.tanner ?? null,
   }
 }
 

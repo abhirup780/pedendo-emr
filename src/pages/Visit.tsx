@@ -3,10 +3,12 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import InvestigationPicker from '../components/InvestigationPicker'
 import Results from '../components/Results'
-import { formatAge, formatDate, todayISO } from '../lib/age'
+import TannerPicker from '../components/TannerPicker'
+import { decimalAge, formatAge, formatDate, todayISO } from '../lib/age'
 import { addMonths, bmi, dosePerKg, EMPTY_RX, heightVelocity, validBp } from '../lib/clinical'
 import { store } from '../lib/store'
-import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Visit, VisitInput } from '../lib/types'
+import { tannerSummary } from '../lib/tanner'
+import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
 
 const RX_FIELDS: { key: keyof RxItem; label: string; wide?: boolean }[] = [
   { key: 'dose', label: 'Dose' },
@@ -32,6 +34,8 @@ export default function VisitPage() {
   const [f, setF] = useState({ date: todayISO(), height: '', weight: '', bp: '', complaint: '', history: '', assessment: '', plan: '', advice: '', review: '' })
   const [printPlan, setPrintPlan] = useState(true)
   const [tests, setTests] = useState<string[]>([])
+  const [tanner, setTanner] = useState<Tanner | null>(null)
+  const [staging, setStaging] = useState(false)
   const [testCatalog, setTestCatalog] = useState<Investigation[]>([])
   const [panels, setPanels] = useState<Panel[]>([])
   const [meds, setMeds] = useState<RxItem[]>([])
@@ -71,6 +75,7 @@ export default function VisitPage() {
           })
           setPrintPlan(v.print_plan)
           setTests(v.investigations)
+          setTanner(v.tanner)
           setMeds(v.medicines)
         }
       },
@@ -164,6 +169,7 @@ export default function VisitPage() {
       plan: f.plan.trim(),
       print_plan: printPlan,
       investigations: tests,
+      tanner,
       advice: f.advice.trim(),
       review_date: f.review || null,
       medicines: meds.map((m) => ({ name: m.name.trim(), dose: m.dose.trim(), frequency: m.frequency.trim(), route: m.route.trim(), duration: m.duration.trim(), instructions: m.instructions.trim() })),
@@ -197,6 +203,7 @@ export default function VisitPage() {
     )
 
   const b = bmi(h, w)
+  const lastStaged = earlier.find((v) => v.tanner)
   const dH = h != null && lastWithHeight?.height_cm != null ? h - lastWithHeight.height_cm : null
 
   return (
@@ -269,6 +276,25 @@ export default function VisitPage() {
               </div>
             </div>
             {shrank && <div className="note" style={{ marginTop: 12 }}>This height is lower than the {lastWithHeight!.height_cm} cm recorded on {formatDate(lastWithHeight!.visit_date)}. Please re-check the measurement.</div>}
+          </section>
+
+          <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="row">
+              <div className="grow">
+                <h2>Puberty</h2>
+                <div className="muted" style={{ fontSize: 13 }}>
+                  {tanner ? <span className="mono" style={{ color: 'var(--ink)' }}>{tannerSummary(tanner, patient.sex)}</span> : 'Not staged at this visit'}
+                  {lastStaged && <> · last {tannerSummary(lastStaged.tanner, patient.sex)} on {formatDate(lastStaged.visit_date)}</>}
+                </div>
+              </div>
+              {!tanner && lastStaged && (
+                <button type="button" className="btn small" onClick={() => setTanner({ ...lastStaged.tanner!, signs: [...lastStaged.tanner!.signs] })}>Same as last</button>
+              )}
+              <button type="button" className="btn small outline" aria-expanded={staging} onClick={() => setStaging(!staging)}>
+                {staging ? 'Hide staging' : tanner ? 'Change staging' : 'Stage now'}
+              </button>
+            </div>
+            {staging && <TannerPicker value={tanner} onChange={setTanner} sex={patient.sex} ageYears={decimalAge(patient.dob, f.date)} />}
           </section>
 
           <section className="card pad">

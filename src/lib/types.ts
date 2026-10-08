@@ -76,6 +76,8 @@ export interface Visit {
   medicines: RxItem[]
   /** Names of investigations advised at this visit. */
   investigations: string[]
+  /** Null when puberty was not staged at this visit. */
+  tanner: Tanner | null
   created_at: string
 }
 
@@ -123,3 +125,13 @@ export interface Result {
 }
 
 export type ResultInput = Omit<Result, 'id' | 'created_at'>
+
+/** Tanner staging at one visit. Stages are 1 to 5; testicular volumes are orchidometer mL. */
+export interface Tanner {
+  g: number | null
+  b: number | null
+  p: number | null
+  testis_r: number | null
+  testis_l: number | null
+  signs: string[]
+}
