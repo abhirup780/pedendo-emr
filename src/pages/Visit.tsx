@@ -28,6 +28,7 @@ export default function VisitPage() {
   const [catalog, setCatalog] = useState<Medicine[]>([])
   const [templates, setTemplates] = useState<RxTemplate[]>([])
   const [f, setF] = useState({ date: todayISO(), height: '', weight: '', bp: '', complaint: '', history: '', assessment: '', plan: '', advice: '', review: '' })
+  const [printPlan, setPrintPlan] = useState(true)
   const [meds, setMeds] = useState<RxItem[]>([])
   const [q, setQ] = useState('')
   const [tplName, setTplName] = useState<string | null>(null)
@@ -61,6 +62,7 @@ export default function VisitPage() {
             advice: v.advice,
             review: v.review_date ?? '',
           })
+          setPrintPlan(v.print_plan)
           setMeds(v.medicines)
         }
       },
@@ -145,6 +147,7 @@ export default function VisitPage() {
       history: f.history.trim(),
       assessment: f.assessment.trim(),
       plan: f.plan.trim(),
+      print_plan: printPlan,
       advice: f.advice.trim(),
       review_date: f.review || null,
       medicines: meds.map((m) => ({ name: m.name.trim(), dose: m.dose.trim(), frequency: m.frequency.trim(), route: m.route.trim(), duration: m.duration.trim(), instructions: m.instructions.trim() })),
@@ -262,11 +265,17 @@ export default function VisitPage() {
                 <textarea rows={3} value={f.assessment} onChange={(e) => set('assessment', e.target.value)} />
                 <span className="hint">Printed on the prescription as the diagnosis.</span>
               </label>
-              <label className="field">
-                Plan
-                <textarea rows={3} value={f.plan} onChange={(e) => set('plan', e.target.value)} />
-                <span className="hint">For your record only; not printed.</span>
-              </label>
+              <div className="field">
+                <label htmlFor="plan">Plan</label>
+                <textarea id="plan" rows={3} value={f.plan} onChange={(e) => set('plan', e.target.value)} />
+                <label className="check">
+                <input type="checkbox" checked={printPlan} onChange={(e) => setPrintPlan(e.target.checked)} />
+                <span>
+                  Print the plan on the prescription
+                    <span className="hint">{printPlan ? 'Untick to keep it for your record only.' : 'Kept for your record only.'}</span>
+                  </span>
+                </label>
+              </div>
             </div>
           </section>
         </div>

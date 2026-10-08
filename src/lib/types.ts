@@ -69,6 +69,8 @@ export interface Visit {
   history: string
   assessment: string
   plan: string
+  /** Whether the plan appears on the printed prescription. */
+  print_plan: boolean
   advice: string
   review_date: string | null
   medicines: RxItem[]

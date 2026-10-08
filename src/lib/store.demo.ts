@@ -66,6 +66,7 @@ function seed(): Db {
     history: 'Doing well. No headache or limp. Injection sites healthy.',
     assessment,
     plan: 'Continue rhGH, dose adjusted for weight.',
+    print_plan: true,
     advice: 'Balanced diet and regular physical activity.',
     review_date: null,
     medicines: [gh(dose)],
@@ -94,7 +95,11 @@ function seed(): Db {
 function load(): Db {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw) as Db
+    if (raw) {
+      const db = JSON.parse(raw) as Db
+      db.visits = db.visits.map((v) => ({ ...v, print_plan: v.print_plan !== false }))
+      return db
+    }
   } catch {
     /* fall through to a fresh seed */
   }
