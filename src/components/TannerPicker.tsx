@@ -44,7 +44,7 @@ function Scale(props: { title: string; hint?: string; code: string; value: numbe
           )
         })}
       </div>
-      {props.value != null && <div className="muted" style={{ fontSize: 13, marginTop: 6 }}><span className="mono">{props.code}{props.value}</span> — {props.caps[props.value - 1].text}</div>}
+      {props.value != null && <div className="muted" style={{ fontSize: 13, marginTop: 6 }}><span className="mono">{props.code}{props.value}</span>: {props.caps[props.value - 1].text}</div>}
     </div>
   )
 }

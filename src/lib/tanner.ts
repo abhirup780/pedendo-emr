@@ -47,7 +47,9 @@ export function tannerSummary(t: Tanner | null, sex: Sex): string {
   if (!t || isBlank(t)) return ''
   const stage = [sex !== 'F' && t.g ? `G${t.g}` : '', sex !== 'M' && t.b ? `B${t.b}` : '', t.p ? `P${t.p}` : ''].filter(Boolean).join(' ')
   const parts = stage ? [stage] : []
-  if (sex !== 'F' && (t.testis_r != null || t.testis_l != null)) parts.push(`testes R ${t.testis_r ?? '—'} mL, L ${t.testis_l ?? '—'} mL`)
+  // Only the side that was measured is named.
+  const testes = [t.testis_r != null ? `R ${t.testis_r} mL` : '', t.testis_l != null ? `L ${t.testis_l} mL` : ''].filter(Boolean)
+  if (sex !== 'F' && testes.length) parts.push(`testes ${testes.join(', ')}`)
   if (sex !== 'M' && t.signs.includes('Menarche')) parts.push('menarche attained')
   return parts.join(' · ')
 }

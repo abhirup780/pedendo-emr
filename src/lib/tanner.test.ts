@@ -6,7 +6,7 @@ const t = (o: object) => ({ ...EMPTY_TANNER, ...o })
 describe('tannerSummary', () => {
   it('describes a boy', () => {
     expect(tannerSummary(t({ g: 1, p: 1, testis_r: 3, testis_l: 3 }), 'M')).toBe('G1 P1 · testes R 3 mL, L 3 mL')
-    expect(tannerSummary(t({ testis_r: 4 }), 'M')).toBe('testes R 4 mL, L — mL')
+    expect(tannerSummary(t({ testis_r: 4 }), 'M')).toBe('testes R 4 mL')
   })
   it('describes a girl and ignores male fields', () => {
     expect(tannerSummary(t({ b: 2, p: 1, g: 3, testis_r: 5 }), 'F')).toBe('B2 P1')
@@ -22,13 +22,13 @@ describe('tannerSummary', () => {
 describe('sex not yet assigned', () => {
   const t = { g: 2, b: 1, p: 1, testis_r: 1, testis_l: null, signs: [] }
   it('lists whatever was recorded and gives no timing verdict', () => {
-    expect(tannerSummary(t, 'U')).toBe('G2 B1 P1 · testes R 1 mL, L — mL')
+    expect(tannerSummary(t, 'U')).toBe('G2 B1 P1 · testes R 1 mL')
     expect(pubertyStarted(t, 'U')).toBeNull()
     expect(pubertyFlag(t, 'U', 0.1)).toBeNull()
     expect(pubertyFlag(t, 'U', 15)).toBeNull()
   })
   it('reads the same record as a boy or a girl once assigned', () => {
-    expect(tannerSummary(t, 'M')).toBe('G2 P1 · testes R 1 mL, L — mL')
+    expect(tannerSummary(t, 'M')).toBe('G2 P1 · testes R 1 mL')
     expect(tannerSummary(t, 'F')).toBe('B1 P1')
   })
 })

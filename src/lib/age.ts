@@ -1,3 +1,4 @@
+import { NONE } from './text'
 /** Parse YYYY-MM-DD as a local calendar date (no timezone shift). */
 export function parseISODate(iso: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
@@ -25,7 +26,7 @@ export function ageParts(dobISO: string, onISO: string = todayISO()): { years: n
 /** "9y 4m"; under one year "7m"; under one month "12d". */
 export function formatAge(dobISO: string, onISO: string = todayISO()): string {
   const a = ageParts(dobISO, onISO)
-  if (!a) return '—'
+  if (!a) return NONE
   if (a.years === 0 && a.months === 0) {
     const days = Math.round((parseISODate(onISO)!.getTime() - parseISODate(dobISO)!.getTime()) / 86400000)
     return `${days}d`
@@ -80,6 +81,6 @@ export function targetRange(mph: number): string {
 
 export function formatDate(iso: string): string {
   const d = parseISODate(localDate(iso))
-  if (!d) return '—'
+  if (!d) return NONE
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }

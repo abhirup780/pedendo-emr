@@ -16,7 +16,7 @@ describe('age', () => {
   it('rejects impossible and future dates', () => {
     expect(parseISODate('2026-02-30')).toBeNull()
     expect(ageParts('2027-01-01', '2026-10-08')).toBeNull()
-    expect(formatAge('nonsense', '2026-10-08')).toBe('—')
+    expect(formatAge('nonsense', '2026-10-08')).toBe('-')
   })
   it('gives decimal age', () => {
     expect(decimalAge('2017-05-12', '2026-10-08')).toBeCloseTo(9.41, 2)

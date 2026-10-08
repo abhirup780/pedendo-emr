@@ -13,6 +13,7 @@ import { refSex, sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
 import type { Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
+import { NONE } from '../lib/text'
 
 const RX_FIELDS: { key: keyof RxItem; label: string; wide?: boolean }[] = [
   { key: 'dose', label: 'Dose' },
@@ -284,7 +285,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const heightRef = ageDays == null || !rs ? null : referenceAt(rs, 'height', ageDays)
   // Sex not assigned: show the height SDS both ways, as a boy and as a girl.
   const both = rs ? null : { m: visitSds({ visit_date: f.date, height_cm: h, weight_kg: w }, patient.dob, 'M').height, f: visitSds({ visit_date: f.date, height_cm: h, weight_kg: w }, patient.dob, 'F').height }
-  const sdsText = (n: number | null) => (n == null ? '—' : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`)
+  const sdsText = (n: number | null) => (n == null ? NONE : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`)
   const sameDay = visits.find((v) => v.id !== vid && v.visit_date === f.date)
   const lastStaged = earlier.find((v) => v.tanner)
   const dH = h != null && lastWithHeight?.height_cm != null ? h - lastWithHeight.height_cm : null
@@ -361,17 +362,17 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               </div>
               <div>
                 <div className="k">BMI · calculated</div>
-                <div className="v">{b ?? '—'}</div>
+                <div className="v">{b ?? NONE}</div>
                 <div className="k">kg/m²{z.bmi == null ? '' : ` · SDS ${sdsText(z.bmi)}`}</div>
               </div>
               <div>
                 <div className="k">Height velocity · calculated</div>
-                <div className="v">{velocity ? velocity.cmPerYear.toFixed(1) : '—'}</div>
+                <div className="v">{velocity ? velocity.cmPerYear.toFixed(1) : NONE}</div>
                 <div className="k">{velocity ? `cm/yr since ${formatDate(velocity.fromDate)} (${velocity.fromHeight} cm)` : 'needs a height at least 3 months earlier'}</div>
               </div>
               <div>
                 <div className="k">Since last height</div>
-                <div className="v">{dH == null ? '—' : `${dH >= 0 ? '+' : '−'}${Math.abs(dH).toFixed(1)}`}</div>
+                <div className="v">{dH == null ? NONE : `${dH >= 0 ? '+' : '−'}${Math.abs(dH).toFixed(1)}`}</div>
                 <div className="k">{lastWithHeight ? `cm · was ${lastWithHeight.height_cm} on ${formatDate(lastWithHeight.visit_date)}` : 'no earlier height'}</div>
               </div>
             </div>

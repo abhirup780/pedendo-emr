@@ -9,8 +9,9 @@ import type { Measure } from '../lib/growth-reference'
 import { refSex, sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import type { Patient, RefSex, Visit } from '../lib/types'
+import { NONE } from '../lib/text'
 
-const signed = (n: number | null) => (n == null ? '—' : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`)
+const signed = (n: number | null) => (n == null ? NONE : `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`)
 
 export default function Growth() {
   const { id = '' } = useParams()
@@ -83,7 +84,7 @@ export default function Growth() {
       <div className="calc" style={{ marginTop: 0 }}>
         <div>
           <div className="k">Latest {lower}</div>
-          <div className="v">{last ? `${last.value} ${info.unit}` : '—'}</div>
+          <div className="v">{last ? `${last.value} ${info.unit}` : NONE}</div>
           <div className="k">{last ? `${formatDate(last.date)} · ${formatAge(patient.dob, last.date)}` : 'not recorded'}</div>
         </div>
         <div>
@@ -93,12 +94,12 @@ export default function Growth() {
         </div>
         <div>
           <div className="k">Height velocity</div>
-          <div className="v">{velocity ? `${velocity.cmPerYear.toFixed(1)} cm/yr` : '—'}</div>
+          <div className="v">{velocity ? `${velocity.cmPerYear.toFixed(1)} cm/yr` : NONE}</div>
           <div className="k">{velocity ? `since ${formatDate(velocity.fromDate)}` : 'needs two heights 3 months apart'}</div>
         </div>
         <div>
           <div className="k">Mid-parental height</div>
-          <div className="v">{mph == null ? '—' : `${mph.toFixed(1)} cm`}</div>
+          <div className="v">{mph == null ? NONE : `${mph.toFixed(1)} cm`}</div>
           <div className="k">{mph == null ? (unassigned ? 'after sex is assigned' : 'add the parents’ heights') : `target ${targetRange(mph)}`}</div>
         </div>
       </div>
@@ -156,12 +157,12 @@ export default function Growth() {
                     <tr key={v.id}>
                       <td><Link to={`/patients/${id}/visits/${v.id}`}>{formatDate(v.visit_date)}</Link></td>
                       <td>{formatAge(patient.dob, v.visit_date)}</td>
-                      <td className="mono">{v.height_cm ?? '—'}</td>
+                      <td className="mono">{v.height_cm ?? NONE}</td>
                       <td className="mono">{signed(z.height)}</td>
-                      <td className="mono">{vel ? vel.cmPerYear.toFixed(1) : '—'}</td>
-                      <td className="mono">{v.weight_kg ?? '—'}</td>
+                      <td className="mono">{vel ? vel.cmPerYear.toFixed(1) : NONE}</td>
+                      <td className="mono">{v.weight_kg ?? NONE}</td>
                       <td className="mono">{signed(z.weight)}</td>
-                      <td className="mono">{bmi(v.height_cm, v.weight_kg) ?? '—'}</td>
+                      <td className="mono">{bmi(v.height_cm, v.weight_kg) ?? NONE}</td>
                       <td className="mono">{signed(z.bmi)}</td>
                     </tr>
                   )

@@ -81,7 +81,7 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
           <input
             type="search"
             aria-label="Search or add an investigation"
-            placeholder={value.length ? 'Search or add another…' : 'Search — IGF-1, TSH, bone age… or type a new one and press Enter'}
+            placeholder={value.length ? 'Search or add another…' : 'Search IGF-1, TSH, bone age… or type a new one and press Enter'}
             value={q}
             onChange={(e) => { setQ(e.target.value); setOpen(true) }}
             onKeyDown={(e) => {

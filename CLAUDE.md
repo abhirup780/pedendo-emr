@@ -17,6 +17,9 @@ the single source of truth — commit and push finished work.
 - **Hosting**: static (Cloudflare Pages). No server code of our own.
 - **Backups**: the free Supabase plan has none; stage 7 must add an in-app backup to Drive.
 - The prescription symbol is ℞, not "Rx".
+- No em dash (—) anywhere the doctor or patient can read it: screens, prints, exports, starter
+  lists. An empty value shows as `NONE` from `src/lib/text.ts` (a plain hyphen); use a colon,
+  comma or brackets in wording.
 
 ## Layout
 

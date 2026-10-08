@@ -9,6 +9,7 @@ import { sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
 import type { Condition, Investigation, Patient, Visit } from '../lib/types'
+import { NONE } from '../lib/text'
 
 export default function PatientProfile() {
   const { id = '' } = useParams()
@@ -119,11 +120,11 @@ export default function PatientProfile() {
                     </Link>
                   </div>
                   <div>{formatAge(p.dob, v.visit_date)}</div>
-                  <div className="mono">{v.height_cm == null ? '—' : `${v.height_cm} cm`}</div>
-                  <div className="mono">{v.weight_kg == null ? '—' : `${v.weight_kg} kg`}</div>
-                  <div className="mono">{bmi(v.height_cm, v.weight_kg) ?? '—'}</div>
-                  <div className="mono clip" title={tannerSummary(v.tanner, p.sex)}>{tannerSummary(v.tanner, p.sex).split(' · ')[0] || '—'}</div>
-                  <div className="clip" title={v.assessment}>{v.assessment || '—'}</div>
+                  <div className="mono">{v.height_cm == null ? NONE : `${v.height_cm} cm`}</div>
+                  <div className="mono">{v.weight_kg == null ? NONE : `${v.weight_kg} kg`}</div>
+                  <div className="mono">{bmi(v.height_cm, v.weight_kg) ?? NONE}</div>
+                  <div className="mono clip" title={tannerSummary(v.tanner, p.sex)}>{tannerSummary(v.tanner, p.sex).split(' · ')[0] || NONE}</div>
+                  <div className="clip" title={v.assessment}>{v.assessment || NONE}</div>
                   <div>
                     <Link to={`/patients/${p.id}/visits/${v.id}/print`} style={{ display: 'inline-block', padding: '4px 0' }}>
                       {v.medicines.length === 0 ? 'Open' : `${v.medicines.length} ${v.medicines.length === 1 ? 'item' : 'items'}`}
@@ -142,19 +143,19 @@ export default function PatientProfile() {
         <h2 style={{ marginBottom: 12 }}>Patient details</h2>
         <dl className="dl">
           <dt>Parent or guardian</dt>
-          <dd>{p.guardian_name ? `${p.guardian_name} (${p.guardian_relation})` : '—'}</dd>
+          <dd>{p.guardian_name ? `${p.guardian_name} (${p.guardian_relation})` : NONE}</dd>
           <dt>Phone</dt>
-          <dd className="mono">{p.phone ? <a href={`tel:${p.phone}`}>{p.phone}</a> : '—'}</dd>
+          <dd className="mono">{p.phone ? <a href={`tel:${p.phone}`}>{p.phone}</a> : NONE}</dd>
           <dt>Address</dt>
-          <dd>{p.address || '—'}</dd>
+          <dd>{p.address || NONE}</dd>
           <dt>Parents' heights</dt>
           <dd className="mono">
-            {p.father_height_cm || p.mother_height_cm ? `Father ${p.father_height_cm ?? '—'} cm · Mother ${p.mother_height_cm ?? '—'} cm` : '—'}
+            {[p.father_height_cm ? `Father ${p.father_height_cm} cm` : '', p.mother_height_cm ? `Mother ${p.mother_height_cm} cm` : ''].filter(Boolean).join(' · ') || NONE}
           </dd>
           <dt>Mid-parental height</dt>
-          <dd className="mono">{mph == null ? (p.sex === 'U' && p.father_height_cm && p.mother_height_cm ? 'after sex is assigned' : '—') : `${mph.toFixed(1)} cm (target ${targetRange(mph)})`}</dd>
+          <dd className="mono">{mph == null ? (p.sex === 'U' && p.father_height_cm && p.mother_height_cm ? 'after sex is assigned' : NONE) : `${mph.toFixed(1)} cm (target ${targetRange(mph)})`}</dd>
           <dt>Notes</dt>
-          <dd style={{ whiteSpace: 'pre-wrap' }}>{p.notes || '—'}</dd>
+          <dd style={{ whiteSpace: 'pre-wrap' }}>{p.notes || NONE}</dd>
           <dt>Registered</dt>
           <dd>{formatDate(p.created_at)}</dd>
         </dl>

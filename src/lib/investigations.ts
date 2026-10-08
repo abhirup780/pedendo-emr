@@ -9,8 +9,8 @@ export const STARTER_INVESTIGATIONS: { category: string; items: [name: string, u
     items: [
       ['IGF-1', 'ng/mL'],
       ['IGFBP-3', 'µg/mL'],
-      ['GH stimulation test — clonidine', ''],
-      ['GH stimulation test — glucagon', ''],
+      ['GH stimulation test (clonidine)', ''],
+      ['GH stimulation test (glucagon)', ''],
       ['Bone age X-ray (left hand and wrist)', ''],
       ['Karyotype', ''],
       ['MRI pituitary with contrast', ''],

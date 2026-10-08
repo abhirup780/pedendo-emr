@@ -118,7 +118,7 @@ export default function RxSheet({ config: c, patient: p, visit: v, clinic, guide
             c.rx.style === 'compact' ? (
               <li key={i}>
                 <span className="t">{i + 1}. {m.name}</span>
-                {rxLine(m) && <> — {rxLine(m)}</>}
+                {rxLine(m) && <>: {rxLine(m)}</>}
                 {m.instructions && <>. {m.instructions}</>}
               </li>
             ) : (

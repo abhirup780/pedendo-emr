@@ -147,7 +147,7 @@ export interface Tanner {
   signs: string[]
 }
 
-export const PHOTO_VIEWS = ['Face — frontal', 'Face — profile', 'Full height — standing', 'Hands', 'Skin sign', 'X-ray', 'Other'] as const
+export const PHOTO_VIEWS = ['Face, frontal', 'Face, profile', 'Full height, standing', 'Hands', 'Skin sign', 'X-ray', 'Other'] as const
 
 /** A photograph's record. The image itself is in Google Drive under `file_id`. */
 export interface Photo {

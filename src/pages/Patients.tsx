@@ -8,10 +8,11 @@ import { store } from '../lib/store'
 import type { DueFilter, PatientSort } from '../lib/store'
 import { tagColor } from '../lib/tags'
 import type { Condition, Patient } from '../lib/types'
+import { NONE } from '../lib/text'
 
 /** Review date with how far away it is; overdue dates are marked. */
 function Due({ on }: { on: string | null }) {
-  if (!on) return <span className="muted">—</span>
+  if (!on) return <span className="muted">{NONE}</span>
   const days = daysBetween(todayISO(), on) ?? 0
   if (days < 0) return <span className="pill warn" title={formatDate(on)}>Overdue {-days} d</span>
   if (days <= 7) return <span className="pill ok" title={formatDate(on)}>{days === 0 ? 'Today' : `In ${days} d`}</span>
@@ -39,7 +40,7 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
           const c = byId.get(id)
           return c ? <Tag key={id} condition={c} /> : null
         })}
-        {p.condition_ids.length === 0 && <span className="muted">—</span>}
+        {p.condition_ids.length === 0 && <span className="muted">{NONE}</span>}
       </div>
       <div className="muted">{p.last_visit_on ? formatDate(p.last_visit_on) : 'No visit yet'}</div>
       <div><Due on={p.next_review_on} /></div>
