@@ -90,6 +90,23 @@ main.narrow { max-width: 860px; }
 .tag-new .btn.small { min-height: 44px; }
 .tag { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Condition filter on the patient list: a button, and a list with a search box under it. */
+.cond-slot { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; }
+.cond { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; }
+.cond-btn { display: inline-flex; align-items: center; gap: 8px; min-width: 0; min-height: 40px; padding: 0 10px 0 12px; border: 1.5px solid var(--line-strong); border-radius: 8px; background: #fff; color: var(--ink); font-weight: 500; font-size: 14px; }
+.cond .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cond .dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 10px; }
+.cond .n { font-family: var(--mono); font-size: 12px; opacity: 0.85; }
+.cond .icon-btn { width: 40px; height: 40px; flex: 0 0 40px; }
+.cond-pop { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: min(340px, calc(100vw - 30px)); padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgb(20 36 43 / 0.18); }
+.cond-pop input { width: 100%; min-height: 40px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 15px; }
+.cond-pop input:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-tint); }
+.cond-pop ul { list-style: none; margin: 6px 0 0; padding: 0; max-height: min(320px, 50vh); overflow-y: auto; }
+.cond-pop li { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: 8px; cursor: pointer; }
+.cond-pop li.at { background: var(--bg); }
+.cond-pop li[aria-selected='true'] { font-weight: 600; }
+.cond-pop li .n { margin-left: auto; color: var(--muted); opacity: 1; }
+.cond-none { padding: 10px; }
 .switch { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 4px; background: transparent; border: 0; font-weight: 500; }
 .switch .track { width: 38px; height: 22px; border-radius: 11px; background: #8a979c; display: flex; align-items: center; padding: 2px; }
 .switch .track::after { content: ''; width: 18px; height: 18px; border-radius: 50%; background: #fff; }
@@ -512,6 +529,16 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
   .chip-scroll::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
   .chip-scroll > *, .tabs > * { flex: 0 0 auto; white-space: nowrap; }
   .chip-scroll { margin-right: -14px; padding-right: 14px; flex-basis: 100%; }
+  /* Condition filter: its own full-width row, the list as wide as the button. */
+  .cond-label { display: none; }
+  .cond-slot { flex-basis: 100%; }
+  .cond { width: 100%; }
+  .cond-btn { flex: 1 1 auto; min-height: 44px; }
+  .cond-btn svg { margin-left: auto; }
+  .cond .icon-btn { width: 44px; height: 44px; flex: 0 0 44px; }
+  .cond-pop { width: 100%; }
+  .cond-pop input { min-height: 44px; font-size: 16px; }
+  .cond-pop li { min-height: 44px; }
 
   /* Follow-up tiles: three across. */
   .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }

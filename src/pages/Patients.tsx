@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ConditionFilter from '../components/ConditionFilter'
 import SetupChecklist from '../components/SetupChecklist'
-import { Tag, TagChip } from '../components/Tag'
+import { Tag } from '../components/Tag'
 import { formatAge, formatDate, todayISO } from '../lib/age'
 import { daysBetween } from '../lib/clinical'
 import { store } from '../lib/store'
@@ -159,27 +160,12 @@ export default function Patients() {
 
       <section className="card">
         <div className="card-head">
-          <div className="muted" style={{ fontSize: 13, fontWeight: 500 }}>
+          <div className="muted cond-label" style={{ fontSize: 13, fontWeight: 500 }}>
             Condition
           </div>
-          <div className="tags grow chip-scroll">
-            <button
-              type="button"
-              className="chip"
-              aria-pressed={tag === null}
-              onClick={() => setTag(null)}
-              style={{ borderColor: tag === null ? '#14242b' : '#c9d2cf', background: tag === null ? '#14242b' : '#fff', color: tag === null ? '#fff' : '#14242b' }}
-            >
-              All
-            </button>
-            {conditions.map((c) => (
-              <TagChip key={c.id} label={c.name} color={c.color} count={counts[c.id] ?? 0} pressed={tag === c.id} onClick={() => setTag(tag === c.id ? null : c.id)} />
-            ))}
-            {conditions.length === 0 && !loading && (
-              <Link to="/settings?tab=tags" style={{ alignSelf: 'center' }}>
-                Set up condition tags
-              </Link>
-            )}
+          <div className="cond-slot">
+            {conditions.length > 0 && <ConditionFilter conditions={conditions} counts={counts} value={tag} onChange={setTag} />}
+            {conditions.length === 0 && !loading && <Link to="/settings?tab=tags">Set up condition tags</Link>}
           </div>
           <label className="sort">
             Sort
