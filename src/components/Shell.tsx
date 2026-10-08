@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { dropAllDrafts, idleMinutes, leaveNotice } from '../lib/device'
 import { store } from '../lib/store'
 import ErrorBoundary from './ErrorBoundary'
@@ -48,6 +48,15 @@ function useIdleSignOut() {
 
 export default function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
   useIdleSignOut()
+  const navigate = useNavigate()
+  // A deliberate sign-out also leaves the page: the address of a patient or a visit is not
+  // left in the address bar for whoever uses the browser next. (The idle sign-out keeps it, so
+  // signing in again returns to the visit that was being written.)
+  const signOut = () => {
+    dropAllDrafts()
+    navigate('/', { replace: true })
+    void store.signOut()
+  }
   return (
     <>
       <DemoBanner />
@@ -70,7 +79,7 @@ export default function Shell({ user, children }: { user: SessionUser; children:
             {initials(user.name)}
           </span>
           <span className="who-name">{user.name}</span>
-          <button type="button" onClick={() => { dropAllDrafts(); void store.signOut() }}>
+          <button type="button" onClick={signOut}>
             Sign out
           </button>
         </div>
