@@ -17,7 +17,8 @@ the single source of truth — commit and push finished work.
   database stores only file IDs. Compress in the browser first. Photos are optional and never
   go into the Excel exports or the backup file.
 - **Excel export** (stage 7): built in the browser, no server.
-- **Hosting**: static (Cloudflare Pages). No server code of our own.
+- **Hosting**: static files on Cloudflare Workers (`npx wrangler deploy`, configured by
+  `wrangler.jsonc`). No server code of our own.
 - **Backups**: the free Supabase plan has none, for the database or for files. The app
   downloads a backup file and, separately, a zip of all photographs.
 - The prescription symbol is ℞, not "Rx".
@@ -255,7 +256,10 @@ the single source of truth — commit and push finished work.
   calendar with month and year lists, drawn through a portal to `document.body` so a sticky
   column or the save bar cannot cover it; on a phone it is a sheet at the foot of the screen.
   The stored value stays `YYYY-MM-DD`.
-- `public/_headers`: security headers for Cloudflare Pages. The CSP is report-only until the
+- `wrangler.jsonc`: serves `dist` and sends unknown paths to `index.html`
+  (`not_found_handling`). Never add `public/_redirects` with `/* /index.html 200`: Workers
+  rejects the deploy as an infinite loop (error 100324).
+- `public/_headers`: security headers for Cloudflare Workers. The CSP is report-only until the
   owner's trial run shows a clean console on the live site.
 - An axe-core scan (wcag2a/aa + best-practice) was clean on every screen; keep it that way.
 

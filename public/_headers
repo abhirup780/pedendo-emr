@@ -1,4 +1,4 @@
-# Response headers for Cloudflare Pages (other static hosts have their own way to set these).
+# Response headers for Cloudflare Workers static assets (other static hosts have their own way to set these).
 
 /*
   X-Content-Type-Options: nosniff

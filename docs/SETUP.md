@@ -24,10 +24,13 @@ and the photographs. No Google Cloud Console is needed.
    The email is only a sign-in name: no message is ever sent to it.
 3. Keep the password in a password manager or written down somewhere safe.
 
-## 3. Put the app online (Cloudflare Pages)
+## 3. Put the app online (Cloudflare Workers)
 
-1. Connect this GitHub repository. Build command `npm run build`, output directory `dist`.
-2. Add environment variables:
+1. In Cloudflare → Workers & Pages, create a Worker by importing this GitHub repository.
+   Build command `npm run build`, deploy command `npx wrangler deploy`. The rest (the `dist`
+   folder, and sending every address to the app) is read from `wrangler.jsonc` in the repository.
+2. Add these as **build** variables (the Worker's Settings → Build), not runtime variables:
+   they are read while the app is being built.
 
    | Name | Value |
    |---|---|
@@ -36,6 +39,10 @@ and the photographs. No Google Cloud Console is needed.
    | `VITE_ALLOWED_EMAIL` | the clinic email address from step 2 (optional) |
 
 3. Deploy, open the address, and sign in with the email and password.
+
+Do not add a `public/_redirects` file with `/* /index.html 200`, the usual rule on other static
+hosts: Cloudflare Workers refuses the deploy with "Infinite loop detected". The
+`not_found_handling` line in `wrangler.jsonc` does that job.
 
 ## 4. Lock the door
 
