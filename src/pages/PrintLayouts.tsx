@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import FitSheet from '../components/FitSheet'
 import RxSheet from '../components/RxSheet'
 import { ACCENTS, describe, normalize, PAPERS, PRESETS, SECTIONS } from '../lib/printlayout'
 import type { PrintConfig, PrintLayout, SectionKey } from '../lib/printlayout'
@@ -9,7 +10,6 @@ import { EMPTY_CLINIC, store } from '../lib/store'
 import type { Clinic } from '../lib/types'
 
 type Draft = Omit<PrintLayout, 'id'> & { id?: string }
-const PX_PER_MM = 96 / 25.4
 
 /** A number box in millimetres (or another unit). Keeps what is typed; limits apply on save. */
 function Num(props: { label: string; value: number; onChange: (n: number) => void; unit?: string; step?: number; min?: number; max?: number; hint?: string }) {
@@ -47,22 +47,10 @@ function Choice<T extends string>({ label, value, options, onChange }: { label: 
 
 /** The live preview: the real sheet, shrunk to fit the panel. */
 function Preview({ config, clinic, guides }: { config: PrintConfig; clinic: Clinic; guides: boolean }) {
-  const box = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(420)
-  useEffect(() => {
-    const el = box.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver((entries) => setWidth(entries[0].contentRect.width))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  const scale = Math.min(1, width / (config.paper.width * PX_PER_MM))
   return (
-    <div ref={box} className="pl-preview">
-      <div style={{ zoom: scale, width: `${config.paper.width}mm` }}>
-        <RxSheet config={config} patient={SAMPLE_PATIENT} visit={SAMPLE_VISIT} clinic={sampleClinic(clinic)} guides={guides} />
-      </div>
-    </div>
+    <FitSheet paperWidthMm={config.paper.width} className="pl-preview">
+      <RxSheet config={config} patient={SAMPLE_PATIENT} visit={SAMPLE_VISIT} clinic={sampleClinic(clinic)} guides={guides} />
+    </FitSheet>
   )
 }
 
@@ -72,6 +60,8 @@ function Editor({ start, clinic, onDone }: { start: Draft; clinic: Clinic; onDon
   const [isDefault, setIsDefault] = useState(start.is_default)
   const [c, setC] = useState<PrintConfig>(start.config)
   const [guides, setGuides] = useState(true)
+  // On a phone the preview opens over the form instead of sitting beside it.
+  const [peek, setPeek] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   // What will be saved and printed: the typed values brought within limits.
@@ -250,9 +240,17 @@ function Editor({ start, clinic, onDone }: { start: Draft; clinic: Clinic; onDon
         </section>
       </div>
 
-      <aside className="side pl-side" style={{ flex: '1 1 380px' }}>
+      <div className="actions pl-mobile-bar">
+        <div className="row">
+          <button type="button" className="btn" style={{ flex: '1 1 0' }} onClick={() => setPeek(true)}>Preview</button>
+          <button type="button" className="btn primary" style={{ flex: '2 1 0' }} disabled={busy} onClick={() => void save(false)}>{busy ? 'Saving…' : 'Save layout'}</button>
+        </div>
+      </div>
+
+      <aside className={peek ? 'side pl-side open' : 'side pl-side'} style={{ flex: '1 1 380px' }}>
         <div className="row">
           <h2 className="grow">Preview</h2>
+          <button type="button" className="btn small narrow-only" onClick={() => setPeek(false)}>Back to editing</button>
           <Toggle on={guides} onChange={setGuides}>Margin guides</Toggle>
         </div>
         <div className="muted" style={{ fontSize: 13 }}>{describe(shown)} · sample data</div>

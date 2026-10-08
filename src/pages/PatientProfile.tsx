@@ -143,7 +143,7 @@ export default function PatientProfile() {
           <dt>Parent or guardian</dt>
           <dd>{p.guardian_name ? `${p.guardian_name} (${p.guardian_relation})` : '—'}</dd>
           <dt>Phone</dt>
-          <dd className="mono">{p.phone || '—'}</dd>
+          <dd className="mono">{p.phone ? <a href={`tel:${p.phone}`}>{p.phone}</a> : '—'}</dd>
           <dt>Address</dt>
           <dd>{p.address || '—'}</dd>
           <dt>Parents' heights</dt>

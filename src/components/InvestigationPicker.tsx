@@ -14,7 +14,8 @@ interface Props {
 
 export default function InvestigationPicker({ catalog, panels, value, onChange, onSavePanel }: Props) {
   const [q, setQ] = useState('')
-  const [open, setOpen] = useState(true)
+  // On a phone the full list is several screens long, so it starts folded away there.
+  const [open, setOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia('(max-width: 700px)').matches)
   const [panelName, setPanelName] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
 

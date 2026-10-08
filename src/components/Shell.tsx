@@ -10,7 +10,8 @@ export function DemoBanner() {
   if (store.mode !== 'demo') return null
   return (
     <div className="demo-banner" role="status">
-      Demo mode: sample data stored only in this browser. Do not enter real patients.
+      <span className="wide-only">Demo mode: sample data stored only in this browser. Do not enter real patients.</span>
+      <span className="narrow-only">Demo: sample data only. Do not enter real patients.</span>
     </div>
   )
 }
@@ -50,24 +51,26 @@ export default function Shell({ user, children }: { user: SessionUser; children:
     <>
       <DemoBanner />
       <header className="topbar">
-        <Link to="/" className="brand">
+        <Link to="/" className="brand" aria-label="Pediatric Endocrinology, patient list">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7FD1C9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />
           </svg>
-          Pediatric Endocrinology
+          <span className="brand-text">Pediatric Endocrinology</span>
         </Link>
         <nav className="topnav">
           <NavLink to="/" end>
             Patients
           </NavLink>
-          <NavLink to="/registry">Registry &amp; export</NavLink>
+          <NavLink to="/registry">
+            Registry<span className="wide-only"> &amp; export</span>
+          </NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
         <div className="who">
           <span className="avatar" aria-hidden="true">
             {initials(user.name)}
           </span>
-          {user.name}
+          <span className="who-name">{user.name}</span>
           <button type="button" onClick={() => { dropAllDrafts(); void store.signOut() }}>
             Sign out
           </button>

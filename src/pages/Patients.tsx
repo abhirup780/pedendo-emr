@@ -26,7 +26,10 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
         <Link className="name" to={`/patients/${p.id}`}>
           {p.name}
         </Link>
-        {p.guardian_name && <div className="muted" style={{ fontSize: 12.5 }}>{p.guardian_name}</div>}
+        <div className="muted" style={{ fontSize: 12.5 }}>
+          <span className="narrow-only mono">MRN {p.mrn}{p.guardian_name && ' · '}</span>
+          {p.guardian_name}
+        </div>
       </div>
       <div>
         {formatAge(p.dob)} · {p.sex}
@@ -38,7 +41,7 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
         })}
         {p.condition_ids.length === 0 && <span className="muted">—</span>}
       </div>
-      <div className="mono">{p.phone || '—'}</div>
+      <div className="mono">{p.phone ? <a href={`tel:${p.phone}`} className="tel">{p.phone}</a> : '—'}</div>
       <div className="muted">{p.last_visit_on ? formatDate(p.last_visit_on) : 'No visit yet'}</div>
       <div><Due on={p.next_review_on} /></div>
     </div>
@@ -139,15 +142,15 @@ export default function Patients() {
 
       <div className="tiles">
         <button type="button" className="tile" aria-pressed={due === null} onClick={() => setDue(null)}>
-          <span className="k">All patients</span>
+          <span className="k">All<span className="wide-only"> patients</span></span>
           <span className="v">{everyone ?? '…'}</span>
         </button>
         <button type="button" className="tile" aria-pressed={due === 'week'} onClick={() => setDue(due === 'week' ? null : 'week')}>
-          <span className="k">Review due in the next 7 days</span>
+          <span className="k"><span className="wide-only">Review due in the next 7 days</span><span className="narrow-only">Due in 7 days</span></span>
           <span className="v">{follow?.week ?? '…'}</span>
         </button>
         <button type="button" className="tile" aria-pressed={due === 'overdue'} onClick={() => setDue(due === 'overdue' ? null : 'overdue')}>
-          <span className="k">Review overdue, not seen since</span>
+          <span className="k"><span className="wide-only">Review overdue, not seen since</span><span className="narrow-only">Overdue</span></span>
           <span className={follow && follow.overdue > 0 ? 'v warn' : 'v'}>{follow?.overdue ?? '…'}</span>
         </button>
       </div>
@@ -159,7 +162,7 @@ export default function Patients() {
           <div className="muted" style={{ fontSize: 13, fontWeight: 500 }}>
             Condition
           </div>
-          <div className="tags grow">
+          <div className="tags grow chip-scroll">
             <button
               type="button"
               className="chip"

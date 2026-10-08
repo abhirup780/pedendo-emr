@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import FitSheet from '../components/FitSheet'
 import RxSheet from '../components/RxSheet'
 import { describe, pageCss, rememberLayout, rememberedLayout, STANDARD } from '../lib/printlayout'
 import type { PrintConfig, PrintLayout } from '../lib/printlayout'
@@ -86,7 +87,7 @@ export default function PrintRx() {
       </div>
       <div className="sheet-tools no-print muted" style={{ fontSize: 13 }}>
         <span className="grow">{describe(config)}. In the print window choose the same paper size, set margins to "Default" and scale to 100%.</span>
-        {!sample && <Link to="/settings?tab=print">Customise layouts</Link>}
+        {!sample && <Link to="/settings?tab=print" className="tap">Customise layouts</Link>}
       </div>
       {sample && <div className="note no-print" style={{ width: '100%', maxWidth: '210mm' }}>A made-up prescription. Print it on the real pad with "Margin guides" on to see where the text will fall, then adjust the layout's margins.</div>}
       {noHeader && (
@@ -94,7 +95,9 @@ export default function PrintRx() {
           The letterhead is empty. Add the doctor and clinic details under <Link to="/settings">Settings</Link>.
         </div>
       )}
-      <RxSheet config={config} patient={p} visit={v} clinic={c} guides={guides} />
+      <FitSheet paperWidthMm={config.paper.width}>
+        <RxSheet config={config} patient={p} visit={v} clinic={c} guides={guides} />
+      </FitSheet>
     </main>
   )
 }

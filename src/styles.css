@@ -96,7 +96,7 @@ main.narrow { max-width: 860px; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-tint); }
 .field .err { color: #8c1d18; font-weight: 500; }
 .field .hint { color: var(--muted); }
-.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; align-self: flex-start; }
+.seg { max-width: 100%; display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; align-self: flex-start; }
 .seg button { min-height: 44px; min-width: 72px; padding: 0 16px; border: 0; background: #fff; font-weight: 500; }
 .seg button + button { border-left: 1px solid var(--line-strong); }
 .seg button[aria-pressed='true'] { background: var(--ink); color: #fff; }
@@ -234,6 +234,7 @@ main.narrow { max-width: 860px; }
 .picker-list .opt[aria-pressed='true'] .box { background: var(--primary); border-color: var(--primary); }
 .result-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: #f7f9f8; }
 .result-form .wide { grid-column: 1 / -1; }
+.result-form .field { min-width: 0; }
 .rrow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 16px; border-bottom: 1px solid #edf0ef; }
 .rrow:last-child { border-bottom: 0; }
 .rname { flex: 2 1 170px; min-width: 0; }
@@ -358,3 +359,118 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid #edf0ef; white-sp
 .pl-space { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .pl-space input { width: 68px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; font-family: var(--mono); }
 @media (max-width: 900px) { .pl-side { position: static; max-height: none; } }
+
+/* ---------- Phones ---------- */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+a, button, input, select, textarea, label, [role='switch'] { touch-action: manipulation; }
+.narrow-only { display: none; }
+.tap { display: inline-block; padding: 10px 0; }
+a.tel { color: inherit; text-decoration: none; }
+.actions { flex: 1 1 100%; display: flex; flex-direction: column; gap: 10px; }
+.cols > .actions .row { justify-content: flex-end; }
+.cols > .actions .row .btn { flex: 0 1 auto !important; min-width: 180px; }
+.pl-mobile-bar { display: none; }
+.topbar { padding-top: calc(6px + env(safe-area-inset-top, 0px)); }
+
+/* A sheet of paper shrunk to fit the screen (see FitSheet); never when printing. */
+.fit { width: 100%; max-width: 100%; display: flex; justify-content: center; }
+.fit-zoom { flex: 0 0 auto; }
+.fit-zoom .sheet { max-width: none; }
+@media screen { .fit-zoom { zoom: var(--z, 1); } }
+@media print { .fit, .fit-zoom { display: block; width: auto !important; } }
+.pl-preview.fit { justify-content: flex-start; }
+
+@media (max-width: 700px) {
+  .wide-only { display: none; }
+  .narrow-only { display: revert; }
+  /* 16px stops iPhones zooming the page when a field is tapped. */
+  input, select, textarea, select.btn, select.btn.small, .search input, .picker-box input, .sort select, .field input, .field select, .field textarea, .field input.num, .med-head input, .med-grid .field input, .pl-space input, .tag-row input[type='text'] { font-size: 16px; }
+  h1 { font-size: 22px; }
+  main.page { padding: 14px 16px 28px; gap: 14px; }
+  .card.pad { padding: 14px; }
+  .card-head { padding: 12px 14px; }
+
+  /* Header: one row. */
+  .demo-banner { padding: 6px 12px; font-size: 12.5px; }
+  .topbar { flex-wrap: nowrap; gap: 4px; padding-left: 8px; padding-right: 8px; }
+  .brand { flex: 0 0 auto; padding: 0 6px; }
+  .brand-text, .who-name, .who .avatar { display: none; }
+  .topnav { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .topnav::-webkit-scrollbar { display: none; }
+  .topnav a { flex: 0 0 auto; padding: 12px 10px; }
+  .who { flex: 0 0 auto; }
+  .who button { min-height: 40px; padding: 0 8px; font-size: 13px; }
+
+  /* Rows of chips and tabs scroll sideways instead of stacking five deep. */
+  .chip-scroll, .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .chip-scroll::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
+  .chip-scroll > *, .tabs > * { flex: 0 0 auto; white-space: nowrap; }
+  .chip-scroll { margin-right: -14px; padding-right: 14px; flex-basis: 100%; }
+
+  /* Follow-up tiles: three across. */
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tile { min-height: 62px; padding: 8px 10px; }
+  .tile .k { font-size: 12px; }
+  .tile .v { font-size: 22px; }
+
+  /* Patient list: each row becomes a card. */
+  .table { min-width: 0; }
+  .tr.head { display: none; }
+  .tr { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name due' 'age last' 'tags tags' 'phone phone'; gap: 2px 12px; padding: 10px 14px; align-items: start; }
+  .tr > :nth-child(1) { display: none; }
+  .tr > :nth-child(2) { grid-area: name; }
+  .tr > :nth-child(3) { grid-area: age; color: var(--muted); }
+  .tr > :nth-child(4) { grid-area: tags; padding-top: 4px; }
+  .tr > :nth-child(5) { grid-area: phone; }
+  .tr > :nth-child(6) { grid-area: last; text-align: right; }
+  .tr > :nth-child(7) { grid-area: due; text-align: right; padding-top: 8px; }
+  .tr a.name { display: block; padding: 12px 0 8px; font-size: 15.5px; }
+  .tr a.tel { display: inline-block; padding: 8px 0; color: var(--primary); text-decoration: underline; }
+  .sort { flex: 1 1 auto; }
+  .sort select { flex: 1; }
+
+  /* Visit history: cards. */
+  .vtable { min-width: 0; }
+  .vrow.head { display: none; }
+  .vrow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 14px; }
+  .vrow > :nth-child(1) { flex: 1 1 50%; order: 1; }
+  .vrow > :nth-child(8) { order: 2; margin-left: auto; }
+  .vrow > :nth-child(n + 2):nth-child(-n + 6) { order: 3; }
+  .vrow > :nth-child(7) { order: 4; flex: 1 1 100%; white-space: normal; color: #44545b; }
+  .vrow > :nth-child(2) { color: var(--muted); }
+  .vrow > :nth-child(5)::before { content: 'BMI '; font-family: 'IBM Plex Sans', sans-serif; color: var(--muted); }
+  .vrow a { padding: 9px 0 !important; }
+
+  /* Calculated tiles: no empty grey cell when the count is odd. */
+  .calc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calc > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  .t-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .t-tile { min-height: 132px; padding: 8px 4px; }
+  .t-cap { font-size: 12px; }
+  .bead { min-width: 40px; }
+  .ph-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dl { grid-template-columns: minmax(96px, 36%) 1fr; }
+  .picker-list { grid-template-columns: 1fr; }
+  .picker-list .opt { min-height: 44px; }
+  .rrow .btn.small, .tag-row .btn.small { min-height: 40px; }
+
+  /* Save buttons stay within reach at the foot of long forms. */
+  .actions { position: sticky; bottom: 0; z-index: 5; margin: 0 -16px -28px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: rgb(243 245 244 / 0.96); border-top: 1px solid var(--line); backdrop-filter: blur(6px); }
+  .cols > .actions { flex-basis: auto; width: auto; align-self: stretch; }
+  .cols > .actions .row .btn { flex: 1 1 0 !important; min-width: 0; }
+  .actions .alert { padding: 8px 12px; font-size: 13px; }
+
+  /* Print layout editor: the preview opens over the form. */
+  .pl-mobile-bar { display: flex; }
+  .pl-side { display: none; }
+  .cols:has(.pl-side.open) .pl-mobile-bar { display: none; }
+  .pl-side.open { display: flex; position: fixed; inset: 0; height: 100vh; height: 100dvh; z-index: 20; max-height: none; overflow: auto; background: var(--bg); padding: calc(12px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .sheet-wrap { padding: 14px 12px 28px; }
+}
+
+/* Any touch screen, tablets included: 16px fields, so tapping one never zooms the page. */
+@media (pointer: coarse) {
+  input, select, textarea, select.btn, select.btn.small, .search input, .picker-box input, .sort select, .field input, .field select, .field textarea, .med-head input, .med-grid .field input, .pl-space input, .tag-row input[type='text'] { font-size: 16px; }
+  .field input.num { font-size: 17px; }
+}

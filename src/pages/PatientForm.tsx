@@ -259,6 +259,7 @@ export default function PatientForm() {
           </div>
         </section>
 
+        <div className="actions">
         {tried && invalid && <div className="alert">Some details are missing or need correcting above.</div>}
         <div className="row end">
           <Link to={id ? `/patients/${id}` : '/'} className="btn">
@@ -267,6 +268,7 @@ export default function PatientForm() {
           <button type="submit" className="btn primary" disabled={busy}>
             {busy ? 'Saving…' : id ? 'Save changes' : 'Save patient'}
           </button>
+        </div>
         </div>
       </form>
     </main>

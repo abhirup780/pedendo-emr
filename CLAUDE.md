@@ -152,6 +152,25 @@ the single source of truth — commit and push finished work.
 - Check a layout change by printing to PDF with Playwright (`prefer_css_page_size=True`) and
   looking at the pages; wait for `.sheet-wrap .sheet`, not `.sheet` (the editor preview has one).
 
+## Phones and tablets
+
+- One breakpoint: `@media (max-width: 700px)` at the end of `styles.css`, plus
+  `@media (pointer: coarse)` for 16px form fields on any touch screen (smaller text makes
+  iPhones and iPads zoom the page when a field is tapped).
+- On a phone: the header is one row; the patient list and visit history turn from table rows
+  into cards by CSS grid areas (cell order in the markup matters: check `nth-child` rules
+  before adding a column); chip rows and tabs scroll sideways; `.actions` bars stick to the
+  foot of long forms; the investigation list starts folded; the print layout editor's preview
+  opens as a full-screen panel.
+- `components/FitSheet.tsx` shrinks a prescription sheet as a whole to fit the screen (CSS
+  `zoom`), so the phone preview is the true layout; `@media print` cancels the shrink. A PDF
+  printed from a phone-sized window was pixel-identical to one from a desktop window.
+- `GrowthChart` lays itself out for the width it gets (fewer ticks, shorter axes) instead of
+  scaling the picture down.
+- `.wide-only` / `.narrow-only` swap long and short labels.
+- Check with Playwright at 390 px (`is_mobile`, `has_touch`), 820 px and desktop: no sideways
+  page scroll on any screen, no form field under 16px on touch, axe clean at both widths.
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)

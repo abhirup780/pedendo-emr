@@ -517,6 +517,9 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
 
           <Results patientId={id} catalog={testCatalog} mode="latest" />
 
+        </div>
+
+        <div className="actions">
           {tried && invalid && <div className="alert">Some entries need correcting before this visit can be saved.</div>}
           <div className="row">
             <button type="submit" className="btn outline" style={{ flex: '1 1 120px' }} disabled={busy}>

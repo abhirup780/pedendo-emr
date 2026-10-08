@@ -100,7 +100,7 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
             <input type="date" value={d.date} max={todayISO()} onChange={(e) => setD({ ...d, date: e.target.value })} />
             {dateBad && <span className="err">Enter a date that is not in the future.</span>}
           </label>
-          <div className="field">
+          <div className="field wide">
             <span id="flag-label">Against the lab's range</span>
             <div className="seg" role="group" aria-labelledby="flag-label">
               {FLAGS.map((fl) => (
