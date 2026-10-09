@@ -180,7 +180,7 @@ export default function PatientProfile() {
               {visits.map((v) => (
                 <div className="vrow" key={v.id} role="row">
                   <div role="cell">
-                    <Link to={`/patients/${p.id}/visits/${v.id}`} style={{ fontWeight: 600, textDecoration: 'none', display: 'inline-block', padding: '4px 0' }}>
+                    <Link className="open" to={`/patients/${p.id}/visits/${v.id}`}>
                       {formatDate(v.visit_date)}
                     </Link>
                     {draftIds.has(v.id) && <> <span className="pill warn">Unsaved changes</span></>}
@@ -192,8 +192,8 @@ export default function PatientProfile() {
                   <div className="mono clip" role="cell" title={tannerSummary(v.tanner, p.sex)}>{tannerSummary(v.tanner, p.sex).split(' · ')[0] || NONE}</div>
                   <div className="clip" role="cell" title={v.assessment}>{v.assessment || NONE}</div>
                   <div role="cell">
-                    <Link to={`/patients/${p.id}/visits/${v.id}/print`} style={{ display: 'inline-block', padding: '4px 0' }}>
-                      {v.medicines.length === 0 ? 'Open' : `${v.medicines.length} ${v.medicines.length === 1 ? 'item' : 'items'}`}
+                    <Link className="rx-link" to={`/patients/${p.id}/visits/${v.id}/print`} title="Open the prescription, to print it">
+                      {v.medicines.length === 0 ? 'Print' : `${v.medicines.length} ${v.medicines.length === 1 ? 'item' : 'items'}`}
                     </Link>
                   </div>
                 </div>

@@ -291,6 +291,18 @@ main.narrow { max-width: 860px; }
 .vrow { display: grid; grid-template-columns: 112px 70px 86px 82px 56px 78px minmax(150px, 1fr) 76px; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #edf0ef; }
 .vrow.head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
 .vtable { min-width: 820px; }
+/* The whole row opens the visit (the date's link is stretched over it) and says so with an
+   arrow at its end. The prescription link sits above the row, so it still opens the print screen. */
+.vrow { padding-right: 40px; }
+.vrow:not(.head) { position: relative; cursor: pointer; }
+.vrow:not(.head):hover { background: #f7f9f8; }
+.vrow:not(.head)::after { content: ''; position: absolute; right: 18px; top: 50%; width: 7px; height: 7px; border-top: 2px solid #8a979c; border-right: 2px solid #8a979c; transform: translateY(-50%) rotate(45deg); pointer-events: none; }
+.vrow:not(.head):hover::after { border-color: var(--primary); }
+.vrow a.open { display: inline-block; padding: 4px 0; font-weight: 600; text-decoration: none; }
+.vrow a.open::after { content: ''; position: absolute; inset: 0; }
+.vrow a.open:focus-visible { outline: 0; }
+.vrow a.open:focus-visible::after { outline: 2px solid var(--primary); outline-offset: -2px; }
+.vrow a.rx-link { position: relative; z-index: 1; display: inline-block; padding: 4px 0; }
 .clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sheet-wrap { padding: 24px 16px 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
@@ -667,7 +679,8 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
   /* Visit history: cards. */
   .vtable { min-width: 0; }
   .vrow.head { display: none; }
-  .vrow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 14px; }
+  .vrow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 36px 10px 14px; }
+  .vrow:not(.head)::after { right: 16px; }
   .vrow > :nth-child(1) { flex: 1 1 50%; order: 1; }
   .vrow > :nth-child(8) { order: 2; margin-left: auto; }
   .vrow > :nth-child(n + 2):nth-child(-n + 6) { order: 3; }
