@@ -318,7 +318,7 @@ export default function Registry() {
                 </div>
               ) : (
                 <>
-                  <div className="note" style={{ background: '#eceFee', color: 'var(--ink)', fontWeight: 400 }}>
+                  <div className="note info" style={{ color: 'var(--ink)' }}>
                     Backup of {formatDate(pending.exported_at)}: <strong>{pending.patients.length}</strong> patients, <strong>{pending.visits.length}</strong> visits, <strong>{pending.results.length}</strong> results, {pending.photos.length} photograph records, {pending.conditions.length} tags, {pending.medicines.length} medicines.
                     {(total ?? 0) > 0 && <> This account has {total} patients, so it cannot be restored here.</>}
                   </div>

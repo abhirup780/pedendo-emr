@@ -91,7 +91,7 @@ export default function PrintRx() {
       </div>
       {sample && <div className="note no-print" style={{ width: '100%', maxWidth: '210mm' }}>A made-up prescription. Print it on the real pad with "Margin guides" on to see where the text will fall, then adjust the layout's margins.</div>}
       {noHeader && (
-        <div className="alert no-print" style={{ width: '100%', maxWidth: '210mm' }}>
+        <div className="note no-print" style={{ width: '100%', maxWidth: '210mm' }}>
           The letterhead is empty. Add the doctor and clinic details under <Link to="/settings">Settings</Link>.
         </div>
       )}

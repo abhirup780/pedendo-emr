@@ -78,7 +78,8 @@ export interface Store {
 
   /** Newest first. */
   listResults(patientId: string): Promise<Result[]>
-  saveResult(input: ResultInput): Promise<Result>
+  /** With an id, corrects that result; without one, adds a new result. */
+  saveResult(input: ResultInput, id?: string): Promise<Result>
   deleteResult(id: string): Promise<void>
 
   /** Newest first. */

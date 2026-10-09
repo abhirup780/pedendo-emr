@@ -94,6 +94,23 @@ export function dropDraft(key: string): void {
     /* nothing to drop */
   }
 }
+/** Every draft held in this tab: its key and when it was last written. */
+export function listDrafts(): { key: string; at: string }[] {
+  try {
+    return Object.keys(sessionStorage)
+      .filter((k) => k.startsWith(DRAFT))
+      .map((k) => ({ key: k.slice(DRAFT.length), at: readDraft<unknown>(k.slice(DRAFT.length))?.at ?? '' }))
+  } catch {
+    return []
+  }
+}
+/** Unsaved visit notes for one patient. `vid` is null for a visit that was never saved. */
+export function visitDrafts(patientId: string): { vid: string | null; at: string }[] {
+  const start = `visit:${patientId}:`
+  return listDrafts()
+    .filter((d) => d.key.startsWith(start))
+    .map((d) => ({ vid: d.key.slice(start.length) === 'new' ? null : d.key.slice(start.length), at: d.at }))
+}
 /** On a deliberate sign-out nothing clinical is left behind in the browser. */
 export function dropAllDrafts(): void {
   try {

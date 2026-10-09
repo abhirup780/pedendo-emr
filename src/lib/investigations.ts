@@ -260,6 +260,25 @@ export function categoryOrder(categories: string[]): string[] {
 }
 
 /** Latest result per test (newest first), each with the one before it for comparison. */
+/** Every result grouped by test: newest first within a test, tests in order of their newest result. */
+export function historyPerTest<T extends { test: string; result_date: string; created_at: string }>(results: T[]): { test: string; results: T[] }[] {
+  const sorted = [...results].sort((a, b) => b.result_date.localeCompare(a.result_date) || b.created_at.localeCompare(a.created_at))
+  const out = new Map<string, { test: string; results: T[] }>()
+  for (const r of sorted) {
+    const key = r.test.trim().toLowerCase()
+    const hit = out.get(key)
+    if (hit) hit.results.push(r)
+    else out.set(key, { test: r.test.trim(), results: [r] })
+  }
+  return [...out.values()]
+}
+
+/** A result's value as a number, for drawing a trend. Null for "<0.1", "Positive", "7y 6m". */
+export function numericValue(value: string): number | null {
+  const t = value.trim()
+  return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : null
+}
+
 export function latestPerTest<T extends { test: string; result_date: string; created_at: string }>(results: T[]): { latest: T; previous: T | null }[] {
   const sorted = [...results].sort((a, b) => b.result_date.localeCompare(a.result_date) || b.created_at.localeCompare(a.created_at))
   const out = new Map<string, { latest: T; previous: T | null }>()

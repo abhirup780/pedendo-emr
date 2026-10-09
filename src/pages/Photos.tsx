@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { PageSkeleton } from '../components/Skeleton'
 import { Link, useParams } from 'react-router-dom'
 import { formatAge, formatDate, todayISO } from '../lib/age'
 import { compressImage } from '../lib/image'
@@ -175,7 +176,7 @@ export default function Photos() {
     setConsent(c)
   })
 
-  if (patient === undefined) return <main className="page muted">Loading…</main>
+  if (patient === undefined) return <PageSkeleton />
   if (patient === null)
     return (
       <main className="page">
@@ -190,7 +191,7 @@ export default function Photos() {
   return (
     <main className="page">
       <div>
-        <h1 style={{ fontSize: 21 }}>Photographs · <Link to={`/patients/${id}`}>{patient.name}</Link></h1>
+        <h1 className="sub">Photographs · <Link to={`/patients/${id}`}>{patient.name}</Link></h1>
         <div className="muted">{formatAge(patient.dob)} · {sexLabel(patient.sex)} · <span className="mono">MRN {patient.mrn}</span> · Optional; a visit never needs a photograph.</div>
       </div>
       {error && <div className="alert">{error}</div>}

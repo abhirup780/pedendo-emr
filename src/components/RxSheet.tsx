@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { formatAge, formatDate } from '../lib/age'
+import { allergyStatus } from '../lib/allergy'
 import { bmi, rxLine } from '../lib/clinical'
 import { sexLabel } from '../lib/sex'
 import { blocks, firstPageInnerHeight } from '../lib/printlayout'
@@ -106,7 +107,7 @@ export default function RxSheet({ config: c, patient: p, visit: v, clinic, guide
         </div>
       ),
     tanner: () => (tanner ? <div><strong>Pubertal stage:</strong> {tanner}</div> : null),
-    allergy: () => (p.allergies ? <div><strong>Drug allergy:</strong> {p.allergies}</div> : null),
+    allergy: () => (allergyStatus(p.allergies) === 'some' ? <div><strong>Drug allergy:</strong> {p.allergies}</div> : null),
     complaint: () => (v.complaint ? <div className="pre"><strong>Complaint:</strong> {v.complaint}</div> : null),
     history: () => (v.history ? <div className="pre"><strong>History and examination:</strong> {v.history}</div> : null),
     diagnosis: () => (v.assessment ? <div className="pre"><strong>Diagnosis:</strong> {v.assessment}</div> : null),

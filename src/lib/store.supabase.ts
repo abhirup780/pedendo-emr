@@ -401,8 +401,9 @@ export function createSupabaseStore(sb: SupabaseClient): Store {
       fail(error)
       return (data ?? []) as Result[]
     },
-    async saveResult(input: ResultInput) {
-      const { data, error } = await sb.from('results').insert(input).select(RESULT_COLS).single()
+    async saveResult(input: ResultInput, id?: string) {
+      const q = id ? sb.from('results').update(input).eq('id', id) : sb.from('results').insert(input)
+      const { data, error } = await q.select(RESULT_COLS).single()
       fail(error)
       return data as Result
     },

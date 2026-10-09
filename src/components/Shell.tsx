@@ -1,11 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { dropAllDrafts, idleMinutes, leaveNotice } from '../lib/device'
+import { dropAllDrafts, idleMinutes, leaveNotice, listDrafts } from '../lib/device'
 import { store } from '../lib/store'
 import ErrorBoundary from './ErrorBoundary'
 import type { SessionUser } from '../lib/types'
 import { Mark, Wordmark } from './Brand'
+import QuickFind from './QuickFind'
 
 export function DemoBanner() {
   if (store.mode !== 'demo') return null
@@ -56,6 +57,17 @@ export default function Shell({ user, children }: { user: SessionUser; children:
     navigate('/', { replace: true })
     void store.signOut()
   }
+  // Signing out clears every draft, so unsaved visit notes are asked about first.
+  const [unsaved, setUnsaved] = useState(0)
+  const ask = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (unsaved > 0 && ask.current && !ask.current.open) ask.current.showModal()
+  }, [unsaved])
+  const askOrSignOut = () => {
+    const n = listDrafts().length
+    if (n > 0) setUnsaved(n)
+    else signOut()
+  }
   return (
     <>
       <DemoBanner />
@@ -73,16 +85,27 @@ export default function Shell({ user, children }: { user: SessionUser; children:
           </NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
+        <QuickFind />
         <div className="who">
           <span className="avatar" aria-hidden="true">
             {initials(user.name)}
           </span>
           <span className="who-name">{user.name}</span>
-          <button type="button" onClick={signOut}>
+          <button type="button" onClick={askOrSignOut}>
             Sign out
           </button>
         </div>
       </header>
+      {unsaved > 0 && (
+        <dialog ref={ask} className="ask-dialog" aria-labelledby="ask-title" onClose={() => setUnsaved(0)} onClick={(e) => { if (e.target === ask.current) ask.current?.close() }}>
+          <h2 id="ask-title">Sign out and lose unsaved notes?</h2>
+          <p>{unsaved === 1 ? 'One visit has notes' : `${unsaved} visits have notes`} that were typed but not saved. Signing out removes them from this device.</p>
+          <div className="row end">
+            <button type="button" className="btn" onClick={() => ask.current?.close()}>Stay signed in</button>
+            <button type="button" className="btn danger" onClick={signOut}>Sign out anyway</button>
+          </div>
+        </dialog>
+      )}
       <ErrorBoundary>{children}</ErrorBoundary>
     </>
   )

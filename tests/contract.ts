@@ -163,12 +163,16 @@ export function storeContract(name: string, make: () => Promise<{ store: Store; 
       const { store: s } = await make()
       await wipe(s)
       const p = await s.savePatient(patient())
-      await s.saveResult({ patient_id: p.id, test: 'IGF-1', value: '96', unit: 'ng/mL', result_date: '2026-01-10', flag: 'low' })
+      const r1 = await s.saveResult({ patient_id: p.id, test: 'IGF-1', value: '96', unit: 'ng/mL', result_date: '2026-01-10', flag: 'low' })
       const r2 = await s.saveResult({ patient_id: p.id, test: 'IGF-1', value: '142', unit: 'ng/mL', result_date: '2026-04-08', flag: '' })
       await s.saveResult({ patient_id: p.id, test: 'Bone age', value: '7y 6m', unit: '', result_date: '2026-01-10', flag: '' })
       const rs = await s.listResults(p.id)
       expect(rs[0].id).toBe(r2.id)
       expect(rs.map((r) => r.value).sort()).toEqual(['142', '7y 6m', '96'])
+      // A result is corrected in place: same record, new value.
+      const fixed = await s.saveResult({ patient_id: p.id, test: 'IGF-1', value: '98', unit: 'ng/mL', result_date: '2026-01-10', flag: 'low' }, r1.id)
+      expect(fixed.id).toBe(r1.id)
+      expect((await s.listResults(p.id)).map((r) => r.value).sort()).toEqual(['142', '7y 6m', '98'])
       await s.deleteResult(r2.id)
       expect(await s.listResults(p.id)).toHaveLength(2)
 

@@ -18,7 +18,7 @@ const signed = (z: number) => `${z < 0 ? '−' : '+'}${Math.abs(z).toFixed(2)}`
  * Each part of the reference (WHO length, WHO height, IAP) is its own line: they are never
  * joined, because the tables do not meet.
  */
-export default function GrowthChart({ points, reference, label, unit }: { points: GrowthPoint[]; reference: ChartReference | null; label: string; unit: string }) {
+export default function GrowthChart({ points, reference, label, unit, target }: { points: GrowthPoint[]; reference: ChartReference | null; label: string; unit: string; /** Mid-parental height and its range, in the chart's unit; drawn at 18 years when the chart reaches it. */ target?: { mid: number; low: number; high: number } | null }) {
   const [hover, setHover] = useState<number | null>(null)
   // The drawing is laid out for the width it actually gets, so labels stay readable on a
   // phone instead of shrinking with the picture.
@@ -48,7 +48,9 @@ export default function GrowthChart({ points, reference, label, unit }: { points
     ? { min: reference.from, max: reference.to, step: inMonths ? (narrow ? 0.5 : 0.25) : niceAxis(reference.from, reference.to, narrow ? 7 : 13).step }
     : niceAxis(Math.min(...ages) - 0.4, Math.max(...ages) + 0.4, narrow ? 4 : 6)
   const segments = reference?.segments ?? []
-  const ys = [...points.map((p) => p.value), ...segments.flatMap((s) => s.values.flat())]
+  // Adult height belongs at the end of the published chart, so it is drawn only on one that runs to 18.
+  const goal = target && reference && xAxis.max >= 18 ? target : null
+  const ys = [...points.map((p) => p.value), ...segments.flatMap((s) => s.values.flat()), ...(goal ? [goal.low, goal.high] : [])]
   const span = Math.max(...ys) - Math.min(...ys) || 1
   // The reference lines already frame the picture, so they need less room around them than a
   // child's own few points do.
@@ -84,7 +86,7 @@ export default function GrowthChart({ points, reference, label, unit }: { points
 
   return (
     <div className="gc" ref={box}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${label} against age${refNames ? ` on the ${refNames} reference lines` : ''}: ${points.length} measurements, latest ${last.value} ${unit} at ${ageLabel(last.age)}${last.sds == null ? '' : `, SDS ${signed(last.sds)}`}.`}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${label} against age${refNames ? ` on the ${refNames} reference lines` : ''}: ${points.length} measurements, latest ${last.value} ${unit} at ${ageLabel(last.age)}${last.sds == null ? '' : `, SDS ${signed(last.sds)}`}${goal ? `; mid-parental height ${goal.mid.toFixed(1)} ${unit}` : ''}.`}>
         {yt.map((v) => <line key={`y${v}`} x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} className="gc-grid" />)}
         {xt.map((v) => <line key={`x${v}`} y1={M.t} y2={H - M.b} x1={x(v)} x2={x(v)} className="gc-grid faint" />)}
         <path d={`M${M.l} ${M.t}V${H - M.b}H${W - M.r}`} className="gc-axis" />
@@ -110,6 +112,15 @@ export default function GrowthChart({ points, reference, label, unit }: { points
             {named.has(i) && <text x={W - M.r + 5} y={named.get(i)! + 4} className="gc-tick">{line.label}</text>}
           </g>
         ))}
+
+        {goal && (
+          <g>
+            <title>Mid-parental height {goal.mid.toFixed(1)} {unit}, target {goal.low.toFixed(1)} to {goal.high.toFixed(1)} {unit}</title>
+            <line x1={x(18) - 3} x2={x(18) - 3} y1={y(goal.high)} y2={y(goal.low)} className="gc-goal" />
+            <line x1={x(18) - 10} x2={x(18) + 1} y1={y(goal.mid)} y2={y(goal.mid)} className="gc-goal mid" />
+            <text x={x(18) - 14} y={y(goal.mid) + 4} textAnchor="end" className="gc-label goal">MPH {goal.mid.toFixed(1)}</text>
+          </g>
+        )}
 
         {points.length > 1 && <polyline points={points.map((p) => `${x(p.age).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ')} className="gc-line" />}
         {points.map((p, i) => (

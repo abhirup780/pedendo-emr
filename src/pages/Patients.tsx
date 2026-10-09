@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConditionFilter from '../components/ConditionFilter'
 import SetupChecklist from '../components/SetupChecklist'
+import { RowsSkeleton } from '../components/Skeleton'
 import { Tag } from '../components/Tag'
 import { formatAge, formatDate, todayISO } from '../lib/age'
 import { daysBetween } from '../lib/clinical'
+import { sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import type { DueFilter, PatientSort } from '../lib/store'
 import { tagColor } from '../lib/tags'
@@ -22,9 +24,9 @@ function Due({ on }: { on: string | null }) {
 
 function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
   return (
-    <div className="tr">
-      <div className="mono muted">{p.mrn}</div>
-      <div>
+    <div className="tr" role="row">
+      <div className="mono muted" role="cell">{p.mrn}</div>
+      <div role="cell">
         <Link className="name" to={`/patients/${p.id}`}>
           {p.name}
         </Link>
@@ -33,18 +35,18 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
           {p.guardian_name}
         </div>
       </div>
-      <div>
-        {formatAge(p.dob)} · {p.sex === 'U' ? 'sex not assigned' : p.sex}
+      <div role="cell">
+        {formatAge(p.dob)} · {p.sex === 'U' ? 'sex not assigned' : sexLabel(p.sex)}
       </div>
-      <div className="tags">
+      <div className="tags" role="cell">
         {p.condition_ids.map((id) => {
           const c = byId.get(id)
           return c ? <Tag key={id} condition={c} /> : null
         })}
         {p.condition_ids.length === 0 && <span className="muted">{NONE}</span>}
       </div>
-      <div className="muted">{p.last_visit_on ? formatDate(p.last_visit_on) : 'No visit yet'}</div>
-      <div><Due on={p.next_review_on} /></div>
+      <div className="muted" role="cell">{p.last_visit_on ? formatDate(p.last_visit_on) : 'No visit yet'}</div>
+      <div role="cell"><Due on={p.next_review_on} /></div>
     </div>
   )
 }
@@ -182,24 +184,26 @@ export default function Patients() {
         </div>
 
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Patient list">
-          <div className="table">
-            <div className="tr head">
-              <div>MRN</div>
-              <div>Patient</div>
-              <div>Age · sex</div>
-              <div>Conditions</div>
-              <div>Last visit</div>
-              <div>Review due</div>
+          <div className="table" role="table" aria-label="Patients">
+            <div className="tr head" role="row">
+              <div role="columnheader">MRN</div>
+              <div role="columnheader">Patient</div>
+              <div role="columnheader">Age · sex</div>
+              <div role="columnheader">Conditions</div>
+              <div role="columnheader">Last visit</div>
+              <div role="columnheader">Review due</div>
             </div>
             {groups
               ? groups.map((g) => (
-                  <div key={g.key}>
-                    <div className="group-head">
-                      <span className="dot" style={{ background: g.dot }} />
-                      {g.label}
-                      <span className="muted" style={{ fontWeight: 400 }}>
-                        {g.rows.length}
-                      </span>
+                  <div key={g.key} role="rowgroup">
+                    <div role="row">
+                      <div className="group-head" role="cell" aria-colspan={6}>
+                        <span className="dot" style={{ background: g.dot }} />
+                        {g.label}
+                        <span className="muted" style={{ fontWeight: 400 }}>
+                          {g.rows.length}
+                        </span>
+                      </div>
                     </div>
                     {g.rows.map((p) => (
                       <Row key={p.id} p={p} byId={byId} />
@@ -210,7 +214,7 @@ export default function Patients() {
           </div>
         </div>
 
-        {loading && <div className="empty">Loading patients…</div>}
+        {loading && <RowsSkeleton rows={6} />}
         {!loading && rows.length === 0 && !error && (
           <div className="empty">
             {due === 'overdue' && !q && !tag ? 'No overdue reviews.' : due === 'week' && !q && !tag ? 'No reviews due in the next 7 days.' : filtering ? 'No patient matches this search.' : 'No patients yet. Add the first one with "New patient".'}
