@@ -671,7 +671,6 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                   )
                 })}
                 <DateField id="review" value={f.review} min={f.date} onChange={(v) => set('review', v)} invalid={bad('review')} style={{ flex: '1 1 160px' }} />
-                {f.review && <button type="button" className="btn small" onClick={() => set('review', '')}>No review</button>}
               </div>
               {show('review')}
             </div>
