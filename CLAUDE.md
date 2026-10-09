@@ -285,9 +285,10 @@ the single source of truth — commit and push finished work.
 
 ## Phones and tablets
 
-- One breakpoint: `@media (max-width: 700px)` at the end of `styles.css`, plus
-  `@media (pointer: coarse)` for 16px form fields on any touch screen (smaller text makes
-  iPhones and iPads zoom the page when a field is tapped).
+- Three widths, in this order at the end of `styles.css`: a tablet or a phone on its side
+  (`min-width: 701px` and `max-width: 1020px`), a phone (`max-width: 700px`), and
+  `@media (pointer: coarse)` for any touch screen: 16px form fields (smaller text makes iPhones
+  and iPads zoom the page when a field is tapped) and 44 px controls. See "Polish round".
 - On a phone: the header is one row; the patient list and visit history turn from table rows
   into cards by CSS grid areas (cell order in the markup matters: check `nth-child` rules
   before adding a column); chip rows and tabs scroll sideways; `.actions` bars stick to the
@@ -298,10 +299,12 @@ the single source of truth — commit and push finished work.
   `zoom`), so the phone preview is the true layout; `@media print` cancels the shrink. A PDF
   printed from a phone-sized window was pixel-identical to one from a desktop window.
 - `GrowthChart` lays itself out for the width it gets (fewer ticks, shorter axes) instead of
-  scaling the picture down.
+  scaling the picture down, or up: it is drawn at the size it is shown.
 - `.wide-only` / `.narrow-only` swap long and short labels.
 - Check with Playwright at 390 px (`is_mobile`, `has_touch`), 820 px and desktop: no sideways
   page scroll on any screen, no form field under 16px on touch, axe clean at both widths.
+  Look at 1024 and 1180 px too (a tablet on its side): the visit screen's two columns are at
+  their narrowest there, and that is where rows of tiles used to break.
 
 ## UI round
 
@@ -335,6 +338,51 @@ the single source of truth — commit and push finished work.
   runs to 18. `components/Skeleton.tsx` stands in for screens and lists while they load.
 - `npm run build:preview` sets its variables the Unix way and does not run from a Windows
   prompt; run it from Git Bash.
+
+## Polish round
+
+- **One system.** Colours, the focus ring and the two shadows are tokens in `:root`
+  (`--surface-2`, `--fill`, `--hover`, `--line-soft`, `--line-heavy`, `--ink-2`, `--ring`,
+  `--shadow-pop`, `--shadow-window`); the prescription sheet and the growth chart keep their
+  own literal colours. Type sizes are whole pixels (11, 12, 13, 14, 15, 16, 18, 22, 26) and
+  corners are 4, 6, 8, 10, 12 or 14 px, or 999px for a pill. `.sm` is 13px text; use it rather
+  than an inline `fontSize`.
+- **Movement** is in one block near the top of `styles.css`: colour, border and shadow ease in
+  over `--quick`, a pressed button dips a pixel, lists and windows that open rise in
+  (`.reveal` for something unfolded). The last rule in the file switches all of it off for
+  `prefers-reduced-motion`. The switch's knob slides with `transform`.
+- **Buttons.** A row has one outlined or filled button at most; the lesser things are
+  `.btn.quiet`, and `.btn.quiet.danger` turns red only when pointed at (the confirm step is
+  still a red button). `.btn.more` is a button that opens what is under it.
+- **Tablets.** Between 701 and 1020 px the lists stay tables but give up a column that is
+  said elsewhere: the patient list's MRN moves under the name (`.under`), the visit history
+  drops the age, the growth table's headings wrap. The header shows the doctor's initials
+  only. Both columns' `nth-child` rules apply here as well as on a phone.
+- **Rows that must not break unevenly** work it out from their own width, not the window's,
+  because the visit screen's left column is narrow on a small laptop: `.calc.cols4` is four
+  figures across or two and two, `.beads` twelve or six and six (both by a `clamp()` in the
+  grid's column size), and the Tanner tiles five across or three and two centred (a container
+  query on `.t-scale`, with the phone rule as the fallback).
+- **Growth chart.** Drawn at its true size up to 1240 px and as tall as the window has left
+  under it, so the whole chart is seen. One transparent sheet (`.gc-plot`) takes the pointer
+  and shows the nearest measurement; the circles under it are for the keyboard. On a phone the
+  measurements table (`table.preview.measures`) is a card for each visit, labelled by `data-k`.
+- **Finding a patient.** The patient list has its own search box, so the header's is left out
+  on that screen; Ctrl+K and "/" go to whichever is there (`useFindKey` in
+  `components/hooks.ts`). "Patients" in the menu stays lit on every `/patients/...` screen.
+- **Browser tab titles** name the screen (`useTitle`), never the patient: titles are kept in
+  the browser's history, where a shared clinic computer would hold them after sign-out.
+- **Whose visit.** The visit screen's save bar carries the patient's name, age and allergy
+  status (`.whose`), on a line of its own on a tablet or phone.
+- **Patient page head** (`.phead`): the allergy status sits beside the name with the tags;
+  the four buttons are a row of their own on a tablet, and "New visit" full width over the
+  other three on a phone.
+- **Settings lists.** Medicines and investigations can be searched, and adding one is at the
+  top of the list (`.inline-form`; "Edit" on a medicine opens the same form and scrolls to it).
+  A condition tag shows its own colour only; the row of colours opens on "Colour".
+- **Touch.** Anything pressed is at least 44 px on a phone and on any touch screen: one block
+  of rules, repeated in the phone and the `pointer: coarse` blocks.
+- An empty list carries the mark, faint, over its words (`.empty::before`).
 
 ## Build order
 

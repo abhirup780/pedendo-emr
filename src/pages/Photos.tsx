@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTitle } from '../components/hooks'
 import type { ChangeEvent } from 'react'
 import { PageSkeleton } from '../components/Skeleton'
 import { Link, useParams } from 'react-router-dom'
@@ -64,7 +65,7 @@ function Viewer({ photos, at, caption, onMove, onClose }: { photos: Photo[]; at:
           <div style={{ fontWeight: 600 }}>{photo.view} · {formatDate(photo.taken_on)}</div>
           <div className="mono" style={{ fontSize: 12.5, opacity: 0.8 }}>{caption(photo)}</div>
         </div>
-        {photos.length > 1 && <span className="mono" style={{ fontSize: 13 }}>{at + 1} / {photos.length}</span>}
+        {photos.length > 1 && <span className="mono sm">{at + 1} / {photos.length}</span>}
         <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
@@ -90,6 +91,7 @@ function Viewer({ photos, at, caption, onMove, onClose }: { photos: Photo[]; at:
 
 export default function Photos() {
   const { id = '' } = useParams()
+  useTitle('Photographs')
   const [patient, setPatient] = useState<Patient | null | undefined>(undefined)
   const [visits, setVisits] = useState<Visit[]>([])
   const [photos, setPhotos] = useState<Photo[]>([])
@@ -240,7 +242,7 @@ export default function Photos() {
           </div>
           <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={onFiles} aria-label="Take a photo" />
           <input ref={picker} type="file" accept="image/*" multiple hidden onChange={onFiles} aria-label="Choose photo files" />
-          <div className="muted" style={{ fontSize: 13 }}>Each photo is shrunk to about 300 KB before it is stored, privately, beside the patient records. Several files can be chosen at once; they all get the view and date above.</div>
+          <div className="muted sm">Each photo is shrunk to about 300 KB before it is stored, privately, beside the patient records. Several files can be chosen at once; they all get the view and date above.</div>
           {busy && <div className="muted" role="status">{busy}</div>}
         </section>
       )}
@@ -257,8 +259,8 @@ export default function Photos() {
                 <Picture photo={p} size="large" />
                 <figcaption>
                   <div style={{ fontWeight: 600 }}>{formatDate(p.taken_on)}</div>
-                  <div className="muted mono" style={{ fontSize: 13 }}>{formatAge(patient.dob, p.taken_on)}{heightOn(p.taken_on) != null && ` · ${heightOn(p.taken_on)} cm`}</div>
-                  <div className="muted" style={{ fontSize: 13 }}>{p.view}</div>
+                  <div className="muted mono sm">{formatAge(patient.dob, p.taken_on)}{heightOn(p.taken_on) != null && ` · ${heightOn(p.taken_on)} cm`}</div>
+                  <div className="muted sm">{p.view}</div>
                 </figcaption>
               </figure>
             ))}
@@ -281,7 +283,7 @@ export default function Photos() {
         <section className="card pad" key={d}>
           <div className="row" style={{ marginBottom: 12, gap: '2px 12px' }}>
             <h2>{formatDate(d)}</h2>
-            <span className="muted" style={{ fontSize: 13 }}>{formatAge(patient.dob, d)}{heightOn(d) != null && ` · ${heightOn(d)} cm at this visit`}</span>
+            <span className="muted sm">{formatAge(patient.dob, d)}{heightOn(d) != null && ` · ${heightOn(d)} cm at this visit`}</span>
           </div>
           <div className="ph-grid">
             {shown.filter((p) => p.taken_on === d).map((p) => (
@@ -318,7 +320,7 @@ export default function Photos() {
           onClose={() => setOpenId(null)}
         />
       )}
-      <div className="muted" style={{ fontSize: 13 }}>Photographs are never included in Excel exports or the backup file, and are not printed on prescriptions. To keep copies, use "Download all photographs" under Registry.</div>
+      <div className="muted sm">Photographs are never included in Excel exports or the backup file, and are not printed on prescriptions. To keep copies, use "Download all photographs" under Registry.</div>
     </main>
   )
 }

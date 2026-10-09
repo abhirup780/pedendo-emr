@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, { 
           <button type="button" className="btn primary" onClick={() => window.location.reload()}>Reload the app</button>
           <a className="btn" href="/">Go to the patient list</a>
         </div>
-        <details className="muted" style={{ fontSize: 13 }}>
+        <details className="muted sm">
           <summary>Technical detail to pass on</summary>
           <pre style={{ whiteSpace: 'pre-wrap' }}>{this.state.error.message}</pre>
         </details>

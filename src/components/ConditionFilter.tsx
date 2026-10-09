@@ -8,8 +8,8 @@ import type { Condition } from '../lib/types'
  * It stays one line however many condition tags there are. Up and down arrows move through
  * the list, Enter chooses, Escape closes.
  */
-export default function ConditionFilter(props: { conditions: Condition[]; counts: Record<string, number>; value: string | null; onChange: (id: string | null) => void }) {
-  const { conditions, counts, value, onChange } = props
+export default function ConditionFilter(props: { conditions: Condition[]; counts: Record<string, number>; value: string | null; onChange: (id: string | null) => void; /** What "no condition chosen" is called here. */ all?: string }) {
+  const { conditions, counts, value, onChange, all = 'All conditions' } = props
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [at, setAt] = useState(0)
@@ -85,7 +85,7 @@ export default function ConditionFilter(props: { conditions: Condition[]; counts
         style={color ? { borderColor: color.fg, background: color.bg, color: color.fg } : undefined}
       >
         {chosen && color && <span className="dot" style={{ background: color.fg }} />}
-        <span className="name">{chosen ? chosen.name : 'All conditions'}</span>
+        <span className="name">{chosen ? chosen.name : all}</span>
         {chosen && <span className="n">{counts[chosen.id] ?? 0}</span>}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />
@@ -132,7 +132,7 @@ export default function ConditionFilter(props: { conditions: Condition[]; counts
               // Keeping the pointer from taking focus leaves the list open until the click lands.
               <li key={c ? c.id : 'all'} id={`${id}-${i}`} role="option" aria-selected={(c ? c.id : null) === value} className={i === at ? 'at' : undefined} onPointerDown={(e) => e.preventDefault()} onPointerMove={() => setAt(i)} onClick={() => pick(c)}>
                 <span className="dot" style={{ background: c ? tagColor(c.color).fg : 'transparent' }} />
-                <span className="name">{c ? c.name : 'All conditions'}</span>
+                <span className="name">{c ? c.name : all}</span>
                 {c && <span className="n">{counts[c.id] ?? 0}</span>}
               </li>
             ))}

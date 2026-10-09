@@ -68,7 +68,7 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
     <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="row">
         <h2 className="grow">Investigations</h2>
-        <span className="muted" style={{ fontSize: 13 }}>
+        <span className="muted sm">
           {value.length === 0 ? 'None advised' : `${value.length} advised · printed on the prescription`}
         </span>
       </div>
@@ -207,7 +207,7 @@ function BrowseDialog({ catalog, panels, conditions = [], patientTagIds = [], va
                 <button type="button" aria-label={`Remove ${n}`} onClick={() => toggle(n)}>×</button>
               </span>
             ))}
-            {extra.length > 0 && <span className="muted" style={{ fontSize: 12.5 }}>({extra.length} not in your list)</span>}
+            {extra.length > 0 && <span className="muted sm">({extra.length} not in your list)</span>}
           </>
         )
       }

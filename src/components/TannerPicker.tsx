@@ -18,10 +18,10 @@ const P_ICON = [
 
 function Scale(props: { title: string; hint?: string; code: string; value: number | null; onPick: (n: number | null) => void; caps: { cap: string; text: string }[]; icon?: (i: number) => ReactNode }) {
   return (
-    <div>
+    <div className="t-scale">
       <div className="row" style={{ gap: '2px 10px', marginBottom: 8 }}>
         <h3 className="t-title">{props.title}</h3>
-        {props.hint && <span className="muted" style={{ fontSize: 13 }}>{props.hint}</span>}
+        {props.hint && <span className="muted sm">{props.hint}</span>}
       </div>
       <div className="t-tiles">
         {props.caps.map((c, i) => {
@@ -50,9 +50,9 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
   const summary = tannerSummary(value, sex)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div className="reveal" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {sex === 'U' && (
-        <div className="muted" style={{ fontSize: 13 }}>Sex is not yet assigned, so the stages are listed without the boy and girl drawings.</div>
+        <div className="muted sm">Sex is not yet assigned, so the stages are listed without the boy and girl drawings.</div>
       )}
       {sex !== 'F' && (
         // The drawings are of a boy or of a girl, so a child whose sex is not assigned gets the
@@ -84,7 +84,7 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
         <div>
           <div className="row" style={{ gap: '2px 10px', marginBottom: 6 }}>
             <h3 className="t-title">{sex === 'U' ? 'Gonadal volume, if palpable' : 'Testicular volume'}</h3>
-            <span className="muted" style={{ fontSize: 13 }}>Orchidometer beads, mL · 4 mL and above marks pubertal onset</span>
+            <span className="muted sm">Orchidometer beads, mL · 4 mL and above marks pubertal onset</span>
           </div>
           {(['testis_r', 'testis_l'] as const).map((side) => (
             <div className="bead-row" key={side}>

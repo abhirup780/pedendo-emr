@@ -34,8 +34,12 @@ function Trend({ results }: { results: Result[] }) {
   const y = (v: number) => H - 5 - ((v - min) / span) * (H - 10)
   return (
     <svg className="rspark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Trend, oldest first: ${pts.join(', ')}`}>
-      <polyline points={pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')} fill="none" stroke="#6f8083" strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx={x(pts.length - 1)} cy={y(pts[pts.length - 1])} r="3" fill="#0b5d66" />
+      <polyline points={pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')} />
+      {/* Each result is a dot (while there is room for them), so two results read as two readings and not as a slope. */}
+      {pts.map((v, i) => {
+        const now = i === pts.length - 1
+        return now || pts.length <= 8 ? <circle key={i} cx={x(i)} cy={y(v)} r={now ? 3 : 2} className={now ? 'now' : undefined} /> : null
+      })}
     </svg>
   )
 }
@@ -139,7 +143,7 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
       {adding && (
         <div
           ref={form}
-          className="result-form"
+          className="result-form reveal"
           role="group"
           aria-label={editId ? 'Correct a result' : 'Enter a result'}
           onKeyDown={(e) => {
@@ -237,14 +241,14 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
                 <div className="rrow">
                   <div className="rname">{r.test} <Flag flag={r.flag} /></div>
                   <div className={r.flag ? 'mono rval off' : 'mono rval'}>{r.value} {r.unit}</div>
-                  <div className="muted rdate">{formatDate(r.result_date)}</div>
                   <Trend results={g.results} />
-                  <button type="button" className="btn small" aria-expanded={open} aria-label={`${r.test}: ${open ? 'hide' : 'show'} ${g.results.length === 1 ? 'the result' : `all ${g.results.length} results`}`} onClick={() => toggle(key)}>
+                  <div className="muted rdate">{formatDate(r.result_date)}</div>
+                  <button type="button" className="btn small quiet more" aria-expanded={open} aria-label={`${r.test}: ${open ? 'hide' : 'show'} ${g.results.length === 1 ? 'the result' : `all ${g.results.length} results`}`} onClick={() => toggle(key)}>
                     {g.results.length === 1 ? '1 result' : `${g.results.length} results`}
                   </button>
                 </div>
                 {open && (
-                  <div className="rhist">
+                  <div className="rhist reveal">
                     {g.results.map((x) => (
                       <div className="rrow" key={x.id}>
                         <div className="muted rdate">{formatDate(x.result_date)}</div>
@@ -257,8 +261,8 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
                           </div>
                         ) : (
                           <div className="row" style={{ gap: 6 }}>
-                            <button type="button" className="btn small" aria-label={`Correct ${x.test} result of ${formatDate(x.result_date)}`} onClick={() => edit(x)}>Edit</button>
-                            <button type="button" className="btn small" aria-label={`Delete ${x.test} result of ${formatDate(x.result_date)}`} onClick={() => setConfirmId(x.id)}>Delete</button>
+                            <button type="button" className="btn small quiet" aria-label={`Correct ${x.test} result of ${formatDate(x.result_date)}`} onClick={() => edit(x)}>Edit</button>
+                            <button type="button" className="btn small quiet danger" aria-label={`Delete ${x.test} result of ${formatDate(x.result_date)}`} onClick={() => setConfirmId(x.id)}>Delete</button>
                           </div>
                         )}
                       </div>

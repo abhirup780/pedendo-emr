@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Results from '../components/Results'
 import { PageSkeleton } from '../components/Skeleton'
+import { useTitle } from '../components/hooks'
 import { initials } from '../components/Shell'
 import { Tag } from '../components/Tag'
 import { formatAge, formatDate, midParentalHeight, targetRange, todayISO } from '../lib/age'
@@ -25,6 +26,7 @@ export default function PatientProfile() {
   const [catalog, setCatalog] = useState<Investigation[]>([])
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState('')
+  useTitle('Patient')
 
   useEffect(() => {
     Promise.all([store.getPatient(id), store.listConditions(), store.listVisits(id)]).then(
@@ -81,30 +83,31 @@ export default function PatientProfile() {
   return (
     <main className="page">
       {error && <div className="alert">{error}</div>}
-      <section className="card pad">
-        <div className="row">
-          <span className="avatar lg" aria-hidden="true">
-            {initials(p.name)}
-          </span>
-          <div className="grow">
-            <div className="row" style={{ gap: '6px 10px' }}>
-              <h1 className="sub">{p.name}</h1>
-              {tags.map((c) => (
-                <Tag key={c.id} condition={c} />
-              ))}
-            </div>
-            <div className="muted" style={{ marginTop: 3 }}>
-              {formatAge(p.dob)} · {sexLabel(p.sex)} · DOB {formatDate(p.dob)} · <span className="mono">MRN {p.mrn}</span>
-            </div>
+      {/* Who it is, with the allergy status beside the name; then what can be done next. */}
+      <section className="card pad phead">
+        <span className="avatar lg" aria-hidden="true">
+          {initials(p.name)}
+        </span>
+        <div className="phead-id">
+          <div className="row" style={{ gap: '6px 10px' }}>
+            <h1 className="sub">{p.name}</h1>
+            {tags.map((c) => (
+              <Tag key={c.id} condition={c} />
+            ))}
+            {allergy === 'some' && <span className="pill danger">Allergy: {p.allergies}</span>}
+            {allergy === 'none' && <span className="pill ok">No known drug allergy</span>}
+            {allergy === 'unrecorded' && <span className="pill info">Allergies not recorded</span>}
           </div>
-          {allergy === 'some' && <span className="pill danger">Allergy: {p.allergies}</span>}
-          {allergy === 'none' && <span className="pill ok">No known drug allergy</span>}
-          {allergy === 'unrecorded' && <span className="pill info">Allergies not recorded</span>}
+          <div className="muted" style={{ marginTop: 3 }}>
+            {formatAge(p.dob)} · {sexLabel(p.sex)} · DOB {formatDate(p.dob)} · <span className="mono" style={{ whiteSpace: 'nowrap' }}>MRN {p.mrn}</span>
+          </div>
+        </div>
+        <div className="phead-actions">
           <Link to={`/patients/${p.id}/edit`} className="btn outline">
             Edit
           </Link>
-          <Link to={`/patients/${p.id}/growth`} className="btn outline">
-            Growth chart
+          <Link to={`/patients/${p.id}/growth`} className="btn outline" aria-label="Growth chart">
+            <span>Growth<span className="wide-only"> chart</span></span>
           </Link>
           <Link to={`/patients/${p.id}/photos`} className="btn outline">
             Photos

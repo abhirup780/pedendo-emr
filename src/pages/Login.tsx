@@ -109,7 +109,7 @@ export default function Login() {
             <button type="button" className="btn" onClick={() => void startAgain()}>Use a different account</button>
           )}
           {!demo && step === 'password' && (
-            <div className="muted" style={{ fontSize: 13 }}>Forgotten the password? Contact the administrator.</div>
+            <div className="muted sm">Forgotten the password? Contact the administrator.</div>
           )}
         </form>
         </div>

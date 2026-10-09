@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import GrowthChart from '../components/GrowthChart'
+import { useTitle } from '../components/hooks'
 import { PageSkeleton } from '../components/Skeleton'
 import { formatAge, formatDate, midParentalHeight, TARGET_RANGE_CM, targetRange } from '../lib/age'
 import { bmi, heightVelocity } from '../lib/clinical'
@@ -16,6 +17,7 @@ const signed = (n: number | null) => (n == null ? NONE : `${n < 0 ? '−' : '+'}
 
 export default function Growth() {
   const { id = '' } = useParams()
+  useTitle('Growth chart')
   const [patient, setPatient] = useState<Patient | null | undefined>(undefined)
   const [visits, setVisits] = useState<Visit[]>([])
   const [measure, setMeasure] = useState<Measure>('height')
@@ -85,7 +87,7 @@ export default function Growth() {
       </div>
       {error && <div className="alert">{error}</div>}
 
-      <div className="calc" style={{ marginTop: 0 }}>
+      <div className="calc cols4" style={{ marginTop: 0 }}>
         <div>
           <div className="k">Latest {lower}</div>
           <div className="v">{last ? `${last.value} ${info.unit}` : NONE}</div>
@@ -123,16 +125,16 @@ export default function Growth() {
             </div>
           )}
           <span className="grow" />
-          <span className="muted" style={{ fontSize: 13 }}>{reference ? `${refNames}${unassigned ? (rs === 'M' ? ' · boys' : ' · girls') : ''}` : 'The child’s own measurements'}</span>
+          <span className="muted sm">{reference ? `${refNames}${unassigned ? (rs === 'M' ? ' · boys' : ' · girls') : ''}` : 'The child’s own measurements'}</span>
         </div>
         {unassigned && (
           <div className="note info">
             Sex is not yet assigned, so no reference is applied by default. Choose Boys or Girls above to look at the measurements against either one; the choice is not saved.
           </div>
         )}
-        <GrowthChart points={points} reference={reference} label={info.label} unit={info.unit} target={target} />
+        <GrowthChart points={points} reference={reference} label={info.label} unit={info.unit} target={target} dob={patient.dob} />
         {reference && (
-          <div className="muted" style={{ fontSize: 13 }}>
+          <div className="muted sm">
             {lineNote}
             {targetShown && ` The bar at 18 years is the mid-parental target, ${targetRange(mph!)}.`}
             {reference.refs.length > 1 && ' WHO (under 5 years) and IAP (from 5 years) are separate references, so the lines step at 5 years.'}
@@ -153,7 +155,8 @@ export default function Growth() {
           <div className="empty">No measurements yet.</div>
         ) : (
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Measurements">
-            <table className="preview">
+            {/* On a phone each row is a card; the labels the cards need are the data-k of each cell. */}
+            <table className="preview measures">
               <thead><tr><th>Date</th><th>Age</th><th>Height (cm)</th><th>Height SDS</th><th>Velocity (cm/yr)</th><th>Weight (kg)</th><th>Weight SDS</th><th>BMI</th><th>BMI SDS</th></tr></thead>
               <tbody>
                 {rows.map(({ v, z }) => {
@@ -162,13 +165,13 @@ export default function Growth() {
                     <tr key={v.id}>
                       <td><Link to={`/patients/${id}/visits/${v.id}`}>{formatDate(v.visit_date)}</Link></td>
                       <td>{formatAge(patient.dob, v.visit_date)}</td>
-                      <td className="mono">{v.height_cm ?? NONE}</td>
-                      <td className="mono">{signed(z.height)}</td>
-                      <td className="mono">{vel ? vel.cmPerYear.toFixed(1) : NONE}</td>
-                      <td className="mono">{v.weight_kg ?? NONE}</td>
-                      <td className="mono">{signed(z.weight)}</td>
-                      <td className="mono">{bmi(v.height_cm, v.weight_kg) ?? NONE}</td>
-                      <td className="mono">{signed(z.bmi)}</td>
+                      <td className="mono own" data-k="Height (cm)">{v.height_cm ?? NONE}</td>
+                      <td className="mono" data-k="SDS">{signed(z.height)}</td>
+                      <td className="mono" data-k="Velocity (cm/yr)">{vel ? vel.cmPerYear.toFixed(1) : NONE}</td>
+                      <td className="mono own" data-k="Weight (kg)">{v.weight_kg ?? NONE}</td>
+                      <td className="mono" data-k="SDS">{signed(z.weight)}</td>
+                      <td className="mono own" data-k="BMI">{bmi(v.height_cm, v.weight_kg) ?? NONE}</td>
+                      <td className="mono" data-k="SDS">{signed(z.bmi)}</td>
                     </tr>
                   )
                 })}

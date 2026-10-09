@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { dropAllDrafts, idleMinutes, leaveNotice, listDrafts } from '../lib/device'
 import { store } from '../lib/store'
 import ErrorBoundary from './ErrorBoundary'
@@ -50,6 +50,10 @@ function useIdleSignOut() {
 export default function Shell({ user, children }: { user: SessionUser; children: ReactNode }) {
   useIdleSignOut()
   const navigate = useNavigate()
+  // The menu says where you are on a patient's own screens too, not only on the list.
+  const { pathname } = useLocation()
+  const inPatients = pathname === '/' || pathname.startsWith('/patients/')
+  const inSettings = pathname.startsWith('/settings') || pathname.startsWith('/print-sample/')
   // Leave the page before signing out, so a patient's or visit's address is never left in the
   // address bar. (The sign-in screen does the same for every other way of being signed out.)
   const signOut = () => {
@@ -77,15 +81,16 @@ export default function Shell({ user, children }: { user: SessionUser; children:
           <span className="brand-text"><Wordmark /></span>
         </Link>
         <nav className="topnav">
-          <NavLink to="/" end>
+          <NavLink to="/" end className={() => (inPatients ? 'active' : '')}>
             Patients
           </NavLink>
           <NavLink to="/registry">
             Registry<span className="wide-only"> &amp; export</span>
           </NavLink>
-          <NavLink to="/settings">Settings</NavLink>
+          <NavLink to="/settings" className={() => (inSettings ? 'active' : '')}>Settings</NavLink>
         </nav>
-        <QuickFind />
+        {/* The patient list has its own search box, and the same keys go to it there. */}
+        {pathname !== '/' && <QuickFind />}
         <div className="who">
           <span className="avatar" aria-hidden="true">
             {initials(user.name)}

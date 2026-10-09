@@ -125,7 +125,7 @@ function TwoStep() {
               <button type="button" className="btn danger" disabled={busy} onClick={() => void turnOff()}>Turn off</button>
             </div>
           )}
-          <div className="muted" style={{ fontSize: 13 }}>
+          <div className="muted sm">
             Lost or changed the phone? Nobody can sign in without the code. Contact the administrator to have it removed, then set it up again here.
           </div>
         </>
@@ -146,7 +146,7 @@ function TwoStep() {
             <li>
               Scan this square with the phone's camera.
               <div className="qr"><img src={setup.qr} width={184} height={184} alt="QR code to scan with the authenticator app" /></div>
-              <span className="muted" style={{ fontSize: 13 }}>Cannot scan? Type this key into the app instead: </span>
+              <span className="muted sm">Cannot scan? Type this key into the app instead: </span>
               <span className="mono secret">{setup.secret.replace(/(.{4})/g, '$1 ').trim()}</span>
             </li>
             <li>
