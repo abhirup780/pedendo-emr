@@ -29,6 +29,8 @@ export default function MedicinePicker(props: Props) {
   const { catalog, meds, onAdd } = props
   const [q, setQ] = useState('')
   const [browsing, setBrowsing] = useState(false)
+  // Which suggestion Enter will take: the first, until the arrow keys move it.
+  const [at, setAt] = useState(0)
   const on = (name: string) => meds.some((m) => m.name === name)
   const names = useMemo(() => catalog.map((m) => m.name), [catalog])
   const byName = (name: string) => catalog.find((m) => m.name === name)!
@@ -39,7 +41,8 @@ export default function MedicinePicker(props: Props) {
     onAdd(item)
     setQ('')
   }
-  const typed = (): RxItem => (suggestions.length > 0 ? byName(suggestions[0]) : { ...EMPTY_RX, name: q.trim() })
+  const mark = Math.min(at, Math.max(suggestions.length - 1, 0))
+  const typed = (): RxItem => (suggestions.length > 0 ? byName(suggestions[mark]) : { ...EMPTY_RX, name: q.trim() })
 
   return (
     <div className="field">
@@ -51,8 +54,16 @@ export default function MedicinePicker(props: Props) {
           placeholder="Type to add from your list, or a new name"
           value={q}
           autoComplete="off"
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value)
+            setAt(0)
+          }}
           onKeyDown={(e) => {
+            // Up and down move through the suggestions; Enter takes the one marked.
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && suggestions.length > 0) {
+              e.preventDefault()
+              setAt(e.key === 'ArrowDown' ? Math.min(mark + 1, suggestions.length - 1) : Math.max(mark - 1, 0))
+            }
             if (e.key === 'Enter') {
               e.preventDefault()
               if (q.trim()) add(typed())
@@ -67,12 +78,12 @@ export default function MedicinePicker(props: Props) {
       {q.trim() && (
         <div className="quick" role="group" aria-label="Matching medicines">
           {suggestions.map((n, i) => (
-            <button type="button" key={n} className="opt" onClick={() => add(byName(n))}>
+            <button type="button" key={n} className={i === mark ? 'opt at' : 'opt'} onClick={() => add(byName(n))}>
               <span className="grow">
                 {n}
                 {on(n) && <span className="muted"> · already on this prescription</span>}
               </span>
-              {i === 0 && <span className="key">Enter</span>}
+              {i === mark && <span className="key">Enter</span>}
             </button>
           ))}
           {suggestions.length === 0 && (

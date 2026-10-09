@@ -661,11 +661,15 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             <div className="field">
               <label htmlFor="review">Review date</label>
               <div className="row" style={{ gap: 8 }}>
-                {[1, 3, 6].map((n) => (
-                  <button type="button" key={n} className="btn small" aria-pressed={!!f.review && f.review === addMonths(f.date, n)} onClick={() => set('review', addMonths(f.date, n) ?? '')}>
-                    {n} {n === 1 ? 'month' : 'months'}
-                  </button>
-                ))}
+                {[1, 3, 6].map((n) => {
+                  const chosen = !!f.review && f.review === addMonths(f.date, n)
+                  return (
+                    // Pressing the chosen one again takes the review date off.
+                    <button type="button" key={n} className="btn small" aria-pressed={chosen} onClick={() => set('review', chosen ? '' : (addMonths(f.date, n) ?? ''))}>
+                      {n} {n === 1 ? 'month' : 'months'}
+                    </button>
+                  )
+                })}
                 <DateField id="review" value={f.review} min={f.date} onChange={(v) => set('review', v)} invalid={bad('review')} style={{ flex: '1 1 160px' }} />
               </div>
               {show('review')}
