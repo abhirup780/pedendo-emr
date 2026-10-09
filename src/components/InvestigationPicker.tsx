@@ -28,6 +28,8 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
   const [browsing, setBrowsing] = useState(false)
   const [panelName, setPanelName] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
+  // Which suggestion Enter will take: the first, until the arrow keys move it.
+  const [at, setAt] = useState(0)
 
   const has = (n: string) => value.includes(n)
   const toggle = (n: string) => onChange(has(n) ? value.filter((x) => x !== n) : [...value, n])
@@ -36,6 +38,7 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
   // What Enter will add: the best match from the list, or the typed text when nothing matches.
   const enterAdds = bestMatch(names, q) ?? q.trim()
   const suggestions = useMemo(() => rankedMatches(names, q).slice(0, 7), [names, q])
+  const mark = Math.min(at, Math.max(suggestions.length - 1, 0))
 
   function add(name: string) {
     if (!name) return
@@ -98,11 +101,19 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
             aria-label="Search or add an investigation"
             placeholder={value.length ? 'Type to add another…' : 'Type to add: IGF-1, TSH, bone age…'}
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value)
+              setAt(0)
+            }}
             onKeyDown={(e) => {
+              // Up and down move through the suggestions; Enter takes the one marked.
+              if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && suggestions.length > 0) {
+                e.preventDefault()
+                setAt(e.key === 'ArrowDown' ? Math.min(mark + 1, suggestions.length - 1) : Math.max(mark - 1, 0))
+              }
               if (e.key === 'Enter') {
                 e.preventDefault()
-                add(enterAdds)
+                add(mark > 0 ? suggestions[mark] : enterAdds)
               }
               if (e.key === 'Escape') setQ('')
             }}
@@ -111,10 +122,10 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
         {q.trim() && (
           <div className="quick" role="group" aria-label="Matching investigations">
             {suggestions.map((n, i) => (
-              <button type="button" key={n} className="opt" aria-pressed={has(n)} onClick={() => (has(n) ? toggle(n) : add(n))}>
+              <button type="button" key={n} className={i === mark ? 'opt at' : 'opt'} aria-pressed={has(n)} onClick={() => (has(n) ? toggle(n) : add(n))}>
                 <Tick on={has(n)} />
                 <span className="grow">{n}</span>
-                {i === 0 && <span className="key">Enter</span>}
+                {i === mark && <span className="key">Enter</span>}
               </button>
             ))}
             {suggestions.length === 0 && (

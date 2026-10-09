@@ -70,9 +70,12 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
 
   // Suggestions for the test box: the investigation list, and tests this patient already has.
   const testId = useId()
+  // Which suggestion Enter will take: the first, until the arrow keys move it.
+  const [at, setAt] = useState(0)
   const names = useMemo(() => [...new Set([...catalog.map((i) => i.name), ...groups.map((g) => g.test)])], [catalog, groups])
   const typedTest = d.test.trim().toLowerCase()
   const suggestions = typedTest && !names.some((n) => n.toLowerCase() === typedTest) ? rankedMatches(names, d.test).slice(0, 6) : []
+  const mark = Math.min(at, Math.max(suggestions.length - 1, 0))
   function choose(name: string) {
     pickTest(name)
     form.current?.querySelector<HTMLInputElement>('input.num')?.focus()
@@ -152,13 +155,22 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
             <input
               id={testId}
               value={d.test}
-              onChange={(e) => pickTest(e.target.value)}
-              // Enter takes the first suggestion and moves on to the result.
+              onChange={(e) => {
+                pickTest(e.target.value)
+                setAt(0)
+              }}
+              // Up and down move through the suggestions; Enter takes the one marked and moves
+              // on to the result.
               onKeyDown={(e) => {
-                if (e.key !== 'Enter' || suggestions.length === 0) return
+                if (suggestions.length === 0) return
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setAt(e.key === 'ArrowDown' ? Math.min(mark + 1, suggestions.length - 1) : Math.max(mark - 1, 0))
+                }
+                if (e.key !== 'Enter') return
                 e.preventDefault()
                 e.stopPropagation()
-                choose(suggestions[0])
+                choose(suggestions[mark])
               }}
               autoComplete="off"
               autoFocus={!editId}
@@ -166,9 +178,9 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
             {suggestions.length > 0 && (
               <div className="quick" role="group" aria-label="Matching tests">
                 {suggestions.map((n, i) => (
-                  <button type="button" key={n} className="opt" onClick={() => choose(n)}>
+                  <button type="button" key={n} className={i === mark ? 'opt at' : 'opt'} onClick={() => choose(n)}>
                     <span className="grow">{n}</span>
-                    {i === 0 && <span className="key">Enter</span>}
+                    {i === mark && <span className="key">Enter</span>}
                   </button>
                 ))}
               </div>
