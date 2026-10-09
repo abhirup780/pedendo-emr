@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageSkeleton } from '../components/Skeleton'
+import { useTitle } from '../components/hooks'
 import { Swatches, TagChip } from '../components/Tag'
 import { formatAge, parseISODate, todayISO } from '../lib/age'
 import { allergyStatus, NO_KNOWN_ALLERGY } from '../lib/allergy'
@@ -35,6 +36,7 @@ function heightOrNull(s: string): number | null | 'bad' {
 export default function PatientForm() {
   const { id } = useParams()
   const nav = useNavigate()
+  useTitle(id ? 'Edit patient' : 'New patient')
   const [f, setF] = useState(BLANK)
   const [conditions, setConditions] = useState<Condition[]>([])
   const [loading, setLoading] = useState(!!id)
@@ -229,18 +231,18 @@ export default function PatientForm() {
       <form ref={form} onSubmit={submit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <section className="card pad">
           <h2 style={{ marginBottom: 12 }}>Patient</h2>
-          <div className="form-grid">
+          <div className="form-grid six">
             <label className="field wide">
               Full name
               <input value={f.name} onChange={(e) => set('name', e.target.value)} autoFocus={!id} autoComplete="off" aria-invalid={bad('name')} />
               {show('name')}
             </label>
-            <label className="field">
+            <label className="field s2">
               Date of birth
               <DateField value={f.dob} max={todayISO()} onChange={(v) => set('dob', v)} invalid={bad('dob')} />
               {show('dob') ?? (dob && !errs.dob ? <span className="hint">Age today: {formatAge(f.dob)}</span> : null)}
             </label>
-            <div className="field">
+            <div className="field s4">
               <span id="sex-label">Sex</span>
               <div className="seg" role="group" aria-labelledby="sex-label" data-invalid={bad('sex')}>
                 <button type="button" aria-pressed={f.sex === 'M'} onClick={() => set('sex', 'M')}>
@@ -255,11 +257,11 @@ export default function PatientForm() {
               </div>
               {show('sex') ?? (f.sex === 'U' ? <span className="hint">Growth SDS and puberty timing wait for a sex. Change it here once assigned; nothing recorded is lost.</span> : null)}
             </div>
-            <label className="field">
+            <label className="field s2">
               Parent or guardian
               <input value={f.guardian_name} onChange={(e) => set('guardian_name', e.target.value)} autoComplete="off" />
             </label>
-            <label className="field">
+            <label className="field s2">
               Relation
               <select value={f.guardian_relation} onChange={(e) => set('guardian_relation', e.target.value)}>
                 <option>Father</option>
@@ -267,7 +269,7 @@ export default function PatientForm() {
                 <option>Guardian</option>
               </select>
             </label>
-            <label className="field">
+            <label className="field s2">
               Phone
               <input type="tel" inputMode="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} autoComplete="off" />
             </label>
@@ -337,13 +339,13 @@ export default function PatientForm() {
 
         <section className="card pad">
           <h2 style={{ marginBottom: 12 }}>Clinical background</h2>
-          <div className="form-grid">
-            <label className="field">
+          <div className="form-grid six">
+            <label className="field s3">
               Father's height (cm)
               <input inputMode="decimal" value={f.father} onChange={(e) => set('father', e.target.value)} aria-invalid={bad('father')} />
               {show('father')}
             </label>
-            <label className="field">
+            <label className="field s3">
               Mother's height (cm)
               <input inputMode="decimal" value={f.mother} onChange={(e) => set('mother', e.target.value)} aria-invalid={bad('mother')} />
               {show('mother')}

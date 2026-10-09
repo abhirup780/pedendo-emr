@@ -9,9 +9,18 @@ import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../lib/device'
 import { smallImageDataUrl } from '../lib/image'
 import { categoryOrder, STARTER_INVESTIGATIONS, STARTER_PANELS, starterPanelTags } from '../lib/investigations'
 import { STARTER_MEDICINES } from '../lib/medicines'
+import { RowsSkeleton } from '../components/Skeleton'
 import { Swatches, TagChip } from '../components/Tag'
-import { STARTER_CONDITIONS, tagColor } from '../lib/tags'
+import { useTitle } from '../components/hooks'
+import { STARTER_CONDITIONS, TAG_COLORS, tagColor } from '../lib/tags'
 import type { Clinic, Condition, Investigation, Medicine, Panel, RxItem, RxTemplate } from '../lib/types'
+
+const FIND = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#55656C" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-3.5-3.5" />
+  </svg>
+)
 
 function ConditionTags() {
   const [list, setList] = useState<Condition[] | null>(null)
@@ -19,6 +28,8 @@ function ConditionTags() {
   const [name, setName] = useState('')
   const [color, setColor] = useState('teal')
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  // The tag whose row of colours is open: each row shows its own colour only, until asked.
+  const [paletteId, setPaletteId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function reload() {
@@ -73,7 +84,7 @@ function ConditionTags() {
           )}
         </div>
 
-        {list === null && <div className="empty">Loading…</div>}
+        {list === null && <RowsSkeleton rows={4} />}
         {list && list.length === 0 && <div className="empty">No tags yet. Add your own below, or start from the starter set.</div>}
         {list?.map((c) => (
           <div className="tag-row" key={c.id}>
@@ -90,7 +101,10 @@ function ConditionTags() {
                 else e.target.value = c.name
               }}
             />
-            <Swatches value={c.color} label={`Colour of ${c.name}`} onChange={(col) => void run(() => store.saveCondition({ id: c.id, name: c.name, color: col }))} />
+            <button type="button" className="swatch-btn" aria-expanded={paletteId === c.id} aria-label={`Colour of ${c.name}: ${TAG_COLORS[c.color]?.label ?? c.color}. Change`} onClick={() => setPaletteId(paletteId === c.id ? null : c.id)}>
+              <span className="dot" style={{ background: tagColor(c.color).fg }} />
+              Colour
+            </button>
             {confirmId === c.id ? (
               <>
                 <span>Remove from {counts[c.id] ?? 0} patients?</span>
@@ -102,9 +116,14 @@ function ConditionTags() {
                 </button>
               </>
             ) : (
-              <button type="button" className="btn small" onClick={() => setConfirmId(c.id)}>
+              <button type="button" className="btn small quiet danger" aria-label={`Delete tag ${c.name}`} onClick={() => setConfirmId(c.id)}>
                 Delete
               </button>
+            )}
+            {paletteId === c.id && (
+              <div className="palette reveal">
+                <Swatches value={c.color} label={`Colour of ${c.name}`} onChange={(col) => { setPaletteId(null); void run(() => store.saveCondition({ id: c.id, name: c.name, color: col })) }} />
+              </div>
             )}
           </div>
         ))}
@@ -231,8 +250,12 @@ const MED_FIELDS: { key: keyof RxItem; label: string; wide?: boolean }[] = [
 function Medicines() {
   const [list, setList] = useState<Medicine[] | null>(null)
   const [draft, setDraft] = useState<RxItem & { id?: string }>({ ...EMPTY_RX })
+  // The form to add or change a medicine opens at the top of the list, where it is in view.
+  const [adding, setAdding] = useState(false)
+  const [q, setQ] = useState('')
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const form = useRef<HTMLFormElement>(null)
 
   async function reload() {
     try {
@@ -255,14 +278,33 @@ function Medicines() {
       setError(/duplicate key/i.test(msg) ? 'That medicine is already in your list.' : msg)
     }
   }
+  function open(m?: Medicine) {
+    setDraft(m ? { ...m } : { ...EMPTY_RX })
+    setAdding(true)
+    setConfirmId(null)
+    // The medicine being changed may be far down the list.
+    requestAnimationFrame(() => {
+      form.current?.scrollIntoView({ block: 'nearest' })
+      form.current?.querySelector('input')?.focus()
+    })
+  }
+  function close() {
+    setAdding(false)
+    setDraft({ ...EMPTY_RX })
+  }
   function submit(e: FormEvent) {
     e.preventDefault()
     if (!draft.name.trim()) return
+    const changing = !!draft.id
     void run(async () => {
       await store.saveMedicine(draft)
-      setDraft({ ...EMPTY_RX })
+      // A change is finished with; after adding one, the form stays for the next.
+      if (changing) close()
+      else setDraft({ ...EMPTY_RX })
     })
   }
+  const words = q.trim().toLowerCase()
+  const shown = (list ?? []).filter((m) => !words || m.name.toLowerCase().includes(words))
 
   return (
     <>
@@ -278,14 +320,37 @@ function Medicines() {
               Add the starter list ({STARTER_MEDICINES.length})
             </button>
           )}
+          {list && list.length > 8 && (
+            <label className="search">
+              {FIND}
+              <input type="search" aria-label="Find a medicine in your list" placeholder="Find a medicine" value={q} onChange={(e) => setQ(e.target.value)} />
+            </label>
+          )}
+          {!adding && <button type="button" className="btn small primary" onClick={() => open()}>+ Add a medicine</button>}
         </div>
-        {list === null && <div className="empty">Loading…</div>}
-        {list && list.length === 0 && <div className="empty">No medicines yet. Add your own below, or begin with the starter list and edit it.</div>}
-        {list?.map((m) => (
+        {adding && (
+          <form ref={form} className="inline-form reveal" onSubmit={submit}>
+            <h3 className="t-title wide">{draft.id ? 'Change this medicine' : 'Add a medicine'}</h3>
+            {MED_FIELDS.map((fd) => (
+              <label key={fd.key} className={fd.wide ? 'field wide' : 'field'}>
+                {fd.label}
+                <input value={draft[fd.key]} onChange={(e) => setDraft({ ...draft, [fd.key]: e.target.value })} autoComplete="off" />
+              </label>
+            ))}
+            <div className="row end wide">
+              <button type="button" className="btn small" onClick={close}>{draft.id ? 'Cancel' : 'Done'}</button>
+              <button type="submit" className="btn small primary" disabled={!draft.name.trim()}>{draft.id ? 'Save changes' : 'Add to my list'}</button>
+            </div>
+          </form>
+        )}
+        {list === null && <RowsSkeleton rows={4} />}
+        {list && list.length === 0 && <div className="empty">No medicines yet. Add your own with "Add a medicine", or begin with the starter list and edit it.</div>}
+        {list && list.length > 0 && shown.length === 0 && <div className="empty">No medicine in your list matches "{q.trim()}".</div>}
+        {shown.map((m) => (
           <div className="tag-row" key={m.id}>
             <div className="grow">
               <div style={{ fontWeight: 600 }}>{m.name}</div>
-              <div className="muted" style={{ fontSize: 13 }}>
+              <div className="muted sm">
                 {[m.dose, m.route, m.frequency, m.duration, m.instructions].filter((x) => x.trim()).join(' · ') || 'No default directions'}
               </div>
             </div>
@@ -297,29 +362,14 @@ function Medicines() {
               </>
             ) : (
               <>
-                <button type="button" className="btn small" onClick={() => setDraft({ ...m })}>Edit</button>
-                <button type="button" className="btn small" onClick={() => setConfirmId(m.id)}>Remove</button>
+                <button type="button" className="btn small quiet" aria-label={`Edit ${m.name}`} onClick={() => open(m)}>Edit</button>
+                <button type="button" className="btn small quiet danger" aria-label={`Remove ${m.name}`} onClick={() => setConfirmId(m.id)}>Remove</button>
               </>
             )}
           </div>
         ))}
+        {list && words && shown.length > 0 && <div className="foot">Showing {shown.length} of {list.length}.</div>}
       </section>
-
-      <form className="card pad" onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <h2>{draft.id ? 'Edit medicine' : 'Add a medicine'}</h2>
-        <div className="form-grid">
-          {MED_FIELDS.map((fd) => (
-            <label key={fd.key} className={fd.wide ? 'field wide' : 'field'}>
-              {fd.label}
-              <input value={draft[fd.key]} onChange={(e) => setDraft({ ...draft, [fd.key]: e.target.value })} autoComplete="off" />
-            </label>
-          ))}
-        </div>
-        <div className="row end">
-          {draft.id && <button type="button" className="btn" onClick={() => setDraft({ ...EMPTY_RX })}>Cancel</button>}
-          <button type="submit" className="btn primary" disabled={!draft.name.trim()}>{draft.id ? 'Save changes' : 'Add to my list'}</button>
-        </div>
-      </form>
     </>
   )
 }
@@ -342,13 +392,13 @@ function Templates() {
             <div className="muted">Create a template from any visit with "Save these medicines as a template".</div>
           </div>
         </div>
-        {list === null && <div className="empty">Loading…</div>}
+        {list === null && <RowsSkeleton rows={4} />}
         {list && list.length === 0 && <div className="empty">No templates yet.</div>}
         {list?.map((t) => (
           <div className="tag-row" key={t.id}>
             <div className="grow">
               <div style={{ fontWeight: 600 }}>{t.name}</div>
-              <div className="muted" style={{ fontSize: 13 }}>{t.medicines.map((m) => m.name).join(' · ') || 'No medicines'}</div>
+              <div className="muted sm">{t.medicines.map((m) => m.name).join(' · ') || 'No medicines'}</div>
             </div>
             {confirmId === t.id ? (
               <>
@@ -357,7 +407,7 @@ function Templates() {
                 <button type="button" className="btn danger small" onClick={() => { setConfirmId(null); store.deleteTemplate(t.id).then(reload, (e: Error) => setError(e.message)) }}>Delete</button>
               </>
             ) : (
-              <button type="button" className="btn small" onClick={() => setConfirmId(t.id)}>Delete</button>
+              <button type="button" className="btn small quiet danger" aria-label={`Delete template ${t.name}`} onClick={() => setConfirmId(t.id)}>Delete</button>
             )}
           </div>
         ))}
@@ -371,6 +421,7 @@ function Investigations() {
   const [panels, setPanels] = useState<Panel[]>([])
   const [tags, setTags] = useState<Condition[]>([])
   const [draft, setDraft] = useState({ name: '', category: '', unit: '' })
+  const [q, setQ] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
   const [error, setError] = useState('')
 
@@ -407,6 +458,8 @@ function Investigations() {
     })
   }
   const cats = categoryOrder((list ?? []).map((i) => i.category))
+  const words = q.trim().toLowerCase()
+  const match = (i: Investigation) => !words || i.name.toLowerCase().includes(words)
 
   return (
     <>
@@ -430,13 +483,31 @@ function Investigations() {
               Add the starter list and panels
             </button>
           )}
+          {list && list.length > 8 && (
+            <label className="search">
+              {FIND}
+              <input type="search" aria-label="Find an investigation in your list" placeholder="Find an investigation" value={q} onChange={(e) => setQ(e.target.value)} />
+            </label>
+          )}
         </div>
-        {list === null && <div className="empty">Loading…</div>}
-        {list && list.length === 0 && <div className="empty">No investigations yet. Add your own below, or begin with the starter list and edit it.</div>}
-        {cats.map((c) => (
-          <div key={c}>
-            <div className="group-head">{c}</div>
-            {list!.filter((i) => i.category === c).map((i) => (
+        {/* Adding one is at the top, so it is reached without scrolling past the whole list. */}
+        <form className="tag-row" onSubmit={submit}>
+          <input type="text" aria-label="New investigation name" placeholder="New investigation" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+          <input type="text" aria-label="Category" placeholder="Category" list="inv-cats" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} style={{ flex: '1 1 150px' }} />
+          <datalist id="inv-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist>
+          <input type="text" aria-label="Unit" placeholder="Unit" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} style={{ flex: '0 1 100px' }} />
+          <button type="submit" className="btn primary small" disabled={!draft.name.trim()}>Add</button>
+        </form>
+        {list === null && <RowsSkeleton rows={4} />}
+        {list && list.length === 0 && <div className="empty">No investigations yet. Add your own above, or begin with the starter list and edit it.</div>}
+        {list && list.length > 0 && !list.some(match) && <div className="empty">No investigation in your list matches "{q.trim()}".</div>}
+        {cats.map((c) => {
+          const items = list!.filter((i) => i.category === c && match(i))
+          if (items.length === 0) return null
+          return (
+            <div key={c}>
+              <div className="group-head">{c}</div>
+              {items.map((i) => (
               <div className="tag-row" key={i.id} style={{ padding: '6px 16px' }}>
                 <div className="grow">{i.name}</div>
                 <span className="muted mono">{i.unit}</span>
@@ -446,19 +517,13 @@ function Investigations() {
                     <button type="button" className="btn danger small" onClick={() => { setConfirm(null); void run(() => store.deleteInvestigation(i.id)) }}>Remove</button>
                   </>
                 ) : (
-                  <button type="button" className="btn small" aria-label={`Remove ${i.name}`} onClick={() => setConfirm(i.id)}>Remove</button>
+                  <button type="button" className="btn small quiet danger" aria-label={`Remove ${i.name}`} onClick={() => setConfirm(i.id)}>Remove</button>
                 )}
               </div>
-            ))}
-          </div>
-        ))}
-        <form className="tag-row" onSubmit={submit} style={{ borderBottom: 0 }}>
-          <input type="text" aria-label="New investigation name" placeholder="New investigation" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-          <input type="text" aria-label="Category" placeholder="Category" list="inv-cats" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} style={{ flex: '1 1 150px' }} />
-          <datalist id="inv-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist>
-          <input type="text" aria-label="Unit" placeholder="Unit" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} style={{ flex: '0 1 100px' }} />
-          <button type="submit" className="btn primary small" disabled={!draft.name.trim()}>Add</button>
-        </form>
+              ))}
+            </div>
+          )
+        })}
       </section>
 
       <section className="card">
@@ -473,7 +538,7 @@ function Investigations() {
           <div className="tag-row" key={p.id}>
             <div className="grow">
               <div style={{ fontWeight: 600 }}>{p.name}</div>
-              <div className="muted" style={{ fontSize: 13 }}>{p.items.join(' · ')}</div>
+              <div className="muted sm">{p.items.join(' · ')}</div>
               {tags.length > 0 && (
                 <div className="tags" role="group" aria-label={`Condition tags for panel ${p.name}`} style={{ marginTop: 8 }}>
                   <span className="muted" style={{ fontSize: 13, alignSelf: 'center' }}>{p.condition_ids.some((id) => tags.some((t) => t.id === id)) ? 'Offered for:' : 'Offered for every patient. Limit to:'}</span>
@@ -499,7 +564,7 @@ function Investigations() {
                 <button type="button" className="btn danger small" onClick={() => { setConfirm(null); void run(() => store.deletePanel(p.id)) }}>Delete</button>
               </>
             ) : (
-              <button type="button" className="btn small" aria-label={`Delete panel ${p.name}`} onClick={() => setConfirm(p.id)}>Delete</button>
+              <button type="button" className="btn small quiet danger" aria-label={`Delete panel ${p.name}`} onClick={() => setConfirm(p.id)}>Delete</button>
             )}
           </div>
         ))}
@@ -543,6 +608,7 @@ const TABS = [
 ]
 
 export default function Settings() {
+  useTitle('Settings')
   const [params, setParams] = useSearchParams()
   const wanted = params.get('tab') ?? ''
   const tab = TABS.some((t) => t.key === wanted) ? wanted : 'clinic'

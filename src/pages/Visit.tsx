@@ -5,6 +5,7 @@ import InvestigationPicker from '../components/InvestigationPicker'
 import MedicinePicker from '../components/MedicinePicker'
 import Results from '../components/Results'
 import { PageSkeleton } from '../components/Skeleton'
+import { useTitle } from '../components/hooks'
 import TannerPicker from '../components/TannerPicker'
 import { ageInDays, decimalAge, formatAge, formatDate, todayISO } from '../lib/age'
 import { allergyStatus } from '../lib/allergy'
@@ -62,6 +63,7 @@ export default function VisitPage() {
 
 function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const nav = useNavigate()
+  useTitle(vid ? 'Visit' : 'New visit')
   const [patient, setPatient] = useState<Patient | null | undefined>(undefined)
   const [visits, setVisits] = useState<Visit[]>([])
   const [catalog, setCatalog] = useState<Medicine[]>([])
@@ -428,14 +430,14 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               <div className="row">
                 <div className="grow">
                   <h2>Last visit</h2>
-                  <div className="muted clip" style={{ fontSize: 13 }}>{formatDate(last.visit_date)}{last.assessment && ` · ${last.assessment}`}</div>
+                  <div className="muted clip sm">{formatDate(last.visit_date)}{last.assessment && ` · ${last.assessment}`}</div>
                 </div>
                 <button type="button" className="btn small outline" aria-expanded={recap} onClick={() => setRecap(!recap)}>
                   {recap ? 'Hide notes' : 'Show notes'}
                 </button>
               </div>
               {recap && (
-                <dl className="dl recap">
+                <dl className="dl recap reveal">
                   {last.complaint && <><dt>Complaint</dt><dd>{last.complaint}</dd></>}
                   {last.history && <><dt>History and examination</dt><dd>{last.history}</dd></>}
                   {last.assessment && <><dt>Assessment</dt><dd>{last.assessment}</dd></>}
@@ -452,7 +454,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
           <section className="card pad">
             <div className="row" style={{ marginBottom: 12 }}>
               <h2 className="grow">Measurements</h2>
-              {last && <span className="muted" style={{ fontSize: 13 }}>Last visit {formatDate(last.visit_date)}</span>}
+              {last && <span className="muted sm">Last visit {formatDate(last.visit_date)}</span>}
             </div>
             <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
               <label className="field">
@@ -471,7 +473,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                 {show('bp')}
               </label>
             </div>
-            <div className="calc">
+            <div className="calc cols4">
               <div>
                 <div className="k">Height SDS · calculated</div>
                 <div className="v">{both && (both.m != null || both.f != null) ? `${sdsText(both.m)} / ${sdsText(both.f)}` : sdsText(z.height)}</div>
@@ -500,7 +502,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             <div className="row">
               <div className="grow">
                 <h2>Puberty</h2>
-                <div className="muted" style={{ fontSize: 13 }}>
+                <div className="muted sm">
                   {tanner ? <span className="mono" style={{ color: 'var(--ink)' }}>{tannerSummary(tanner, patient.sex)}</span> : 'Not staged at this visit'}
                   {lastStaged && <> · last {tannerSummary(lastStaged.tanner, patient.sex)} on {formatDate(lastStaged.visit_date)}</>}
                 </div>
@@ -565,7 +567,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
 
             {/* Said again here, where the medicines are chosen: the line under the name scrolls away. */}
             {allergy === 'some' && <div className="note danger" role="status">Drug allergy: {patient.allergies}</div>}
-            {allergy === 'none' && <div className="muted" style={{ fontSize: 13 }}>No known drug allergy.</div>}
+            {allergy === 'none' && <div className="muted sm">No known drug allergy.</div>}
             {allergy === 'unrecorded' && <div className="note info" role="status">Drug allergies are not recorded for this patient. Ask before prescribing, then add them under Edit on the patient's page.</div>}
 
             {applied.map((a) => {
@@ -709,6 +711,13 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               <button type="button" className="btn primary" disabled={busy} onClick={() => void save(true)}>
                 <span className="wide-only">Save and open prescription</span><span className="narrow-only">Save and open ℞</span>
               </button>
+            </div>
+            {/* Whose visit is being saved: the name at the top has scrolled away by now. */}
+            <div className="whose">
+              <span className="clip"><strong>{patient.name}</strong> · {formatAge(patient.dob, f.date)}</span>
+              {allergy === 'some' && <span className="pill danger" title={`Allergy: ${patient.allergies}`}>Allergy: {patient.allergies}</span>}
+              {allergy === 'none' && <span className="pill ok">No known drug allergy</span>}
+              {allergy === 'unrecorded' && <span className="pill info">Allergies not recorded</span>}
             </div>
             {vid && (
               <div className={confirming ? 'del asking' : 'del'}>

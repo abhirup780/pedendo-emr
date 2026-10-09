@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTitle } from '../components/hooks'
 import { Link, useParams } from 'react-router-dom'
 import FitSheet from '../components/FitSheet'
 import RxSheet from '../components/RxSheet'
@@ -18,6 +19,7 @@ const BUILT_IN = 'standard'
 export default function PrintRx() {
   const { id = '', vid = '', layoutId } = useParams()
   const sample = !vid
+  useTitle(sample ? 'Sample prescription' : 'Prescription')
   const [data, setData] = useState<{ p: Patient; v: Visit; c: Clinic } | null | undefined>(undefined)
   const [layouts, setLayouts] = useState<PrintLayout[]>([])
   const [chosen, setChosen] = useState<string>(layoutId ?? '')
@@ -85,7 +87,7 @@ export default function PrintRx() {
           <button type="button" className="btn primary" onClick={() => window.print()}>Print</button>
         )}
       </div>
-      <div className="sheet-tools no-print muted" style={{ fontSize: 13 }}>
+      <div className="sheet-tools no-print muted sm">
         <span className="grow">{describe(config)}. In the print window choose the same paper size, set margins to "Default" and scale to 100%.</span>
         {!sample && <Link to="/settings?tab=print" className="tap">Customise layouts</Link>}
       </div>

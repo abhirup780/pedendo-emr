@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import FitSheet from '../components/FitSheet'
 import RxSheet from '../components/RxSheet'
+import { RowsSkeleton } from '../components/Skeleton'
 import { ACCENTS, describe, normalize, PAPERS, PRESETS, SECTIONS } from '../lib/printlayout'
 import type { PrintConfig, PrintLayout, SectionKey } from '../lib/printlayout'
 import { SAMPLE_PATIENT, SAMPLE_VISIT, sampleClinic } from '../lib/printsample'
@@ -253,7 +254,7 @@ function Editor({ start, clinic, onDone }: { start: Draft; clinic: Clinic; onDon
           <button type="button" className="btn small narrow-only" onClick={() => setPeek(false)}>Back to editing</button>
           <Toggle on={guides} onChange={setGuides}>Margin guides</Toggle>
         </div>
-        <div className="muted" style={{ fontSize: 13 }}>{describe(shown)} · sample data</div>
+        <div className="muted sm">{describe(shown)} · sample data</div>
         <Preview config={shown} clinic={clinic} guides={guides} />
         <div className="row end">
           <button type="button" className="btn" disabled={busy} onClick={() => onDone(null)}>Cancel</button>
@@ -315,16 +316,16 @@ export default function PrintLayouts() {
         <div className="tag-row">
           <div className="grow">
             <div style={{ fontWeight: 600 }}>Standard A4</div>
-            <div className="muted" style={{ fontSize: 13 }}>Built in: plain paper, the app prints the letterhead. Used when no other layout is chosen.</div>
+            <div className="muted sm">Built in: plain paper, the app prints the letterhead. Used when no other layout is chosen.</div>
           </div>
-          <Link to="/print-sample/standard" className="btn small">Print a sample</Link>
+          <Link to="/print-sample/standard" className="btn small quiet">Print a sample</Link>
         </div>
-        {list === null && <div className="empty">Loading…</div>}
+        {list === null && <RowsSkeleton rows={2} />}
         {list?.map((l) => (
           <div className="tag-row" key={l.id}>
             <div className="grow">
               <div style={{ fontWeight: 600 }}>{l.name} {l.is_default && <span className="pill ok" style={{ padding: '2px 8px', fontSize: 12 }}>Default</span>}</div>
-              <div className="muted" style={{ fontSize: 13 }}>{describe(l.config)}</div>
+              <div className="muted sm">{describe(l.config)}</div>
             </div>
             {confirmId === l.id ? (
               <>
@@ -335,11 +336,11 @@ export default function PrintLayouts() {
             ) : (
               <>
                 <button type="button" className="btn small primary" onClick={() => setEditing(l)}>Edit</button>
-                <Link to={`/print-sample/${l.id}`} className="btn small">Print a sample</Link>
-                <button type="button" className="btn small" onClick={() => setEditing({ name: freeName(`${l.name} copy`), is_default: false, config: l.config })}>Duplicate</button>
-                {!l.is_default && <button type="button" className="btn small" onClick={() => void run(() => store.savePrintLayout({ ...l, is_default: true }))}>Make default</button>}
-                {l.is_default && <button type="button" className="btn small" onClick={() => void run(() => store.savePrintLayout({ ...l, is_default: false }))}>Not default</button>}
-                <button type="button" className="btn small" aria-label={`Delete layout ${l.name}`} onClick={() => setConfirmId(l.id)}>Delete</button>
+                <Link to={`/print-sample/${l.id}`} className="btn small quiet">Print a sample</Link>
+                <button type="button" className="btn small quiet" onClick={() => setEditing({ name: freeName(`${l.name} copy`), is_default: false, config: l.config })}>Duplicate</button>
+                {!l.is_default && <button type="button" className="btn small quiet" onClick={() => void run(() => store.savePrintLayout({ ...l, is_default: true }))}>Make default</button>}
+                {l.is_default && <button type="button" className="btn small quiet" onClick={() => void run(() => store.savePrintLayout({ ...l, is_default: false }))}>Not default</button>}
+                <button type="button" className="btn small quiet danger" aria-label={`Delete layout ${l.name}`} onClick={() => setConfirmId(l.id)}>Delete</button>
               </>
             )}
           </div>

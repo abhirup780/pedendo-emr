@@ -13,6 +13,11 @@ describe('age', () => {
     expect(formatAge('2026-09-26', '2026-10-08')).toBe('12d')
     expect(formatAge('2017-05-12', '2026-10-08')).toBe('9y 4m')
   })
+  it('counts whole calendar months: two days short of the next month is still the month before', () => {
+    // The growth chart once wrote this visit as 8y 8m, from decimal years; the table said 8y 7m.
+    expect(formatAge('2017-05-12', '2026-01-10')).toBe('8y 7m')
+    expect(formatAge('2017-05-12', '2026-01-12')).toBe('8y 8m')
+  })
   it('rejects impossible and future dates', () => {
     expect(parseISODate('2026-02-30')).toBeNull()
     expect(ageParts('2027-01-01', '2026-10-08')).toBeNull()

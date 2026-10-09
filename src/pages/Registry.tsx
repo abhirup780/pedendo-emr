@@ -10,7 +10,9 @@ import { buildPhotoZip, photoZipName } from '../lib/photozip'
 import { store } from '../lib/store'
 import { tagColor } from '../lib/tags'
 import type { Backup, Condition } from '../lib/types'
+import ConditionFilter from '../components/ConditionFilter'
 import DateField from '../components/DateField'
+import { useTitle } from '../components/hooks'
 
 const PREVIEW = !!import.meta.env.VITE_PREVIEW
 const RANGES = ['All dates', 'This year', 'Last 12 months', 'Custom'] as const
@@ -23,6 +25,7 @@ function show(cell: Sheet['rows'][number][number]): string {
 }
 
 export default function Registry() {
+  useTitle('Registry and export')
   const [conditions, setConditions] = useState<Condition[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [total, setTotal] = useState<number | null>(null)
@@ -188,7 +191,11 @@ export default function Registry() {
       {error && <div className="alert">{error}</div>}
 
       <div className="cols">
-        <aside className="card pad" style={{ flex: '1.2 1 280px', minWidth: 0 }}>
+        {/* Where the list of groups cannot sit beside the export, the same choice is one box. */}
+        <div className="cohort-pick" style={{ flex: '1 1 100%', minWidth: 0 }}>
+          <ConditionFilter conditions={conditions} counts={counts} value={cohort} onChange={setCohort} all={`All patients${total == null ? '' : ` (${total})`}`} />
+        </div>
+        <aside className="card pad cohorts" style={{ flex: '1.2 1 280px', minWidth: 0 }}>
           <h2 style={{ marginBottom: 8 }}>Condition groups</h2>
           <button type="button" className="cohort" aria-pressed={cohort === null} onClick={() => setCohort(null)}>
             <span className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
@@ -255,7 +262,7 @@ export default function Registry() {
                   <span className="muted" style={{ display: 'block', fontSize: 12.5, fontWeight: 400 }}>Study ID replaces name and MRN; date of birth, guardian, phone and address are left out.</span>
                 </span>
               </button>
-              <span className="mono muted" style={{ fontSize: 13 }}>{fileName}</span>
+              <span className="mono muted sm">{fileName}</span>
             </div>
             <div className="row end">
               {busy && <span className="muted" role="status">{busy}</span>}

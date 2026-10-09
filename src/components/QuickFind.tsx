@@ -5,13 +5,15 @@ import { formatAge } from '../lib/age'
 import { sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import type { Patient } from '../lib/types'
+import { useFindKey } from './hooks'
 
 const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 
 /**
  * Patient search in the header, so a record can be opened from any screen. Ctrl+K (or "/"
  * outside a text box) goes to it; up and down arrows move through the matches, Enter opens
- * one, Escape closes. On a phone it is a button that opens the box under the header.
+ * one, Escape closes. On a phone it is a button that opens the box under the header. The
+ * patient list leaves it out: that screen has a search box of its own.
  */
 export default function QuickFind() {
   const nav = useNavigate()
@@ -47,20 +49,10 @@ export default function QuickFind() {
     }
   }, [words])
 
-  useEffect(() => {
-    const keys = (e: globalThis.KeyboardEvent) => {
-      const el = e.target as HTMLElement | null
-      const typing = !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))
-      const wanted = ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey)
-      // Not while a window (the medicine list, a photograph) is open over the page.
-      if (!wanted || document.querySelector('dialog[open]')) return
-      e.preventDefault()
-      setOpen(true)
-      input.current?.focus()
-    }
-    window.addEventListener('keydown', keys)
-    return () => window.removeEventListener('keydown', keys)
-  }, [])
+  useFindKey(() => {
+    setOpen(true)
+    input.current?.focus()
+  })
   useEffect(() => {
     if (open) input.current?.focus()
   }, [open])

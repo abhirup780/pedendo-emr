@@ -47,7 +47,7 @@ export default function MedicinePicker(props: Props) {
   return (
     <div className="field">
       <label htmlFor="med-add">Add a medicine</label>
-      <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+      <div className="row add-row">
         <input
           id="med-add"
           type="search"

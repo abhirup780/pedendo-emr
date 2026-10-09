@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConditionFilter from '../components/ConditionFilter'
+import { useFindKey, useTitle } from '../components/hooks'
 import SetupChecklist from '../components/SetupChecklist'
 import { RowsSkeleton } from '../components/Skeleton'
 import { Tag } from '../components/Tag'
@@ -15,11 +16,12 @@ import { NONE } from '../lib/text'
 
 /** Review date with how far away it is; overdue dates are marked. */
 function Due({ on }: { on: string | null }) {
-  if (!on) return <span className="muted">{NONE}</span>
+  // On a phone an empty review date says nothing, so nothing is shown.
+  if (!on) return <span className="muted wide-only">{NONE}</span>
   const days = daysBetween(todayISO(), on) ?? 0
   if (days < 0) return <span className="pill warn" title={formatDate(on)}>Overdue {-days} d</span>
   if (days <= 7) return <span className="pill ok" title={formatDate(on)}>{days === 0 ? 'Today' : `In ${days} d`}</span>
-  return <span className="muted">{formatDate(on)}</span>
+  return <span className="muted"><span className="narrow-only">Review </span>{formatDate(on)}</span>
 }
 
 function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
@@ -30,8 +32,8 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
         <Link className="name" to={`/patients/${p.id}`}>
           {p.name}
         </Link>
-        <div className="muted" style={{ fontSize: 12.5 }}>
-          <span className="narrow-only mono">MRN {p.mrn}{p.guardian_name && ' · '}</span>
+        <div className="muted sm">
+          <span className="under mono">MRN {p.mrn}{p.guardian_name && ' · '}</span>
           {p.guardian_name}
         </div>
       </div>
@@ -45,7 +47,7 @@ function Row({ p, byId }: { p: Patient; byId: Map<string, Condition> }) {
         })}
         {p.condition_ids.length === 0 && <span className="muted">{NONE}</span>}
       </div>
-      <div className="muted" role="cell">{p.last_visit_on ? formatDate(p.last_visit_on) : 'No visit yet'}</div>
+      <div className="muted" role="cell">{p.last_visit_on ? <><span className="narrow-only">Seen </span>{formatDate(p.last_visit_on)}</> : 'No visit yet'}</div>
       <div role="cell"><Due on={p.next_review_on} /></div>
     </div>
   )
@@ -66,6 +68,13 @@ export default function Patients() {
   const [everyone, setEveryone] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  useTitle('Patients')
+  // This screen's own search box takes the place of the one in the header.
+  const search = useRef<HTMLInputElement>(null)
+  useFindKey(() => {
+    search.current?.focus()
+    search.current?.select()
+  })
 
   useEffect(() => {
     Promise.all([store.listConditions(), store.conditionCounts(), store.followupCounts(todayISO()), store.listPatients({ limit: 1 })]).then(
@@ -125,7 +134,7 @@ export default function Patients() {
 
   return (
     <main className="page">
-      <div className="row">
+      <div className="row list-top">
         <div className="grow">
           <h1>Patients</h1>
         </div>
@@ -134,10 +143,10 @@ export default function Patients() {
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-3.5-3.5" />
           </svg>
-          <input type="search" aria-label="Search patients" placeholder="Search name, phone or MRN" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input ref={search} type="search" aria-label="Search patients" placeholder="Search name, phone or MRN" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
-        <Link to="/patients/new" className="btn primary">
-          + New patient
+        <Link to="/patients/new" className="btn primary" aria-label="New patient">
+          <span>+ New<span className="wide-only"> patient</span></span>
         </Link>
       </div>
 
@@ -177,9 +186,9 @@ export default function Patients() {
               <option value="name">Name</option>
             </select>
           </label>
-          <button type="button" className="switch" aria-pressed={grouped} onClick={() => setGrouped(!grouped)}>
+          <button type="button" className="switch" aria-pressed={grouped} aria-label="Group by condition" onClick={() => setGrouped(!grouped)}>
             <span className="track" />
-            Group by condition
+            <span>Group<span className="wide-only"> by condition</span></span>
           </button>
         </div>
 
