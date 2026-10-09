@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { formatDate, todayISO } from '../lib/age'
-import { latestPerTest } from '../lib/investigations'
+import { historyPerTest, latestPerTest, numericValue, rankedMatches } from '../lib/investigations'
 import { store } from '../lib/store'
 import type { Investigation, Result, ResultFlag } from '../lib/types'
 import DateField from './DateField'
+import { RowsSkeleton } from './Skeleton'
 
 const FLAGS: { key: ResultFlag; label: string }[] = [
   { key: 'low', label: 'Low' },
@@ -17,16 +18,46 @@ function Flag({ flag }: { flag: ResultFlag }) {
 }
 
 /**
+ * How one test has moved, oldest on the left. Drawn only from values that read as plain
+ * numbers in the newest result's unit, and only when there are at least two; the scale is the child's own values, since
+ * the app holds no reference ranges.
+ */
+function Trend({ results }: { results: Result[] }) {
+  const unit = results[0].unit.trim().toLowerCase()
+  const pts = [...results].reverse().filter((r) => r.unit.trim().toLowerCase() === unit).map((r) => numericValue(r.value)).filter((n): n is number => n != null)
+  if (pts.length < 2) return <span className="rspark" />
+  const W = 88
+  const H = 28
+  const min = Math.min(...pts)
+  const span = Math.max(...pts) - min || 1
+  const x = (i: number) => 4 + (i / (pts.length - 1)) * (W - 8)
+  const y = (v: number) => H - 5 - ((v - min) / span) * (H - 10)
+  return (
+    <svg className="rspark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Trend, oldest first: ${pts.join(', ')}`}>
+      <polyline points={pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')} fill="none" stroke="#6f8083" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx={x(pts.length - 1)} cy={y(pts[pts.length - 1])} r="3" fill="#0b5d66" />
+    </svg>
+  )
+}
+
+const BLANK = { test: '', value: '', unit: '', flag: '' as ResultFlag }
+
+/**
  * A patient's investigation results with an entry form. "latest" shows one row per test
- * (newest value, with the previous one beside it); "all" lists every result.
+ * (newest value, with the previous one beside it); "all" groups every result by test, with
+ * the trend and, opened out, each result to correct or delete.
  */
 export default function Results({ patientId, catalog, mode }: { patientId: string; catalog: Investigation[]; mode: 'latest' | 'all' }) {
   const [list, setList] = useState<Result[] | null>(null)
   const [adding, setAdding] = useState(false)
-  const [d, setD] = useState({ test: '', value: '', unit: '', date: todayISO(), flag: '' as ResultFlag })
+  const [d, setD] = useState({ ...BLANK, date: todayISO() })
+  // The result being corrected; null while a new one is being entered.
+  const [editId, setEditId] = useState<string | null>(null)
+  const [opened, setOpened] = useState<Set<string>>(new Set())
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const form = useRef<HTMLDivElement>(null)
 
   const reload = () => store.listResults(patientId).then(setList, (e: Error) => { setError(e.message); setList([]) })
   useEffect(() => {
@@ -35,11 +66,44 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
   }, [patientId])
 
   const latest = useMemo(() => latestPerTest(list ?? []), [list])
+  const groups = useMemo(() => historyPerTest(list ?? []), [list])
+
+  // Suggestions for the test box: the investigation list, and tests this patient already has.
+  const testId = useId()
+  const names = useMemo(() => [...new Set([...catalog.map((i) => i.name), ...groups.map((g) => g.test)])], [catalog, groups])
+  const typedTest = d.test.trim().toLowerCase()
+  const suggestions = typedTest && !names.some((n) => n.toLowerCase() === typedTest) ? rankedMatches(names, d.test).slice(0, 6) : []
+  function choose(name: string) {
+    pickTest(name)
+    form.current?.querySelector<HTMLInputElement>('input.num')?.focus()
+  }
 
   function pickTest(name: string) {
     const hit = catalog.find((i) => i.name.toLowerCase() === name.trim().toLowerCase())
     setD((old) => ({ ...old, test: name, unit: hit ? hit.unit : old.unit }))
   }
+  function edit(r: Result) {
+    setD({ test: r.test, value: r.value, unit: r.unit, date: r.result_date, flag: r.flag })
+    setEditId(r.id)
+    setAdding(true)
+    setConfirmId(null)
+    // The form is at the top of the card; the row being corrected may be far below it.
+    requestAnimationFrame(() => {
+      form.current?.scrollIntoView({ block: 'center' })
+      form.current?.querySelector<HTMLInputElement>('input.num')?.focus()
+    })
+  }
+  function closeForm() {
+    setAdding(false)
+    setEditId(null)
+    setD((old) => ({ ...BLANK, date: editId ? todayISO() : old.date }))
+  }
+  const toggle = (key: string) =>
+    setOpened((old) => {
+      const next = new Set(old)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
 
   const dateBad = !d.date || d.date > todayISO()
   // Not a <form>: this card also sits inside the visit form, and forms cannot nest.
@@ -48,10 +112,11 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
     setBusy(true)
     setError('')
     try {
-      await store.saveResult({ patient_id: patientId, test: d.test.trim(), value: d.value.trim(), unit: d.unit.trim(), result_date: d.date, flag: d.flag })
+      await store.saveResult({ patient_id: patientId, test: d.test.trim(), value: d.value.trim(), unit: d.unit.trim(), result_date: d.date, flag: d.flag }, editId ?? undefined)
       await reload()
+      if (editId) closeForm()
       // Keep the date: several results from one report are usually entered together.
-      setD((old) => ({ test: '', value: '', unit: '', date: old.date, flag: '' }))
+      else setD((old) => ({ ...BLANK, date: old.date }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the result.')
     }
@@ -70,9 +135,10 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
 
       {adding && (
         <div
+          ref={form}
           className="result-form"
           role="group"
-          aria-label="Enter a result"
+          aria-label={editId ? 'Correct a result' : 'Enter a result'}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
               e.preventDefault()
@@ -81,13 +147,33 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
             }
           }}
         >
-          <label className="field wide">
-            Test
-            <input list="test-names" value={d.test} onChange={(e) => pickTest(e.target.value)} autoComplete="off" autoFocus />
-            <datalist id="test-names">
-              {catalog.map((i) => <option key={i.id} value={i.name} />)}
-            </datalist>
-          </label>
+          <div className="field wide">
+            <label htmlFor={testId}>Test</label>
+            <input
+              id={testId}
+              value={d.test}
+              onChange={(e) => pickTest(e.target.value)}
+              // Enter takes the first suggestion and moves on to the result.
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' || suggestions.length === 0) return
+                e.preventDefault()
+                e.stopPropagation()
+                choose(suggestions[0])
+              }}
+              autoComplete="off"
+              autoFocus={!editId}
+            />
+            {suggestions.length > 0 && (
+              <div className="quick" role="group" aria-label="Matching tests">
+                {suggestions.map((n, i) => (
+                  <button type="button" key={n} className="opt" onClick={() => choose(n)}>
+                    <span className="grow">{n}</span>
+                    {i === 0 && <span className="key">Enter</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <label className="field">
             Result
             <input className="num" value={d.value} onChange={(e) => setD({ ...d, value: e.target.value })} autoComplete="off" />
@@ -110,13 +196,13 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
             </div>
           </div>
           <div className="row end wide">
-            <button type="button" className="btn small" onClick={() => setAdding(false)}>Done</button>
-            <button type="button" className="btn small primary" disabled={busy || !d.test.trim() || !d.value.trim() || dateBad} onClick={() => void submit()}>Save result</button>
+            <button type="button" className="btn small" onClick={closeForm}>{editId ? 'Cancel' : 'Done'}</button>
+            <button type="button" className="btn small primary" disabled={busy || !d.test.trim() || !d.value.trim() || dateBad} onClick={() => void submit()}>{editId ? 'Save changes' : 'Save result'}</button>
           </div>
         </div>
       )}
 
-      {list === null && <div className="empty">Loading…</div>}
+      {list === null && <RowsSkeleton rows={3} />}
       {list && list.length === 0 && <div className="empty">No results recorded yet.</div>}
 
       {mode === 'latest'
@@ -130,21 +216,46 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
               </div>
             </div>
           ))
-        : list?.map((r) => (
-            <div className="rrow" key={r.id}>
-              <div className="rname">{r.test} <Flag flag={r.flag} /></div>
-              <div className={r.flag ? 'mono rval off' : 'mono rval'}>{r.value} {r.unit}</div>
-              <div className="muted rdate">{formatDate(r.result_date)}</div>
-              {confirmId === r.id ? (
-                <div className="row" style={{ gap: 6 }}>
-                  <button type="button" className="btn small" onClick={() => setConfirmId(null)}>Keep</button>
-                  <button type="button" className="btn danger small" onClick={() => { setConfirmId(null); store.deleteResult(r.id).then(reload, (e: Error) => setError(e.message)) }}>Delete</button>
+        : groups.map((g) => {
+            const r = g.results[0]
+            const key = r.test.trim().toLowerCase()
+            const open = opened.has(key)
+            return (
+              <div className="rgroup" key={key}>
+                <div className="rrow">
+                  <div className="rname">{r.test} <Flag flag={r.flag} /></div>
+                  <div className={r.flag ? 'mono rval off' : 'mono rval'}>{r.value} {r.unit}</div>
+                  <div className="muted rdate">{formatDate(r.result_date)}</div>
+                  <Trend results={g.results} />
+                  <button type="button" className="btn small" aria-expanded={open} aria-label={`${r.test}: ${open ? 'hide' : 'show'} ${g.results.length === 1 ? 'the result' : `all ${g.results.length} results`}`} onClick={() => toggle(key)}>
+                    {g.results.length === 1 ? '1 result' : `${g.results.length} results`}
+                  </button>
                 </div>
-              ) : (
-                <button type="button" className="btn small" aria-label={`Delete ${r.test} result of ${formatDate(r.result_date)}`} onClick={() => setConfirmId(r.id)}>Delete</button>
-              )}
-            </div>
-          ))}
+                {open && (
+                  <div className="rhist">
+                    {g.results.map((x) => (
+                      <div className="rrow" key={x.id}>
+                        <div className="muted rdate">{formatDate(x.result_date)}</div>
+                        <div className={x.flag ? 'mono rval off' : 'mono rval'}>{x.value} {x.unit} <Flag flag={x.flag} /></div>
+                        {confirmId === x.id ? (
+                          <div className="row" style={{ gap: 6 }}>
+                            <span>Delete this result?</span>
+                            <button type="button" className="btn small" onClick={() => setConfirmId(null)}>Keep</button>
+                            <button type="button" className="btn danger small" onClick={() => { setConfirmId(null); store.deleteResult(x.id).then(reload, (e: Error) => setError(e.message)) }}>Delete</button>
+                          </div>
+                        ) : (
+                          <div className="row" style={{ gap: 6 }}>
+                            <button type="button" className="btn small" aria-label={`Correct ${x.test} result of ${formatDate(x.result_date)}`} onClick={() => edit(x)}>Edit</button>
+                            <button type="button" className="btn small" aria-label={`Delete ${x.test} result of ${formatDate(x.result_date)}`} onClick={() => setConfirmId(x.id)}>Delete</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
     </section>
   )
 }

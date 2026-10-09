@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import GrowthChart from '../components/GrowthChart'
-import { formatAge, formatDate, midParentalHeight, targetRange } from '../lib/age'
+import { PageSkeleton } from '../components/Skeleton'
+import { formatAge, formatDate, midParentalHeight, TARGET_RANGE_CM, targetRange } from '../lib/age'
 import { bmi, heightVelocity } from '../lib/clinical'
 import { bmiBand, chartReference, growthPoints, MEASURES, visitSds } from '../lib/growth'
 import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
@@ -39,7 +40,7 @@ export default function Growth() {
   const points = useMemo(() => (patient ? growthPoints(visits, patient.dob, measure, refSex(patient.sex) ?? compare) : []), [visits, patient, measure, compare])
   const measured = useMemo(() => visits.filter((v) => v.height_cm != null || v.weight_kg != null), [visits])
 
-  if (patient === undefined) return <main className="page muted">Loading…</main>
+  if (patient === undefined) return <PageSkeleton />
   if (patient === null)
     return (
       <main className="page">
@@ -68,13 +69,16 @@ export default function Growth() {
   const latestHeight = visits.find((v) => v.height_cm != null)
   const velocity = latestHeight ? heightVelocity(latestHeight.height_cm, latestHeight.visit_date, visits.filter((v) => v.visit_date < latestHeight.visit_date)) : null
   const mph = midParentalHeight(patient.father_height_cm, patient.mother_height_cm, patient.sex)
+  // On the height chart the target is marked where the child is heading: at 18 years.
+  const target = measure === 'height' && mph != null ? { mid: mph, low: mph - TARGET_RANGE_CM, high: mph + TARGET_RANGE_CM } : null
+  const targetShown = target != null && reference != null && reference.to >= 18
   const rows = measured.map((v) => ({ v, z: visitSds(v, patient.dob, rs ?? 'U') }))
 
   return (
     <main className="page">
       <div className="row">
         <div className="grow">
-          <h1 style={{ fontSize: 21 }}>Growth · <Link to={`/patients/${id}`}>{patient.name}</Link></h1>
+          <h1 className="sub">Growth · <Link to={`/patients/${id}`}>{patient.name}</Link></h1>
           <div className="muted">{formatAge(patient.dob)} · {sexLabel(patient.sex)} · <span className="mono">MRN {patient.mrn}</span></div>
         </div>
         <Link to={`/patients/${id}/visits/new`} className="btn primary">+ New visit</Link>
@@ -122,21 +126,22 @@ export default function Growth() {
           <span className="muted" style={{ fontSize: 13 }}>{reference ? `${refNames}${unassigned ? (rs === 'M' ? ' · boys' : ' · girls') : ''}` : 'The child’s own measurements'}</span>
         </div>
         {unassigned && (
-          <div className="note" style={{ background: '#eceFee', color: '#44545b', fontWeight: 400 }}>
+          <div className="note info">
             Sex is not yet assigned, so no reference is applied by default. Choose Boys or Girls above to look at the measurements against either one; the choice is not saved.
           </div>
         )}
-        <GrowthChart points={points} reference={reference} label={info.label} unit={info.unit} />
+        <GrowthChart points={points} reference={reference} label={info.label} unit={info.unit} target={target} />
         {reference && (
           <div className="muted" style={{ fontSize: 13 }}>
             {lineNote}
+            {targetShown && ` The bar at 18 years is the mid-parental target, ${targetRange(mph!)}.`}
             {reference.refs.length > 1 && ' WHO (under 5 years) and IAP (from 5 years) are separate references, so the lines step at 5 years.'}
             {measure === 'height' && points.some((p) => p.age < 2) && ' Under 2 years the WHO standard is for length measured lying down; from 2 years, standing height.'}
             {measure !== 'height' && points.some((p) => p.age < 5) && ` No ${lower} reference is held for under 5 years.`}
           </div>
         )}
         {!reference && points.length > 0 && rs && (
-          <div className="note" style={{ background: '#eceFee', color: '#44545b', fontWeight: 400 }}>
+          <div className="note info">
             No reference lines or SDS: {noReferenceReason(measure, last.ageDays)}. The app holds WHO 2006 length/height for under 5 years and IAP 2015 height, weight and BMI for 5 to 18 years.
           </div>
         )}

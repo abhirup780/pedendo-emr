@@ -10,6 +10,8 @@ interface Props {
   min?: string
   max?: string
   id?: string
+  /** The form's own check failed (an empty required date, for one). */
+  invalid?: boolean
   'aria-label'?: string
   style?: React.CSSProperties
 }
@@ -21,7 +23,7 @@ const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
  * The browser's built-in date box is not used: its calendar does not open everywhere (inside
  * an embedded preview, for one) and it shows month first on devices set to US English.
  */
-export default function DateField({ value, onChange, min, max, id, style, ...rest }: Props) {
+export default function DateField({ value, onChange, min, max, id, invalid, style, ...rest }: Props) {
   const [text, setText] = useState(showDate(value))
   const [open, setOpen] = useState(false)
   // Where the calendar goes on the screen, worked out from the box when it opens.
@@ -95,7 +97,7 @@ export default function DateField({ value, onChange, min, max, id, style, ...res
         autoComplete="off"
         placeholder="dd/mm/yyyy"
         aria-label={rest['aria-label']}
-        aria-invalid={bad || undefined}
+        aria-invalid={bad || invalid || undefined}
         value={text}
         onChange={(e) => type(e.target.value)}
         onBlur={() => {

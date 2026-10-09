@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestMatch, categoryOrder, latestPerTest, panelsForPatient, rankedMatches, STARTER_INVESTIGATIONS, STARTER_PANELS, starterPanelTags } from './investigations'
+import { bestMatch, categoryOrder, historyPerTest, latestPerTest, numericValue, panelsForPatient, rankedMatches, STARTER_INVESTIGATIONS, STARTER_PANELS, starterPanelTags } from './investigations'
 import { STARTER_CONDITIONS } from './tags'
 
 describe('starter investigations', () => {
@@ -26,6 +26,23 @@ describe('latestPerTest', () => {
     expect(out[0].latest.value).toBe('2.4')
     expect(out[0].previous?.value).toBe('3.1')
     expect(out[1].previous).toBeNull()
+  })
+})
+
+describe('historyPerTest', () => {
+  const r = (test: string, date: string, value: string) => ({ test, result_date: date, value, created_at: date + 'T00:00:00Z' })
+  it('groups every result by test, newest first, whatever the capitals', () => {
+    const out = historyPerTest([r('TSH', '2026-01-10', '3.1'), r('IGF-1', '2026-04-07', '142'), r('TSH', '2026-04-08', '2.4'), r('tsh ', '2025-07-01', '4.0')])
+    expect(out.map((g) => g.test)).toEqual(['TSH', 'IGF-1'])
+    expect(out[0].results.map((x) => x.value)).toEqual(['2.4', '3.1', '4.0'])
+  })
+})
+
+describe('numericValue', () => {
+  it('reads plain numbers only', () => {
+    expect(numericValue(' 142 ')).toBe(142)
+    expect(numericValue('7.25')).toBe(7.25)
+    for (const t of ['<0.1', '7y 6m', 'Positive', '', '1,250']) expect(numericValue(t)).toBeNull()
   })
 })
 

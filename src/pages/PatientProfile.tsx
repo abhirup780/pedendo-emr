@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Results from '../components/Results'
+import { PageSkeleton } from '../components/Skeleton'
 import { initials } from '../components/Shell'
 import { Tag } from '../components/Tag'
-import { formatAge, formatDate, midParentalHeight, targetRange } from '../lib/age'
-import { bmi } from '../lib/clinical'
+import { formatAge, formatDate, midParentalHeight, targetRange, todayISO } from '../lib/age'
+import { allergyStatus } from '../lib/allergy'
+import { bmi, daysBetween, rxLine } from '../lib/clinical'
+import { visitSds } from '../lib/growth'
+import { visitDrafts } from '../lib/device'
 import { sexLabel } from '../lib/sex'
 import { photoFiles } from '../lib/photofiles'
 import { store } from '../lib/store'
@@ -37,7 +41,7 @@ export default function PatientProfile() {
     )
   }, [id])
 
-  if (p === undefined) return <main className="page muted">Loading…</main>
+  if (p === undefined) return <PageSkeleton />
   if (p === null)
     return (
       <main className="page">
@@ -47,6 +51,20 @@ export default function PatientProfile() {
     )
 
   const tags = conditions.filter((c) => p.condition_ids.includes(c.id))
+  const allergy = allergyStatus(p.allergies)
+  // At a glance: the visits come newest first.
+  const lastVisit = visits[0]
+  const withHeight = visits.find((v) => v.height_cm != null)
+  const withWeight = visits.find((v) => v.weight_kg != null)
+  const heightSds = withHeight ? visitSds(withHeight, p.dob, p.sex).height : null
+  const weightBmi = withWeight ? bmi(withWeight.height_cm, withWeight.weight_kg) : null
+  const lastRx = visits.find((v) => v.medicines.length > 0)
+  const reviewIn = p.next_review_on ? daysBetween(todayISO(), p.next_review_on) : null
+  // Visit notes typed in this tab and not saved. A draft of a visit since deleted is left out.
+  const drafts = visitDrafts(id)
+  const newDraft = drafts.find((d) => d.vid === null)
+  const draftIds = new Set(drafts.map((d) => d.vid))
+  const clock = (at: string) => new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const mph = midParentalHeight(p.father_height_cm, p.mother_height_cm, p.sex)
 
   async function remove() {
@@ -70,7 +88,7 @@ export default function PatientProfile() {
           </span>
           <div className="grow">
             <div className="row" style={{ gap: '6px 10px' }}>
-              <h1 style={{ fontSize: 21 }}>{p.name}</h1>
+              <h1 className="sub">{p.name}</h1>
               {tags.map((c) => (
                 <Tag key={c.id} condition={c} />
               ))}
@@ -79,7 +97,9 @@ export default function PatientProfile() {
               {formatAge(p.dob)} · {sexLabel(p.sex)} · DOB {formatDate(p.dob)} · <span className="mono">MRN {p.mrn}</span>
             </div>
           </div>
-          <span className={`pill ${p.allergies ? 'warn' : 'ok'}`}>{p.allergies ? `Allergy: ${p.allergies}` : 'No known drug allergy'}</span>
+          {allergy === 'some' && <span className="pill danger">Allergy: {p.allergies}</span>}
+          {allergy === 'none' && <span className="pill ok">No known drug allergy</span>}
+          {allergy === 'unrecorded' && <span className="pill info">Allergies not recorded</span>}
           <Link to={`/patients/${p.id}/edit`} className="btn outline">
             Edit
           </Link>
@@ -95,6 +115,48 @@ export default function PatientProfile() {
         </div>
       </section>
 
+      {lastVisit && (
+        <div className="calc cols4" style={{ marginTop: 0 }}>
+          <div>
+            <div className="k">Last visit</div>
+            <div className="v">{formatDate(lastVisit.visit_date)}</div>
+            <div className="k">{visits.length === 1 ? '1 visit recorded' : `${visits.length} visits recorded`}</div>
+          </div>
+          <div>
+            <div className="k">Next review</div>
+            <div className={reviewIn != null && reviewIn < 0 ? 'v warn' : 'v'}>{p.next_review_on ? formatDate(p.next_review_on) : NONE}</div>
+            <div className="k">{reviewIn == null ? 'no review date set' : reviewIn < 0 ? `overdue by ${-reviewIn} ${reviewIn === -1 ? 'day' : 'days'}` : reviewIn === 0 ? 'today' : `in ${reviewIn} ${reviewIn === 1 ? 'day' : 'days'}`}</div>
+          </div>
+          <div>
+            <div className="k">Latest height</div>
+            <div className="v">{withHeight ? `${withHeight.height_cm} cm` : NONE}</div>
+            <div className="k">{withHeight ? `${heightSds == null ? '' : `SDS ${heightSds < 0 ? '−' : '+'}${Math.abs(heightSds).toFixed(2)} · `}${formatDate(withHeight.visit_date)}` : 'not recorded'}</div>
+          </div>
+          <div>
+            <div className="k">Latest weight</div>
+            <div className="v">{withWeight ? `${withWeight.weight_kg} kg` : NONE}</div>
+            <div className="k">{withWeight ? `${weightBmi == null ? '' : `BMI ${weightBmi} · `}${formatDate(withWeight.visit_date)}` : 'not recorded'}</div>
+          </div>
+          {lastRx && (
+            <div className="wide">
+              <div className="k">Medicines on the last prescription, {formatDate(lastRx.visit_date)}</div>
+              <ul className="rx-brief">
+                {lastRx.medicines.map((m, i) => (
+                  <li key={i}><strong>{m.name}</strong>{rxLine(m) && <span className="muted"> {rxLine(m)}</span>}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {newDraft && (
+        <div className="note row" role="status">
+          <span className="grow">A new visit was started{newDraft.at && ` at ${clock(newDraft.at)}`} and not saved. The notes are kept in this tab only.</span>
+          <Link to={`/patients/${p.id}/visits/new`} className="btn small">Continue the visit</Link>
+        </div>
+      )}
+
       <section className="card">
         <div className="card-head">
           <h2 className="grow">Visits</h2>
@@ -104,31 +166,32 @@ export default function PatientProfile() {
           <div className="empty">No visits yet. Start the first one with "New visit".</div>
         ) : (
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Visit history">
-            <div className="vtable">
-              <div className="vrow head">
-                <div>Date</div>
-                <div>Age</div>
-                <div>Height</div>
-                <div>Weight</div>
-                <div>BMI</div>
-                <div>Tanner</div>
-                <div>Assessment</div>
-                <div>℞</div>
+            <div className="vtable" role="table" aria-label="Visits">
+              <div className="vrow head" role="row">
+                <div role="columnheader">Date</div>
+                <div role="columnheader">Age</div>
+                <div role="columnheader">Height</div>
+                <div role="columnheader">Weight</div>
+                <div role="columnheader">BMI</div>
+                <div role="columnheader">Tanner</div>
+                <div role="columnheader">Assessment</div>
+                <div role="columnheader">℞</div>
               </div>
               {visits.map((v) => (
-                <div className="vrow" key={v.id}>
-                  <div>
+                <div className="vrow" key={v.id} role="row">
+                  <div role="cell">
                     <Link to={`/patients/${p.id}/visits/${v.id}`} style={{ fontWeight: 600, textDecoration: 'none', display: 'inline-block', padding: '4px 0' }}>
                       {formatDate(v.visit_date)}
                     </Link>
+                    {draftIds.has(v.id) && <> <span className="pill warn">Unsaved changes</span></>}
                   </div>
-                  <div>{formatAge(p.dob, v.visit_date)}</div>
-                  <div className="mono">{v.height_cm == null ? NONE : `${v.height_cm} cm`}</div>
-                  <div className="mono">{v.weight_kg == null ? NONE : `${v.weight_kg} kg`}</div>
-                  <div className="mono">{bmi(v.height_cm, v.weight_kg) ?? NONE}</div>
-                  <div className="mono clip" title={tannerSummary(v.tanner, p.sex)}>{tannerSummary(v.tanner, p.sex).split(' · ')[0] || NONE}</div>
-                  <div className="clip" title={v.assessment}>{v.assessment || NONE}</div>
-                  <div>
+                  <div role="cell">{formatAge(p.dob, v.visit_date)}</div>
+                  <div className="mono" role="cell">{v.height_cm == null ? NONE : `${v.height_cm} cm`}</div>
+                  <div className="mono" role="cell">{v.weight_kg == null ? NONE : `${v.weight_kg} kg`}</div>
+                  <div className="mono" role="cell">{bmi(v.height_cm, v.weight_kg) ?? NONE}</div>
+                  <div className="mono clip" role="cell" title={tannerSummary(v.tanner, p.sex)}>{tannerSummary(v.tanner, p.sex).split(' · ')[0] || NONE}</div>
+                  <div className="clip" role="cell" title={v.assessment}>{v.assessment || NONE}</div>
+                  <div role="cell">
                     <Link to={`/patients/${p.id}/visits/${v.id}/print`} style={{ display: 'inline-block', padding: '4px 0' }}>
                       {v.medicines.length === 0 ? 'Open' : `${v.medicines.length} ${v.medicines.length === 1 ? 'item' : 'items'}`}
                     </Link>

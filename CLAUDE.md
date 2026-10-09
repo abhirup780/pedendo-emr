@@ -303,6 +303,39 @@ the single source of truth — commit and push finished work.
 - Check with Playwright at 390 px (`is_mobile`, `has_touch`), 820 px and desktop: no sideways
   page scroll on any screen, no form field under 16px on touch, axe clean at both widths.
 
+## UI round
+
+- Drug allergies have three states, read by `allergyStatus()` in `src/lib/allergy.ts` from the
+  one `allergies` text column (no migration): an allergy, "none known" (stored as the sentence
+  `NO_KNOWN_ALLERGY`; "NKDA", "nil" typed by hand read the same) and not recorded (blank, or
+  "unknown", "N/A"). A blank box is never shown as "no known allergy". The prescription prints
+  an allergy only when one is recorded. The visit screen repeats the status on the
+  Prescription card.
+- Three voices in `styles.css`: `.alert` is something that went wrong (red, `--danger-*`),
+  `.note` is a caution (amber, `--warn-*`), `.note.info` is plain information (grey). Pills
+  follow: `.pill.danger`, `.pill.warn`, `.pill.info`, `.pill.ok`.
+- A refused save focuses the first wrong field (`aria-invalid`, or `data-invalid` on a button
+  group); `DateField` takes `invalid` for the form's own check. Messages about one control sit
+  beside it (the template notice is under the template button).
+- Signing out asks first when this tab holds unsaved visit drafts (`listDrafts`); the patient
+  page marks them (`visitDrafts`). Drafts are per tab, so neither sees another tab's.
+- `components/QuickFind.tsx` is the patient search in the header (Ctrl+K, or "/" outside a
+  text box). It shows matches only for the words in the box now, so Enter can never open the
+  answer to an earlier search. Under 1020 px it is a button and the box opens under the header.
+- Patient list rows open the patient anywhere on the row (the name's link is stretched over
+  the row with `::after`); the list and the visit history carry table roles.
+- `store.saveResult(input, id?)` corrects a result when given an id. On the patient page
+  results are grouped by test (`historyPerTest`) with a trend line drawn from plain numbers in
+  the newest result's unit (`numericValue`); the scale is the child's own values.
+- On the visit screen a medicine shows as one line until "Edit" (`openMeds`, by position); one
+  added without a dose opens ready to fill. The Tanner pictures open on a new visit and on a
+  staged one, and stay folded on a saved visit that was not staged. "Last visit" is a folded
+  card at the top of the left column.
+- The height chart marks the mid-parental target as a bar at 18 years, only on a chart that
+  runs to 18. `components/Skeleton.tsx` stands in for screens and lists while they load.
+- `npm run build:preview` sets its variables the Unix way and does not run from a Windows
+  prompt; run it from Git Bash.
+
 ## Build order
 
 1. ~~Sign-in, patients, condition tags, search~~ (done)

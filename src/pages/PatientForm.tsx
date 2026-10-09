@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { PageSkeleton } from '../components/Skeleton'
 import { Swatches, TagChip } from '../components/Tag'
 import { formatAge, parseISODate, todayISO } from '../lib/age'
+import { allergyStatus, NO_KNOWN_ALLERGY } from '../lib/allergy'
 import { store } from '../lib/store'
 import type { Condition, Patient, PatientInput, Sex } from '../lib/types'
 import DateField from '../components/DateField'
@@ -16,6 +18,8 @@ const BLANK = {
   guardian_relation: 'Father',
   address: '',
   allergies: '',
+  // Asked, and none known. Kept apart from a blank box, which means not yet asked.
+  no_allergy: false,
   notes: '',
   father: '',
   mother: '',
@@ -63,7 +67,8 @@ export default function PatientForm() {
             guardian_name: p.guardian_name,
             guardian_relation: p.guardian_relation || 'Father',
             address: p.address,
-            allergies: p.allergies,
+            allergies: allergyStatus(p.allergies) === 'none' ? '' : p.allergies,
+            no_allergy: allergyStatus(p.allergies) === 'none',
             notes: p.notes,
             father: p.father_height_cm == null ? '' : String(p.father_height_cm),
             mother: p.mother_height_cm == null ? '' : String(p.mother_height_cm),
@@ -122,6 +127,16 @@ export default function PatientForm() {
     mother: heightOrNull(f.mother) === 'bad' ? 'Enter a height between 100 and 230 cm.' : '',
   }
   const invalid = Object.values(errs).some(Boolean)
+  // A save that was refused takes the doctor to the first thing to correct.
+  const form = useRef<HTMLFormElement>(null)
+  const [refused, setRefused] = useState(0)
+  useEffect(() => {
+    if (refused === 0) return
+    const el = form.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-invalid="true"] button')
+    el?.focus()
+    el?.scrollIntoView({ block: 'center' })
+  }, [refused])
+  const bad = (k: keyof typeof errs) => (tried && errs[k] ? true : undefined)
   async function addTag() {
     const name = tagName.trim().replace(/\s+/g, ' ')
     if (!name || tagBusy) return
@@ -167,7 +182,10 @@ export default function PatientForm() {
   async function submit(e: FormEvent) {
     e.preventDefault()
     setTried(true)
-    if (invalid) return
+    if (invalid) {
+      setRefused((n) => n + 1)
+      return
+    }
     setBusy(true)
     setError('')
     const input: PatientInput = {
@@ -178,7 +196,7 @@ export default function PatientForm() {
       guardian_name: f.guardian_name.trim(),
       guardian_relation: f.guardian_name.trim() ? f.guardian_relation : '',
       address: f.address.trim(),
-      allergies: f.allergies.trim(),
+      allergies: f.no_allergy ? NO_KNOWN_ALLERGY : f.allergies.trim(),
       notes: f.notes.trim(),
       father_height_cm: heightOrNull(f.father) as number | null,
       mother_height_cm: heightOrNull(f.mother) as number | null,
@@ -193,7 +211,7 @@ export default function PatientForm() {
     }
   }
 
-  if (loading) return <main className="page narrow muted">Loading…</main>
+  if (loading) return <PageSkeleton narrow />
 
   return (
     <main className="page narrow">
@@ -208,23 +226,23 @@ export default function PatientForm() {
           . Open that record unless this is a different child.
         </div>
       )}
-      <form onSubmit={submit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <form ref={form} onSubmit={submit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <section className="card pad">
           <h2 style={{ marginBottom: 12 }}>Patient</h2>
           <div className="form-grid">
             <label className="field wide">
               Full name
-              <input value={f.name} onChange={(e) => set('name', e.target.value)} autoFocus={!id} autoComplete="off" />
+              <input value={f.name} onChange={(e) => set('name', e.target.value)} autoFocus={!id} autoComplete="off" aria-invalid={bad('name')} />
               {show('name')}
             </label>
             <label className="field">
               Date of birth
-              <DateField value={f.dob} max={todayISO()} onChange={(v) => set('dob', v)} />
+              <DateField value={f.dob} max={todayISO()} onChange={(v) => set('dob', v)} invalid={bad('dob')} />
               {show('dob') ?? (dob && !errs.dob ? <span className="hint">Age today: {formatAge(f.dob)}</span> : null)}
             </label>
             <div className="field">
               <span id="sex-label">Sex</span>
-              <div className="seg" role="group" aria-labelledby="sex-label">
+              <div className="seg" role="group" aria-labelledby="sex-label" data-invalid={bad('sex')}>
                 <button type="button" aria-pressed={f.sex === 'M'} onClick={() => set('sex', 'M')}>
                   Boy
                 </button>
@@ -322,18 +340,23 @@ export default function PatientForm() {
           <div className="form-grid">
             <label className="field">
               Father's height (cm)
-              <input inputMode="decimal" value={f.father} onChange={(e) => set('father', e.target.value)} />
+              <input inputMode="decimal" value={f.father} onChange={(e) => set('father', e.target.value)} aria-invalid={bad('father')} />
               {show('father')}
             </label>
             <label className="field">
               Mother's height (cm)
-              <input inputMode="decimal" value={f.mother} onChange={(e) => set('mother', e.target.value)} />
+              <input inputMode="decimal" value={f.mother} onChange={(e) => set('mother', e.target.value)} aria-invalid={bad('mother')} />
               {show('mother')}
             </label>
-            <label className="field wide">
-              Drug allergies
-              <input value={f.allergies} onChange={(e) => set('allergies', e.target.value)} placeholder="Leave blank if none known" />
-            </label>
+            <div className="field wide">
+              <label htmlFor="allergies">Drug allergies</label>
+              <input id="allergies" value={f.no_allergy ? '' : f.allergies} disabled={f.no_allergy} onChange={(e) => set('allergies', e.target.value)} placeholder={f.no_allergy ? NO_KNOWN_ALLERGY : 'e.g. Penicillin'} />
+              <button type="button" className="switch compact" role="switch" aria-checked={f.no_allergy} onClick={() => set('no_allergy', !f.no_allergy)}>
+                <span className="track" />
+                Asked: no known drug allergy
+              </button>
+              {!f.no_allergy && !f.allergies.trim() && <span className="hint">Left blank, the record shows "Allergies not recorded".</span>}
+            </div>
             <label className="field wide">
               Notes
               <textarea rows={3} value={f.notes} onChange={(e) => set('notes', e.target.value)} />

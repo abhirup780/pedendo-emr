@@ -4,11 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import InvestigationPicker from '../components/InvestigationPicker'
 import MedicinePicker from '../components/MedicinePicker'
 import Results from '../components/Results'
+import { PageSkeleton } from '../components/Skeleton'
 import TannerPicker from '../components/TannerPicker'
 import { ageInDays, decimalAge, formatAge, formatDate, todayISO } from '../lib/age'
+import { allergyStatus } from '../lib/allergy'
 import { visitSds } from '../lib/growth'
 import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
-import { addMonths, bmi, dosePerKg, heightVelocity, validBp } from '../lib/clinical'
+import { addMonths, bmi, dosePerKg, heightVelocity, rxLine, validBp } from '../lib/clinical'
 import { dropDraft, readDraft, saveDraft } from '../lib/device'
 import { refSex, sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
@@ -69,8 +71,13 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const [printPlan, setPrintPlan] = useState(true)
   const [tests, setTests] = useState<string[]>([])
   const [tanner, setTanner] = useState<Tanner | null>(null)
-  // The staging pictures are open from the start; the doctor can fold them away.
+  // The staging pictures are open on a new visit and on one that was staged; the doctor can
+  // fold them away. An earlier visit saved without staging opens with them folded (set on load).
   const [staging, setStaging] = useState(true)
+  // What was written at the last visit, folded away until asked for.
+  const [recap, setRecap] = useState(false)
+  // Medicines opened out for editing, by position; the rest show as one line each.
+  const [openMeds, setOpenMeds] = useState<Set<number>>(new Set())
   const [testCatalog, setTestCatalog] = useState<Investigation[]>([])
   const [panels, setPanels] = useState<Panel[]>([])
   const [meds, setMeds] = useState<RxItem[]>([])
@@ -80,7 +87,20 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState('')
+  // What happened to "save as a template": shown beside that button, not at the top of the page.
   const [notice, setNotice] = useState('')
+  const [tplError, setTplError] = useState('')
+  // Boxes the doctor has left: a wrong entry is pointed out then, not only on saving.
+  const [seen, setSeen] = useState<Record<string, boolean>>({})
+  const leave = (k: string) => setSeen((old) => (old[k] ? old : { ...old, [k]: true }))
+  // A save that was refused takes the doctor to the first thing to correct.
+  const [refused, setRefused] = useState(0)
+  useEffect(() => {
+    if (refused === 0) return
+    const el = document.querySelector<HTMLElement>('main.page [aria-invalid="true"]')
+    el?.focus()
+    el?.scrollIntoView({ block: 'center' })
+  }, [refused])
 
   const [loaded, setLoaded] = useState(false)
   const [restoredAt, setRestoredAt] = useState('')
@@ -105,6 +125,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const apply = (e: Editable) => {
     setF(e.f)
     setMeds(e.meds)
+    setOpenMeds(new Set())
     setPrintPlan(e.printPlan)
     setTests(e.tests)
     setTanner(e.tanner)
@@ -148,12 +169,11 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
         baseline.current = saved
         // Notes typed earlier but never saved (a reload, a crash, an idle sign-out) come back.
         const draft = readDraft<Editable>(draftKey)
-        if (draft && JSON.stringify(draft.data) !== JSON.stringify(saved)) {
-          apply(draft.data)
-          setRestoredAt(draft.at)
-        } else {
-          apply(saved)
-        }
+        const restored = draft && JSON.stringify(draft.data) !== JSON.stringify(saved) ? draft : null
+        apply(restored ? restored.data : saved)
+        if (restored) setRestoredAt(restored.at)
+        // A saved visit that was not staged opens with the pictures folded away.
+        setStaging(!vid || (restored ? restored.data : saved).tanner != null)
         setLoaded(true)
       },
       (e: Error) => {
@@ -213,9 +233,12 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
     meds: meds.some((m) => !m.name.trim()) ? 'Name every medicine, or remove the empty one.' : '',
   }
   const invalid = Object.values(errs).some(Boolean)
-  const show = (k: keyof typeof errs) => (tried && errs[k] ? <span className="err">{errs[k]}</span> : null)
+  const bad = (k: keyof typeof errs) => ((tried || seen[k]) && errs[k] ? true : undefined)
+  const show = (k: keyof typeof errs) => (bad(k) ? <span className="err">{errs[k]}</span> : null)
 
   function addMed(item: RxItem) {
+    // One that still needs its dose opens ready to be filled in.
+    if (!item.dose.trim()) setOpenMeds((old) => new Set(old).add(meds.length))
     setMeds((old) => [...old, { name: item.name, dose: item.dose, frequency: item.frequency, route: item.route, duration: item.duration, instructions: item.instructions }])
   }
   // When a medicine is removed or renamed by hand, a template stops claiming it. Otherwise
@@ -224,6 +247,17 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
     setApplied((old) => old.map((a) => ({ ...a, added: a.added.filter((n) => next.some((m) => m.name === n)) })).filter((a) => a.added.length > 0 || (!!a.advice && f.advice === a.advice)))
   function dropMeds(keep: (m: RxItem, i: number) => boolean) {
     const next = meds.filter(keep)
+    // The open ones are remembered by position, so they move up with the list.
+    setOpenMeds((old) => {
+      const moved = new Set<number>()
+      let n = 0
+      meds.forEach((m, i) => {
+        if (!keep(m, i)) return
+        if (old.has(i)) moved.add(n)
+        n++
+      })
+      return moved
+    })
     setMeds(next)
     forget(next)
   }
@@ -251,7 +285,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
     })
   }
   function removeTemplate(a: AppliedTemplate) {
-    setMeds((old) => old.filter((m) => !a.added.includes(m.name)))
+    dropMeds((m) => !a.added.includes(m.name))
     // The advice goes only if it is still exactly what the template put there.
     if (a.advice && f.advice === a.advice) set('advice', '')
     setApplied((old) => old.filter((x) => x.id !== a.id))
@@ -259,6 +293,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
 
   async function saveTemplate() {
     if (!tplName?.trim()) return
+    setTplError('')
     try {
       const existing = templates.find((t) => t.name.toLowerCase() === tplName.trim().toLowerCase())
       const saved = await store.saveTemplate({ id: existing?.id, name: tplName, medicines: meds, advice: f.advice })
@@ -266,7 +301,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
       setNotice(`Template "${saved.name}" ${existing ? 'updated' : 'saved'}.`)
       setTplName(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save the template.')
+      setTplError(e instanceof Error ? e.message : 'Could not save the template.')
     }
   }
 
@@ -279,7 +314,10 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
 
   async function save(thenPrint: boolean) {
     setTried(true)
-    if (invalid) return
+    if (invalid) {
+      setRefused((n) => n + 1)
+      return
+    }
     setBusy(true)
     setError('')
     const input: VisitInput = {
@@ -321,7 +359,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
     }
   }
 
-  if (patient === undefined) return <main className="page muted">Loading…</main>
+  if (patient === undefined) return <PageSkeleton />
   if (patient === null)
     return (
       <main className="page">
@@ -342,28 +380,28 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const sameDay = visits.find((v) => v.id !== vid && v.visit_date === f.date)
   const lastStaged = earlier.find((v) => v.tanner)
   const dH = h != null && lastWithHeight?.height_cm != null ? h - lastWithHeight.height_cm : null
+  const allergy = allergyStatus(patient.allergies)
 
   return (
     <main className="page">
       <div className="row">
         <div className="grow">
-          <h1 style={{ fontSize: 21 }}>
+          <h1 className="sub">
             {vid ? 'Visit' : 'New visit'} · <Link to={`/patients/${id}`}>{patient.name}</Link>
           </h1>
           <div className="muted">
             {formatAge(patient.dob, f.date)} at this visit · {sexLabel(patient.sex)} · <span className="mono">MRN {patient.mrn}</span>
-            {patient.allergies && <> · <strong style={{ color: 'var(--warn-fg)' }}>Allergy: {patient.allergies}</strong></>}
+            {allergy === 'some' && <> · <strong style={{ color: 'var(--danger-fg)' }}>Allergy: {patient.allergies}</strong></>}
           </div>
         </div>
         <label className="field" style={{ flex: '0 1 190px' }}>
           Visit date
-          <DateField value={f.date} max={todayISO()} onChange={(v) => set('date', v)} />
+          <DateField value={f.date} max={todayISO()} onChange={(v) => set('date', v)} invalid={bad('date')} />
           {show('date')}
         </label>
       </div>
 
       {error && <div className="alert">{error}</div>}
-      {notice && <div className="pill ok" role="status">{notice}</div>}
       {restoredAt && (
         <div className="note row" role="status">
           <span className="grow">Unsaved changes from {new Date(restoredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} were brought back. They are not saved yet.</span>
@@ -385,6 +423,32 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') e.preventDefault() }}
       >
         <div className="main">
+          {last && (
+            <section className="card pad">
+              <div className="row">
+                <div className="grow">
+                  <h2>Last visit</h2>
+                  <div className="muted clip" style={{ fontSize: 13 }}>{formatDate(last.visit_date)}{last.assessment && ` · ${last.assessment}`}</div>
+                </div>
+                <button type="button" className="btn small outline" aria-expanded={recap} onClick={() => setRecap(!recap)}>
+                  {recap ? 'Hide notes' : 'Show notes'}
+                </button>
+              </div>
+              {recap && (
+                <dl className="dl recap">
+                  {last.complaint && <><dt>Complaint</dt><dd>{last.complaint}</dd></>}
+                  {last.history && <><dt>History and examination</dt><dd>{last.history}</dd></>}
+                  {last.assessment && <><dt>Assessment</dt><dd>{last.assessment}</dd></>}
+                  {last.plan && <><dt>Plan</dt><dd>{last.plan}</dd></>}
+                  {last.medicines.length > 0 && <><dt>Medicines</dt><dd>{last.medicines.map((m, i) => <div key={i}><strong>{m.name}</strong> {rxLine(m)}</div>)}</dd></>}
+                  {last.investigations.length > 0 && <><dt>Investigations advised</dt><dd>{last.investigations.join(', ')}</dd></>}
+                  {last.advice && <><dt>Advice</dt><dd>{last.advice}</dd></>}
+                  {last.review_date && <><dt>Review was due</dt><dd>{formatDate(last.review_date)}</dd></>}
+                  {!last.complaint && !last.history && !last.assessment && !last.plan && !last.advice && last.medicines.length === 0 && last.investigations.length === 0 && !last.review_date && <><dt>Notes</dt><dd className="muted">Only measurements were recorded.</dd></>}
+                </dl>
+              )}
+            </section>
+          )}
           <section className="card pad">
             <div className="row" style={{ marginBottom: 12 }}>
               <h2 className="grow">Measurements</h2>
@@ -393,17 +457,17 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
               <label className="field">
                 Height (cm)
-                <input className="num" inputMode="decimal" value={f.height} onChange={(e) => set('height', e.target.value)} />
+                <input className="num" inputMode="decimal" value={f.height} onChange={(e) => set('height', e.target.value)} onBlur={() => leave('height')} aria-invalid={bad('height')} />
                 {show('height')}
               </label>
               <label className="field">
                 Weight (kg)
-                <input className="num" inputMode="decimal" value={f.weight} onChange={(e) => set('weight', e.target.value)} />
+                <input className="num" inputMode="decimal" value={f.weight} onChange={(e) => set('weight', e.target.value)} onBlur={() => leave('weight')} aria-invalid={bad('weight')} />
                 {show('weight')}
               </label>
               <label className="field">
                 BP (mmHg)
-                <input className="num" inputMode="numeric" placeholder="102/68" value={f.bp} onChange={(e) => set('bp', e.target.value)} />
+                <input className="num" inputMode="numeric" placeholder="102/68" value={f.bp} onChange={(e) => set('bp', e.target.value)} onBlur={() => leave('bp')} aria-invalid={bad('bp')} />
                 {show('bp')}
               </label>
             </div>
@@ -499,6 +563,11 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               )}
             </div>
 
+            {/* Said again here, where the medicines are chosen: the line under the name scrolls away. */}
+            {allergy === 'some' && <div className="note danger" role="status">Drug allergy: {patient.allergies}</div>}
+            {allergy === 'none' && <div className="muted" style={{ fontSize: 13 }}>No known drug allergy.</div>}
+            {allergy === 'unrecorded' && <div className="note info" role="status">Drug allergies are not recorded for this patient. Ask before prescribing, then add them under Edit on the patient's page.</div>}
+
             {applied.map((a) => {
               const left = a.added.filter((n) => meds.some((m) => m.name === n)).length
               const adviceLeft = !!a.advice && f.advice === a.advice
@@ -525,15 +594,39 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
 
             {meds.map((m, i) => {
               const perKg = dosePerKg(m.dose, w)
+              const fold = (open: boolean) =>
+                setOpenMeds((old) => {
+                  const next = new Set(old)
+                  if (open) next.add(i)
+                  else next.delete(i)
+                  return next
+                })
+              const remove = (
+                <button type="button" className="med-remove" aria-label={`Remove medicine ${i + 1}`} title="Remove this medicine" onClick={() => dropMeds((_, j) => j !== i)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></svg>
+                  <span className="wide-only">Remove</span>
+                </button>
+              )
+              // One line each until opened. A medicine with no name stays open: it has to be named.
+              if (!openMeds.has(i) && m.name.trim())
+                return (
+                  <div className="med med-sum" key={i}>
+                    <span className="med-no" aria-hidden="true">{i + 1}</span>
+                    <div className="grow">
+                      <div className="t">{m.name} {!m.dose.trim() && <span className="flag">Dose not set</span>}</div>
+                      <div className="muted d">{[rxLine(m), m.instructions.trim()].filter(Boolean).join(' · ')}</div>
+                      {perKg && <div className="muted d mono">= {perKg} per dose at {w} kg</div>}
+                    </div>
+                    <button type="button" className="btn small" aria-expanded={false} aria-label={`Edit medicine ${i + 1}, ${m.name}`} onClick={() => fold(true)}>Edit</button>
+                    {remove}
+                  </div>
+                )
               return (
                 <div className="med" key={i}>
                   <div className="med-head">
                     <span className="med-no" aria-hidden="true">{i + 1}</span>
-                    <input aria-label={`Medicine ${i + 1} name`} value={m.name} onChange={(e) => editMed(i, 'name', e.target.value)} />
-                    <button type="button" className="med-remove" aria-label={`Remove medicine ${i + 1}`} title="Remove this medicine" onClick={() => dropMeds((_, j) => j !== i)}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></svg>
-                      <span className="wide-only">Remove</span>
-                    </button>
+                    <input aria-label={`Medicine ${i + 1} name`} value={m.name} onChange={(e) => editMed(i, 'name', e.target.value)} aria-invalid={(tried && !m.name.trim()) || undefined} />
+                    {remove}
                   </div>
                   <div className="med-grid">
                     {RX_FIELDS.map((fd) => (
@@ -544,10 +637,11 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                       </label>
                     ))}
                   </div>
+                  {m.name.trim() && <button type="button" className="btn small" style={{ alignSelf: 'flex-end' }} aria-expanded={true} aria-label={`Done with medicine ${i + 1}, ${m.name}`} onClick={() => fold(false)}>Done</button>}
                 </div>
               )
             })}
-            {tried && errs.meds && <div className="note">{errs.meds}</div>}
+            {tried && errs.meds && <div className="note danger">{errs.meds}</div>}
 
             <MedicinePicker
               catalog={catalog}
@@ -568,18 +662,18 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
               <label htmlFor="review">Review date</label>
               <div className="row" style={{ gap: 8 }}>
                 {[1, 3, 6].map((n) => (
-                  <button type="button" key={n} className="btn small" onClick={() => set('review', addMonths(f.date, n) ?? '')}>
+                  <button type="button" key={n} className="btn small" aria-pressed={!!f.review && f.review === addMonths(f.date, n)} onClick={() => set('review', addMonths(f.date, n) ?? '')}>
                     {n} {n === 1 ? 'month' : 'months'}
                   </button>
                 ))}
-                <DateField id="review" value={f.review} min={f.date} onChange={(v) => set('review', v)} style={{ flex: '1 1 160px' }} />
+                <DateField id="review" value={f.review} min={f.date} onChange={(v) => set('review', v)} invalid={bad('review')} style={{ flex: '1 1 160px' }} />
               </div>
               {show('review')}
             </div>
 
             {tplName === null ? (
               meds.length > 0 && (
-                <button type="button" className="btn small" style={{ alignSelf: 'flex-start' }} onClick={() => { setTplName(''); setNotice('') }}>
+                <button type="button" className="btn small" style={{ alignSelf: 'flex-start' }} onClick={() => { setTplName(''); setNotice(''); setTplError('') }}>
                   Save these medicines as a template
                 </button>
               )
@@ -590,6 +684,8 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                 <button type="button" className="btn small" onClick={() => setTplName(null)}>Cancel</button>
               </div>
             )}
+            {notice && <div className="pill ok" role="status" style={{ alignSelf: 'flex-start' }}>{notice}</div>}
+            {tplError && <div className="alert" role="alert">{tplError}</div>}
           </section>
 
           <InvestigationPicker catalog={testCatalog} panels={panels} value={tests} onChange={setTests} onSavePanel={savePanel} conditions={conditions} patientTagIds={patient.condition_ids} />

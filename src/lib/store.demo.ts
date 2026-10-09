@@ -406,9 +406,17 @@ export function createDemoStore(): Store {
         .filter((r) => r.patient_id === patientId)
         .sort((a, b) => b.result_date.localeCompare(a.result_date) || b.created_at.localeCompare(a.created_at))
     },
-    async saveResult(input: ResultInput) {
-      const saved: Result = { ...input, id: uid(), created_at: new Date().toISOString() }
-      db.results.push(saved)
+    async saveResult(input: ResultInput, id?: string) {
+      let saved: Result
+      if (id) {
+        const old = db.results.find((r) => r.id === id)
+        if (!old) throw new Error('Result not found.')
+        saved = { ...old, ...input }
+        db.results = db.results.map((r) => (r.id === id ? saved : r))
+      } else {
+        saved = { ...input, id: uid(), created_at: new Date().toISOString() }
+        db.results.push(saved)
+      }
       save()
       return saved
     },
