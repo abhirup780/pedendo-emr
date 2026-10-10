@@ -480,7 +480,24 @@ main.narrow { max-width: 860px; }
 .sheet .right { text-align: right; }
 .sheet .letterhead.centred .right { text-align: center; }
 .sheet .lh-left { display: flex; align-items: center; gap: 1.1em; }
-.sheet .lh-logo { max-height: 5em; max-width: 8em; object-fit: contain; }
+.sheet .lh-logo { flex: 0 0 auto; max-height: 5em; max-width: 8em; object-fit: contain; }
+/* Doctor on the left, clinic on the right. The two share the row whenever the doctor's name
+   (with the logo) and the clinic's lines fit side by side. The lines under the name do not
+   count towards that: they are told to claim no width of their own, and wrap under the name
+   if they must. Counting them is what used to push the clinic's lines under the doctor's as
+   soon as there was a logo, or on a small pad. When the two still cannot share the row (a
+   long name, or a long line of the clinic's), the clinic's lines go below whole, and stay at
+   the right-hand margin where they belong; a line is broken only if it is wider than the
+   sheet itself. */
+.sheet .letterhead.split .lh-left { flex: 1 1 auto; }
+.sheet .letterhead.split .lh-left > div { flex: 1 1 auto; min-width: 0; }
+.sheet .letterhead.split .lh-sub { contain: inline-size; }
+.sheet .letterhead.split .right { flex: 0 1 auto; max-width: 100%; margin-left: auto; }
+/* A degree is kept whole where the line allows, so the break falls after a comma; one that is
+   longer than the line breaks into parts of about the same length. */
+.sheet .deg { display: inline-block; text-wrap: balance; }
+/* A name that has to take two lines takes two of about the same length. */
+.sheet .doctor, .sheet .letterhead .right .t { text-wrap: balance; }
 .sheet .who-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.2em 2em; }
 .sheet .vitals { display: flex; flex-wrap: wrap; border: 1px solid #8a979c; border-radius: 6px; }
 .sheet .vitals > div { flex: 1 1 6em; padding: 0.4em 0.7em; border-right: 1px solid #c9d2cf; }

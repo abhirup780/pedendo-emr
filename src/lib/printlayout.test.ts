@@ -1,5 +1,5 @@
 import { describe as group, expect, it } from 'vitest'
-import { blocks, describe, firstPageInnerHeight, normalize, pageCss, PRESETS, SECTIONS, STANDARD } from './printlayout'
+import { blocks, describe, firstPageInnerHeight, normalize, pageCss, PRESETS, qualificationParts, SECTIONS, STANDARD } from './printlayout'
 
 group('presets', () => {
   it('are already in normal form, so saving one changes nothing', () => {
@@ -93,5 +93,23 @@ group('describe', () => {
     expect(describe(PRESETS[3].config)).toBe('A4 · prints letterhead · two columns · 12 pt')
     expect(describe(normalize({ paper: { width: 297, height: 210 } }))).toBe('A4 landscape · prints letterhead · 12 pt')
     expect(describe(normalize({ paper: { width: 120, height: 180 } }))).toBe('120 × 180 mm · prints letterhead · 12 pt')
+  })
+})
+
+group('qualifications on the letterhead', () => {
+  it('are one degree to a piece, each keeping the comma after it', () => {
+    expect(qualificationParts('MD (Pediatrics), DM (Pediatric Endocrinology)')).toEqual(['MD (Pediatrics),', 'DM (Pediatric Endocrinology)'])
+    expect(qualificationParts('MBBS; MD | DNB · FRCPCH')).toEqual(['MBBS;', 'MD |', 'DNB ·', 'FRCPCH'])
+  })
+  it('are not divided at a comma inside brackets', () => {
+    expect(qualificationParts('MD (Pediatrics, Gold Medal), DM [Endocrinology, AIIMS]')).toEqual(['MD (Pediatrics, Gold Medal),', 'DM [Endocrinology, AIIMS]'])
+  })
+  it('stay whole when there is nothing to divide at, and lose only stray spaces', () => {
+    expect(qualificationParts('MD Pediatrics')).toEqual(['MD Pediatrics'])
+    expect(qualificationParts('  MD ,DM,  ')).toEqual(['MD ,', 'DM,'])
+    expect(qualificationParts('')).toEqual([])
+    // A bracket that is never closed must not swallow the rest.
+    expect(qualificationParts('MD (Pediatrics, DM')).toEqual(['MD (Pediatrics, DM'])
+    expect(qualificationParts('MD), DM')).toEqual(['MD),', 'DM'])
   })
 })

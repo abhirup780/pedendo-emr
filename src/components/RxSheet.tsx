@@ -1,9 +1,10 @@
+import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { formatAge, formatDate } from '../lib/age'
 import { allergyStatus } from '../lib/allergy'
 import { bmi, rxLine } from '../lib/clinical'
 import { sexLabel } from '../lib/sex'
-import { blocks, firstPageInnerHeight, preprinted } from '../lib/printlayout'
+import { blocks, firstPageInnerHeight, preprinted, qualificationParts } from '../lib/printlayout'
 import type { PrintConfig, SectionKey } from '../lib/printlayout'
 import { tannerSummary } from '../lib/tanner'
 import type { Clinic, Patient, Visit } from '../lib/types'
@@ -63,8 +64,13 @@ export default function RxSheet({ config: c, patient: p, visit: v, clinic, guide
           {c.letterhead.logo && clinic.logo && <img className="lh-logo" src={clinic.logo} alt="" />}
           <div>
             <h1 className="doctor">{clinic.doctor_name || 'Doctor’s name'}</h1>
-            {clinic.qualifications && <div>{clinic.qualifications}</div>}
-            {clinic.reg_no && <div>Reg. No. {clinic.reg_no}</div>}
+            {/* One degree to a piece: where the line has to break, it breaks after a comma. */}
+            {clinic.qualifications && (
+              <div className="lh-sub">
+                {qualificationParts(clinic.qualifications).map((part, i) => <Fragment key={i}>{i > 0 && ' '}<span className="deg">{part}</span></Fragment>)}
+              </div>
+            )}
+            {clinic.reg_no && <div className="lh-sub">Reg. No. {clinic.reg_no}</div>}
           </div>
         </div>
         <div className="right">
