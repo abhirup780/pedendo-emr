@@ -204,7 +204,7 @@ export default function PatientProfile() {
                   <div className="clip" role="cell" title={v.assessment}>{v.assessment || NONE}</div>
                   <div role="cell">
                     <Link className="rx-link" to={`/patients/${p.id}/visits/${v.id}/print`} title="Open the prescription, to print it">
-                      {v.medicines.length === 0 ? 'Print' : `${v.medicines.length} ${v.medicines.length === 1 ? 'item' : 'items'}`}
+                      Show prescription
                     </Link>
                   </div>
                 </div>

@@ -506,6 +506,15 @@ the single source of truth — commit and push finished work.
   the device. A later change to the starter list goes in the same way, with a new `id`.
   The sample data is kept under a numbered key (`pedendo-demo-v12` in `store.demo.ts`): raise
   the number when the sample data's starting contents change, or the preview keeps the old.
+- **Visit history, the prescription column.** Every row says "Show prescription" and opens
+  that visit's sheet. It used to say "1 item" on a visit with medicines and "Print" on one
+  without, which read as two different things; the owner asked for the same words on all.
+  The column is as wide as those words (116 px, in two places in `styles.css`), so a change
+  of the words is a change of that width. A window of 701 to 760 px closes the columns up a
+  little, so that "Assessment" keeps the width of its own heading. On a phone the date and
+  the link share the first line of the card and the measurements start a line of their own:
+  an empty `::before` on the row is the line break (it is not a child, so the `nth-child`
+  rules are as they were).
 
 ## Build order
 

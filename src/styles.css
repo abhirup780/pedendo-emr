@@ -440,9 +440,10 @@ main.narrow { max-width: 860px; }
 .tabs[data-glide]::after { content: ''; position: absolute; top: 0; left: 0; width: var(--gw); height: 3px; transform: translate(var(--gx), calc(var(--gy) + var(--gh) - 3px)); background: var(--primary); }
 .tabs[data-glide='on']::after { transition: transform var(--calm) var(--ease), width var(--calm) var(--ease); }
 .tabs[data-glide] button[aria-selected='true'] { border-bottom-color: transparent; }
-.vrow { display: grid; grid-template-columns: 112px 70px 86px 82px 56px 78px minmax(150px, 1fr) 76px; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line-soft); }
+/* The last column is as wide as the words "Show prescription", the same on every row. */
+.vrow { display: grid; grid-template-columns: 112px 70px 86px 82px 56px 78px minmax(150px, 1fr) 116px; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line-soft); }
 .vrow.head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
-.vtable { min-width: 850px; }
+.vtable { min-width: 900px; }
 .vrow.head .rx-svg { font-size: 15px; vertical-align: -0.2em; }
 /* The whole row opens the visit (the date's link is stretched over it) and says so with an
    arrow at its end. The prescription link sits above the row, so it still opens the print screen. */
@@ -455,7 +456,7 @@ main.narrow { max-width: 860px; }
 .vrow a.open::after { content: ''; position: absolute; inset: 0; }
 .vrow a.open:focus-visible { outline: 0; }
 .vrow a.open:focus-visible::after { outline: 2px solid var(--primary); outline-offset: -2px; }
-.vrow a.rx-link { position: relative; z-index: 1; display: inline-block; padding: 4px 0; }
+.vrow a.rx-link { position: relative; z-index: 1; display: inline-block; padding: 4px 0; white-space: nowrap; }
 .clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sheet-wrap { padding: 24px 16px 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
@@ -863,13 +864,19 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid var(--line-soft);
   .tr > :nth-child(1) { display: none; }
   .tr .under { display: inline; }
   /* Visit history: the age at a visit is on the visit itself. */
-  .vrow { grid-template-columns: 104px 80px 72px 46px 64px minmax(96px, 1fr) 58px; gap: 10px; padding: 10px 36px 10px 12px; }
+  .vrow { grid-template-columns: 104px 80px 72px 46px 64px minmax(96px, 1fr) 116px; gap: 10px; padding: 10px 36px 10px 12px; }
   .vrow > :nth-child(2) { display: none; }
   /* Growth measurements: the headings wrap, so all nine columns fit. */
   table.preview.measures th { white-space: normal; }
   table.preview.measures th, table.preview.measures td { padding: 8px; }
   /* Patient page: the four buttons take a row of their own, in equal parts. */
   .phead-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* The narrow end of that range (half the screen of a laptop, as a rule): the visit history's
+   columns close up a little, so that "Assessment" still has the width of its own heading
+   beside "Show prescription". */
+@media (min-width: 701px) and (max-width: 760px) {
+  .vrow { grid-template-columns: 104px 78px 70px 44px 62px minmax(84px, 1fr) 116px; gap: 8px; padding-right: 32px; }
 }
 /* ---------- Phones ---------- */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -997,10 +1004,14 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
   .vrow.head { display: none; }
   .vrow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 36px 10px 14px; }
   .vrow:not(.head)::after { right: 16px; }
-  .vrow > :nth-child(1) { flex: 1 1 50%; order: 1; }
+  /* First line: the date, and "Show prescription" at the right. The measurements start a line
+     of their own under them; the empty box before the row is what breaks the line. */
+  .vrow > :nth-child(1) { flex: 1 1 0; order: 1; }
+  .vrow a.open { white-space: nowrap; }
   .vrow > :nth-child(8) { order: 2; margin-left: auto; }
-  .vrow > :nth-child(n + 2):nth-child(-n + 6) { order: 3; }
-  .vrow > :nth-child(7) { order: 4; flex: 1 1 100%; white-space: normal; color: var(--ink-2); }
+  .vrow:not(.head)::before { content: ''; order: 3; flex: 0 0 100%; }
+  .vrow > :nth-child(n + 2):nth-child(-n + 6) { order: 4; }
+  .vrow > :nth-child(7) { order: 5; flex: 1 1 100%; white-space: normal; color: var(--ink-2); }
   .vrow > :nth-child(2) { color: var(--muted); }
   .vrow > :nth-child(5)::before { content: 'BMI '; font-family: 'IBM Plex Sans', sans-serif; color: var(--muted); }
   .vrow a { padding: 9px 0 !important; }
