@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { parseISODate, todayISO } from '../lib/age'
 import { autoSlash, monthCells, MONTH_NAMES, parseTyped, shiftDays, showDate } from '../lib/dateinput'
+import { usePresence } from './hooks'
 
 interface Props {
   /** Stored date, YYYY-MM-DD, or '' for none. */
@@ -26,6 +27,8 @@ const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 export default function DateField({ value, onChange, min, max, id, invalid, style, ...rest }: Props) {
   const [text, setText] = useState(showDate(value))
   const [open, setOpen] = useState(false)
+  // The calendar stays a moment after it is closed, to fade away.
+  const pop = usePresence(open)
   // Where the calendar goes on the screen, worked out from the box when it opens.
   const [place, setPlace] = useState<React.CSSProperties>({})
   const cal = useRef<HTMLDivElement>(null)
@@ -120,12 +123,12 @@ export default function DateField({ value, onChange, min, max, id, invalid, styl
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
       </button>
       {/* Drawn at the top level of the page so nothing (a sticky column, the save bar) can cover or clip it. */}
-      {open && createPortal(<Calendar id={calId} boxRef={cal} place={place} value={value} min={min} max={max} onPick={pick} onClose={() => { setOpen(false); input.current?.focus() }} />, document.body)}
+      {pop.there && createPortal(<Calendar id={calId} boxRef={cal} place={place} leaving={pop.leaving} value={value} min={min} max={max} onPick={pick} onClose={() => { setOpen(false); input.current?.focus() }} />, document.body)}
     </span>
   )
 }
 
-function Calendar({ id, boxRef, place, value, min, max, onPick, onClose }: { id: string; boxRef: React.RefObject<HTMLDivElement | null>; place: React.CSSProperties; value: string; min?: string; max?: string; onPick: (v: string) => void; onClose: () => void }) {
+function Calendar({ id, boxRef, place, leaving, value, min, max, onPick, onClose }: { id: string; boxRef: React.RefObject<HTMLDivElement | null>; place: React.CSSProperties; /** Closed, and fading away. */ leaving: boolean; value: string; min?: string; max?: string; onPick: (v: string) => void; onClose: () => void }) {
   const today = todayISO()
   const clamp = (v: string) => (min && v < min ? min : max && v > max ? max : v)
   // The day the keyboard is on. It starts on the chosen date, or today, kept inside the limits.
@@ -166,7 +169,7 @@ function Calendar({ id, boxRef, place, value, min, max, onPick, onClose }: { id:
 
   return (
     <div
-      className="cal"
+      className={leaving ? 'cal leaving' : 'cal'}
       ref={boxRef}
       style={place}
       id={id}

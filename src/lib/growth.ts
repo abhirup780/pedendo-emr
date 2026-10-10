@@ -183,6 +183,37 @@ export function chartReference(sex: Sex, measure: Measure, ages: number[]): Char
   return { from, to, lines, segments, refs: [...new Set(segments.map((s) => s.ref))] }
 }
 
+export interface ChartBand {
+  /** Positions in `lines` of the lower and the upper line of the band. */
+  from: number
+  to: number
+  /** 'wide' is the band between the outermost solid lines; 'near' is the one about the median. */
+  depth: 'wide' | 'near'
+}
+
+/**
+ * Which pairs of the chart's lines are shaded between. The wide band runs between the two
+ * 'edge' lines (3 and 97 on the IAP height and weight charts, −2 and +2 on a WHO chart) or,
+ * on the BMI chart, from its one 'edge' line (3) up to the first 'cut' line (overweight). The
+ * near band runs between the lines next to the median, where the chart prints one on each
+ * side of it (25 and 75, or −1 and +1); the BMI chart has none above its median.
+ *
+ * Shading only: it adds no line and moves none, and it is drawn from the same numbers as the
+ * lines themselves.
+ */
+export function chartBands(lines: ChartLine[]): ChartBand[] {
+  const out: ChartBand[] = []
+  const edges = lines.flatMap((l, i) => (l.kind === 'edge' ? [i] : []))
+  if (edges.length > 0) {
+    const from = edges[0]
+    const to = edges.length > 1 ? edges[edges.length - 1] : lines.findIndex((l, i) => i > from && l.kind === 'cut')
+    if (to > from) out.push({ from, to, depth: 'wide' })
+  }
+  const mid = lines.findIndex((l) => l.kind === 'mid')
+  if (mid > 0 && mid < lines.length - 1 && lines[mid - 1].kind === 'inner' && lines[mid + 1].kind === 'inner') out.push({ from: mid - 1, to: mid + 1, depth: 'near' })
+  return out
+}
+
 /** Round axis limits and tick step that enclose the data with a little room. */
 export function niceAxis(min: number, max: number, targetTicks = 6): { min: number; max: number; step: number } {
   if (!(max > min)) {

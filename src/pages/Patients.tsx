@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConditionFilter from '../components/ConditionFilter'
 import { useFindKey, useTitle } from '../components/hooks'
+import { Icon } from '../components/Icon'
 import SetupChecklist from '../components/SetupChecklist'
 import { RowsSkeleton } from '../components/Skeleton'
 import { Tag } from '../components/Tag'
@@ -146,7 +147,8 @@ export default function Patients() {
           <input ref={search} type="search" aria-label="Search patients" placeholder="Search name, phone or MRN" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <Link to="/patients/new" className="btn primary" aria-label="New patient">
-          <span>+ New<span className="wide-only"> patient</span></span>
+          <Icon name="plus" />
+          <span>New<span className="wide-only"> patient</span></span>
         </Link>
       </div>
 

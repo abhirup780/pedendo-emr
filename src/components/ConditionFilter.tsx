@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { tagColor } from '../lib/tags'
 import type { Condition } from '../lib/types'
+import { usePresence } from './hooks'
 
 /**
  * The condition filter on the patient list: one button that opens a list with a search box.
@@ -11,6 +12,8 @@ import type { Condition } from '../lib/types'
 export default function ConditionFilter(props: { conditions: Condition[]; counts: Record<string, number>; value: string | null; onChange: (id: string | null) => void; /** What "no condition chosen" is called here. */ all?: string }) {
   const { conditions, counts, value, onChange, all = 'All conditions' } = props
   const [open, setOpen] = useState(false)
+  // The list stays a moment after it is closed, to fade away.
+  const pop = usePresence(open)
   const [q, setQ] = useState('')
   const [at, setAt] = useState(0)
   const wrap = useRef<HTMLDivElement>(null)
@@ -107,8 +110,8 @@ export default function ConditionFilter(props: { conditions: Condition[]; counts
           </svg>
         </button>
       )}
-      {open && (
-        <div className="cond-pop">
+      {pop.there && (
+        <div className={pop.leaving ? 'cond-pop leaving' : 'cond-pop'}>
           <input
             type="text"
             role="combobox"

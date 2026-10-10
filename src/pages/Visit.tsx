@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import Fold from '../components/Fold'
+import { Icon, RxMark } from '../components/Icon'
 import InvestigationPicker from '../components/InvestigationPicker'
 import MedicinePicker from '../components/MedicinePicker'
+import { Figure, Qty, SdsScale } from '../components/Qty'
 import Results from '../components/Results'
 import { PageSkeleton } from '../components/Skeleton'
 import { useTitle } from '../components/hooks'
@@ -16,6 +19,7 @@ import { dropDraft, readDraft, saveDraft } from '../lib/device'
 import { refSex, sexLabel } from '../lib/sex'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
+import { toast } from '../lib/toast'
 import type { Condition, Investigation, Medicine, Panel, Patient, RxItem, RxTemplate, Tanner, Visit, VisitInput } from '../lib/types'
 import { NONE } from '../lib/text'
 import DateField from '../components/DateField'
@@ -343,6 +347,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
       const saved = await store.saveVisit(input, vid)
       dropDraft(draftKey)
       baseline.current = current
+      toast('Visit saved.')
       nav(thenPrint ? `/patients/${id}/visits/${saved.id}/print` : `/patients/${id}`, { replace: !vid })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save the visit.')
@@ -355,6 +360,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
     try {
       await store.deleteVisit(vid)
       dropDraft(draftKey)
+      toast('Visit deleted.')
       nav(`/patients/${id}`, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not delete the visit.')
@@ -382,6 +388,8 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
   const sameDay = visits.find((v) => v.id !== vid && v.visit_date === f.date)
   const lastStaged = earlier.find((v) => v.tanner)
   const dH = h != null && lastWithHeight?.height_cm != null ? h - lastWithHeight.height_cm : null
+  const since = dH == null ? '' : `${dH >= 0 ? '+' : '−'}${Math.abs(dH).toFixed(1)}`
+  const heightSds = both && (both.m != null || both.f != null) ? `${sdsText(both.m)} / ${sdsText(both.f)}` : sdsText(z.height)
   const allergy = allergyStatus(patient.allergies)
 
   return (
@@ -429,15 +437,15 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
             <section className="card pad">
               <div className="row">
                 <div className="grow">
-                  <h2>Last visit</h2>
+                  <h2 className="ic"><Icon name="clock" size={18} />Last visit</h2>
                   <div className="muted clip sm">{formatDate(last.visit_date)}{last.assessment && ` · ${last.assessment}`}</div>
                 </div>
                 <button type="button" className="btn small outline" aria-expanded={recap} onClick={() => setRecap(!recap)}>
                   {recap ? 'Hide notes' : 'Show notes'}
                 </button>
               </div>
-              {recap && (
-                <dl className="dl recap reveal">
+              <Fold open={recap}>
+                <dl className="dl recap">
                   {last.complaint && <><dt>Complaint</dt><dd>{last.complaint}</dd></>}
                   {last.history && <><dt>History and examination</dt><dd>{last.history}</dd></>}
                   {last.assessment && <><dt>Assessment</dt><dd>{last.assessment}</dd></>}
@@ -448,12 +456,12 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                   {last.review_date && <><dt>Review was due</dt><dd>{formatDate(last.review_date)}</dd></>}
                   {!last.complaint && !last.history && !last.assessment && !last.plan && !last.advice && last.medicines.length === 0 && last.investigations.length === 0 && !last.review_date && <><dt>Notes</dt><dd className="muted">Only measurements were recorded.</dd></>}
                 </dl>
-              )}
+              </Fold>
             </section>
           )}
           <section className="card pad">
             <div className="row" style={{ marginBottom: 12 }}>
-              <h2 className="grow">Measurements</h2>
+              <h2 className="grow ic"><Icon name="ruler" size={18} />Measurements</h2>
               {last && <span className="muted sm">Last visit {formatDate(last.visit_date)}</span>}
             </div>
             <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
@@ -473,35 +481,36 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                 {show('bp')}
               </label>
             </div>
+            {/* Each figure is washed with colour for a moment when it changes, so the eye finds what moved. */}
             <div className="calc cols4">
-              <div>
+              <Figure of={heightSds}>
                 <div className="k">Height SDS · calculated</div>
-                <div className="v">{both && (both.m != null || both.f != null) ? `${sdsText(both.m)} / ${sdsText(both.f)}` : sdsText(z.height)}</div>
+                <div className="v scaled"><span>{heightSds}</span>{!both && <SdsScale z={z.height} />}</div>
                 <div className="k">{h == null ? 'enter a height' : both ? (both.m != null || both.f != null ? 'sex not assigned: as a boy / as a girl' : ageDays == null ? 'check the visit date' : noReferenceReason('height', ageDays)) : heightRef ? `${REFS[heightRef.ref].short}${heightRef.posture === 'length' ? ' · length, lying down' : ''}` : ageDays == null ? 'check the visit date' : noReferenceReason('height', ageDays)}</div>
-              </div>
-              <div>
+              </Figure>
+              <Figure of={b == null ? '' : String(b)}>
                 <div className="k">BMI · calculated</div>
-                <div className="v">{b ?? NONE}</div>
-                <div className="k">kg/m²{z.bmi == null ? '' : ` · SDS ${sdsText(z.bmi)}`}</div>
-              </div>
-              <div>
+                <div className="v">{b == null ? NONE : <Qty v={b} u="kg/m²" />}</div>
+                <div className="k">{b == null ? 'enter a height and a weight' : z.bmi != null ? `SDS ${sdsText(z.bmi)}` : !rs ? 'sex not assigned' : ageDays == null ? 'check the visit date' : noReferenceReason('bmi', ageDays)}</div>
+              </Figure>
+              <Figure of={velocity ? velocity.cmPerYear.toFixed(1) : ''}>
                 <div className="k">Height velocity · calculated</div>
-                <div className="v">{velocity ? velocity.cmPerYear.toFixed(1) : NONE}</div>
-                <div className="k">{velocity ? `cm/yr since ${formatDate(velocity.fromDate)} (${velocity.fromHeight} cm)` : 'needs a height at least 3 months earlier'}</div>
-              </div>
-              <div>
+                <div className="v">{velocity ? <Qty v={velocity.cmPerYear.toFixed(1)} u="cm/yr" /> : NONE}</div>
+                <div className="k">{velocity ? `since ${formatDate(velocity.fromDate)} (${velocity.fromHeight} cm)` : 'needs a height at least 3 months earlier'}</div>
+              </Figure>
+              <Figure of={since}>
                 <div className="k">Since last height</div>
-                <div className="v">{dH == null ? NONE : `${dH >= 0 ? '+' : '−'}${Math.abs(dH).toFixed(1)}`}</div>
-                <div className="k">{lastWithHeight ? `cm · was ${lastWithHeight.height_cm} on ${formatDate(lastWithHeight.visit_date)}` : 'no earlier height'}</div>
-              </div>
+                <div className="v">{dH == null ? NONE : <Qty v={since} u="cm" />}</div>
+                <div className="k">{lastWithHeight ? `was ${lastWithHeight.height_cm} cm on ${formatDate(lastWithHeight.visit_date)}` : 'no earlier height'}</div>
+              </Figure>
             </div>
             {shrank && <div className="note" style={{ marginTop: 12 }}>This height is lower than the {lastWithHeight!.height_cm} cm recorded on {formatDate(lastWithHeight!.visit_date)}. Please re-check the measurement.</div>}
           </section>
 
-          <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <section className="card pad">
             <div className="row">
               <div className="grow">
-                <h2>Puberty</h2>
+                <h2 className="ic"><Icon name="stages" size={18} />Puberty</h2>
                 <div className="muted sm">
                   {tanner ? <span className="mono" style={{ color: 'var(--ink)' }}>{tannerSummary(tanner, patient.sex)}</span> : 'Not staged at this visit'}
                   {lastStaged && <> · last {tannerSummary(lastStaged.tanner, patient.sex)} on {formatDate(lastStaged.visit_date)}</>}
@@ -514,11 +523,13 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                 {staging ? 'Hide staging' : 'Show staging'}
               </button>
             </div>
-            {staging && <TannerPicker value={tanner} onChange={setTanner} sex={patient.sex} ageYears={decimalAge(patient.dob, f.date)} />}
+            <Fold open={staging} gap={14}>
+              <TannerPicker value={tanner} onChange={setTanner} sex={patient.sex} ageYears={decimalAge(patient.dob, f.date)} />
+            </Fold>
           </section>
 
           <section className="card pad">
-            <h2 style={{ marginBottom: 12 }}>Clinical notes</h2>
+            <h2 className="ic" style={{ marginBottom: 12 }}><Icon name="notes" size={18} />Clinical notes</h2>
             <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
               <label className="field">
                 Chief complaint
@@ -549,7 +560,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
         <div className="side follow" ref={setSide}>
           <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="row">
-              <h2 className="grow">Prescription</h2>
+              <h2 className="grow ic"><RxMark />Prescription</h2>
               {last && last.medicines.length > 0 && (
                 <button type="button" className="btn small" onClick={() => setMeds((old) => [...old, ...last.medicines.filter((m) => !old.some((o) => o.name === m.name)).map((m) => ({ ...m }))])}>
                   Copy from {formatDate(last.visit_date)}
@@ -610,36 +621,45 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                 </button>
               )
               // One line each until opened. A medicine with no name stays open: it has to be named.
-              if (!openMeds.has(i) && m.name.trim())
-                return (
-                  <div className="med med-sum" key={i}>
-                    <span className="med-no" aria-hidden="true">{i + 1}</span>
-                    <div className="grow">
-                      <div className="t">{m.name} {!m.dose.trim() && <span className="flag">Dose not set</span>}</div>
-                      <div className="muted d">{[rxLine(m), m.instructions.trim()].filter(Boolean).join(' · ')}</div>
-                      {perKg && <div className="muted d mono">= {perKg} per dose at {w} kg</div>}
-                    </div>
-                    <button type="button" className="btn small" aria-expanded={false} aria-label={`Edit medicine ${i + 1}, ${m.name}`} onClick={() => fold(true)}>Edit</button>
-                    {remove}
-                  </div>
-                )
+              const editing = openMeds.has(i) || !m.name.trim()
               return (
-                <div className="med" key={i}>
-                  <div className="med-head">
-                    <span className="med-no" aria-hidden="true">{i + 1}</span>
-                    <input aria-label={`Medicine ${i + 1} name`} value={m.name} onChange={(e) => editMed(i, 'name', e.target.value)} aria-invalid={(tried && !m.name.trim()) || undefined} />
-                    {remove}
-                  </div>
-                  <div className="med-grid">
-                    {RX_FIELDS.map((fd) => (
-                      <label className="field" key={fd.key} style={fd.wide ? { gridColumn: '1 / -1' } : undefined}>
-                        {fd.label}
-                        <input value={m[fd.key]} onChange={(e) => editMed(i, fd.key, e.target.value)} />
-                        {fd.key === 'dose' && perKg && <span className="hint mono">= {perKg} per dose at {w} kg</span>}
-                      </label>
-                    ))}
-                  </div>
-                  {m.name.trim() && <button type="button" className="btn small" style={{ alignSelf: 'flex-end' }} aria-expanded={true} aria-label={`Done with medicine ${i + 1}, ${m.name}`} onClick={() => fold(false)}>Done</button>}
+                <div className={editing ? 'med' : 'med med-sum'} key={i}>
+                  {editing ? (
+                    <div className="med-head">
+                      <span className="med-no" aria-hidden="true">{i + 1}</span>
+                      <input aria-label={`Medicine ${i + 1} name`} value={m.name} onChange={(e) => editMed(i, 'name', e.target.value)} aria-invalid={(tried && !m.name.trim()) || undefined} />
+                      {remove}
+                    </div>
+                  ) : (
+                    <>
+                      <span className="med-no" aria-hidden="true">{i + 1}</span>
+                      <div className="t">{m.name} {!m.dose.trim() && <span className="flag">Dose not set</span>}</div>
+                      <button type="button" className="btn small" aria-expanded={false} aria-label={`Edit medicine ${i + 1}, ${m.name}`} onClick={() => fold(true)}>Edit</button>
+                      {remove}
+                    </>
+                  )}
+                  {/* Two things fold, one against the other, so that nothing below jumps: the directions
+                      under the name fold away as the boxes that edit them slide open, and come back as they shut. */}
+                  <Fold open={!editing} className="lines">
+                    <div className="med-lines muted">
+                      <div>{[rxLine(m), m.instructions.trim()].filter(Boolean).join(' · ')}</div>
+                      {perKg && <div className="mono">= {perKg} per dose at {w} kg</div>}
+                    </div>
+                  </Fold>
+                  <Fold open={editing}>
+                    <div className="med-body">
+                      <div className="med-grid">
+                        {RX_FIELDS.map((fd) => (
+                          <label className="field" key={fd.key} style={fd.wide ? { gridColumn: '1 / -1' } : undefined}>
+                            {fd.label}
+                            <input value={m[fd.key]} onChange={(e) => editMed(i, fd.key, e.target.value)} />
+                            {fd.key === 'dose' && perKg && <span className="hint mono">= {perKg} per dose at {w} kg</span>}
+                          </label>
+                        ))}
+                      </div>
+                      {m.name.trim() && <button type="button" className="btn small" style={{ alignSelf: 'flex-end' }} aria-expanded={true} aria-label={`Done with medicine ${i + 1}, ${m.name}`} onClick={() => fold(false)}>Done</button>}
+                    </div>
+                  </Fold>
                 </div>
               )
             })}
@@ -709,7 +729,7 @@ function VisitScreen({ id, vid }: { id: string; vid: string | undefined }) {
                 {busy ? 'Saving…' : <><span className="wide-only">Save visit</span><span className="narrow-only">Save</span></>}
               </button>
               <button type="button" className="btn primary" disabled={busy} onClick={() => void save(true)}>
-                <span className="wide-only">Save and open prescription</span><span className="narrow-only">Save and open ℞</span>
+                <span className="wide-only">Save and open prescription</span><span className="narrow-only">Save and open <RxMark /></span>
               </button>
             </div>
             {/* Whose visit is being saved: the name at the top has scrolled away by now. */}

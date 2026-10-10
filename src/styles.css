@@ -40,6 +40,9 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --quick: 120ms;
   --calm: 180ms;
+  /* The two things that take longer, once each: the growth chart drawing itself, and the wash
+     of colour over a figure that has changed. */
+  --once: 480ms;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 /* The app is light only. Scrollbars are coloured here so that a device in dark mode, or a page
@@ -80,10 +83,58 @@ input, select, textarea, .search, .picker-box, .find-box { transition: border-co
 .cond-pop, .find-pop, .quick, .cal { animation: drop var(--quick) var(--ease); }
 dialog[open] { animation: rise var(--calm) var(--ease); }
 dialog[open]::backdrop { animation: fade var(--calm) var(--ease); }
-/* Something folded away that has just been opened. */
-.reveal { animation: fade var(--calm) var(--ease); }
+/* Going away. A window that is closed fades and sinks first (softClose in components/hooks.ts);
+   a list or the calendar fades and lifts (usePresence, there, keeps it on the page that long). */
+@keyframes sink { to { opacity: 0; transform: translateY(6px); } }
+@keyframes lift { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes fade-out { to { opacity: 0; } }
+dialog[open].closing { animation: sink var(--quick) var(--ease) forwards; }
+dialog[open].closing::backdrop { animation: fade-out var(--quick) var(--ease) forwards; }
+.cond-pop.leaving, .cal.leaving { animation: lift var(--quick) var(--ease) forwards; pointer-events: none; }
+/* Something that folds away (components/Fold.tsx): the row it stands in grows from nothing to
+   the height of what is in it, and back again. */
+.fold { display: grid; grid-template-rows: 0fr; min-width: 0; opacity: 0; transition: grid-template-rows var(--calm) var(--ease), opacity var(--calm) var(--ease); }
+.fold.open { grid-template-rows: 1fr; opacity: 1; }
+/* Clipped, not scrolled: a box that takes the keyboard while its fold is still shut must not
+   scroll the rest of the fold out of sight. */
+.fold > .fold-in { min-width: 0; min-height: 0; overflow: hidden; overflow: clip; }
+/* Once it is open nothing is clipped, so a focus ring at its edge shows whole. */
+.fold.still > .fold-in { overflow: visible; }
+/* A short word that something was done (components/Toast.tsx), at the foot of the screen for a
+   few seconds. Nothing on it can be pressed, so it keeps no button from being reached. */
+.toast-slot { position: fixed; z-index: 70; left: 0; right: 0; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
+.toast { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: 44px; padding: 0 18px 0 14px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 500; box-shadow: var(--shadow-pop); animation: rise var(--calm) var(--ease); }
+.toast .ico { color: var(--mint); }
+.toast.leaving { animation: sink var(--quick) var(--ease) forwards; }
+/* Changing the measure on the growth screen cross-fades the picture (crossFade in
+   components/hooks.ts) over the same 180 ms as --calm. The control that was pressed is left
+   out of the fade (.vt-live), so that its pill is seen to slide. */
+::view-transition-old(root), ::view-transition-new(root), ::view-transition-group(live) { animation-duration: 180ms; }
+.vt-live { view-transition-name: live; }
+::view-transition-old(live) { display: none; }
+::view-transition-new(live) { animation: none; }
 /* Text a size down from the page's own: the second line of a row, a hint. */
 .sm { font-size: 13px; }
+/* A unit after its number (Qty in components/Qty.tsx): smaller and grey, in the plain face even
+   where the number is in the mono one. */
+.u { font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+/* The small pictures (components/Icon.tsx). In the heading of a card they take the accent colour. */
+.ico { flex: 0 0 auto; }
+h2.ic { display: flex; align-items: center; gap: 8px; }
+h2.ic > .ico, h2.ic > .rx-svg { color: var(--primary); }
+/* The prescription mark, drawn (RxMark, there): as tall as the words it stands among. */
+.rx-svg { flex: 0 0 auto; width: 0.75em; height: 1em; vertical-align: -0.12em; }
+h2.ic > .rx-svg { width: 14px; height: 18px; margin: 0 2px; }
+/* Where an SDS falls from −3 to +3 (SdsScale in components/Qty.tsx): a line, a mark at each
+   whole SD with a taller one at 0, and a dot. No colour: it says where, not whether that is
+   good. An SDS beyond either end is an arrowhead at that end. */
+.sds { position: relative; flex: 1 1 56px; min-width: 48px; max-width: 120px; height: 14px; display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+.sds::before { content: ''; position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; margin-top: -0.5px; background: var(--line-strong); }
+.sds i { position: relative; width: 1px; height: 6px; background: var(--line-heavy); }
+.sds i.zero { height: 12px; background: var(--ink-2); }
+.sds b { position: absolute; top: 50%; left: calc(4.5px + (100% - 9px) * var(--at)); width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px var(--surface-2); transition: left var(--calm) var(--ease); }
+.sds b.low, .sds b.high { width: 8px; height: 10px; margin: -5px 0 0 -4px; border-radius: 0; box-shadow: none; clip-path: polygon(0 50%, 100% 0, 100% 100%); }
+.sds b.high { clip-path: polygon(100% 50%, 0 0, 0 100%); }
 
 .demo-banner { background: var(--warn-bg); color: var(--warn-fg); padding: 8px 24px; font-weight: 500; text-align: center; }
 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 28px; padding: 6px 24px; background: var(--nav); color: #fff; }
@@ -94,7 +145,9 @@ dialog[open]::backdrop { animation: fade var(--calm) var(--ease); }
 .wordmark span { font-weight: 500; color: var(--mint); }
 .brand .wordmark { font-size: 18px; }
 .topnav { display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto; }
-.topnav a { padding: 12px 14px; border-radius: 6px; color: var(--nav-fg); text-decoration: none; }
+.topnav a { display: inline-flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 6px; color: var(--nav-fg); text-decoration: none; }
+/* The menu's pictures show only where the header has room for them (the laptop rule near the end). */
+.topnav .ico { display: none; }
 .topnav a:hover { color: #fff; }
 .topnav a.active { background: var(--nav-active); color: #fff; font-weight: 500; }
 .who { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; color: var(--nav-fg); font-size: 13px; }
@@ -137,6 +190,8 @@ main.narrow { max-width: 860px; }
 .btn.danger { border-color: var(--danger-line); color: var(--danger-fg); }
 .btn.small { min-height: 36px; padding: 0 12px; font-size: 13px; }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+/* A picture before the word sits a little closer to the button's edge than the word would. */
+.btn > .ico:first-child { margin-left: -2px; }
 /* A quiet button: for the lesser things that can be done to a row, so that the row's one main
    button stands out. The one that removes something turns red only when it is pointed at. */
 .btn.quiet { border-color: transparent; background: transparent; color: var(--primary); }
@@ -208,7 +263,6 @@ main.narrow { max-width: 860px; }
 .sk-row { display: flex; justify-content: space-between; gap: 16px; padding: 16px; border-bottom: 1px solid var(--line-soft); }
 .sk-row:last-child { border-bottom: 0; }
 @keyframes sk { from { background-position: 200% 0; } to { background-position: 0 0; } }
-@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
 .empty { padding: 36px 16px; text-align: center; color: var(--muted); }
 /* The three growth lines of the AuxoEMR mark, faint, over the words of an empty list. */
 .empty::before { content: ''; display: block; width: 30px; height: 30px; margin: 0 auto 10px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9b6b5' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M3 20.5C10 19.6 16.4 13.4 21 3.5' opacity='.5'/%3E%3Cpath d='M3 20.5C11 21 16.8 19.6 21 16.8' opacity='.5'/%3E%3Cpath d='M3 20.5C10.6 20.4 16.5 16.6 21 10'/%3E%3C/svg%3E") center / contain no-repeat; }
@@ -254,10 +308,15 @@ main.narrow { max-width: 860px; }
 .field input[aria-invalid='true'], .med-head input[aria-invalid='true'] { border-color: var(--danger-line); }
 .field .err { color: var(--danger-fg); font-weight: 500; }
 .field .hint { color: var(--muted); }
-.seg { max-width: 100%; display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; align-self: flex-start; }
+.seg { position: relative; max-width: 100%; display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; overflow: hidden; align-self: flex-start; }
 .seg button { min-height: 44px; min-width: 72px; padding: 0 16px; border: 0; background: #fff; font-weight: 500; white-space: nowrap; }
 .seg button + button { border-left: 1px solid var(--line-strong); }
 .seg button[aria-pressed='true'] { background: var(--ink); color: #fff; }
+/* The dark pill slides to the choice made. components/Glide.tsx measures where that is and says
+   so with data-glide; until it has, the chosen button is dark by itself, as above. */
+.seg[data-glide]::before { content: ''; position: absolute; top: 0; left: 0; width: var(--gw); height: var(--gh); transform: translate(var(--gx), var(--gy)); background: var(--ink); }
+.seg[data-glide='on']::before { transition: transform var(--calm) var(--ease), width var(--calm) var(--ease); }
+.seg[data-glide] button { position: relative; background: transparent; }
 /* Three voices: .alert is something that went wrong (red), .note is a caution (amber),
    .note.info is plain information (grey). */
 .alert { padding: 10px 14px; border-radius: 8px; background: var(--danger-bg); color: var(--danger-fg); font-weight: 500; }
@@ -280,7 +339,12 @@ main.narrow { max-width: 860px; }
 .swatch-btn .dot { width: 20px; height: 20px; border-radius: 50%; }
 .palette { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
 .tag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 16px; border-bottom: 1px solid var(--line-soft); }
+/* Settings, Investigations: what has changed in the starter list since the doctor took it, with the offer to follow. */
+.starter-news { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--primary-wash); font-size: 13px; }
+.starter-news .t { font-size: 14px; font-weight: 600; }
 .tag-row input[type='text'] { min-height: 40px; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; flex: 1 1 200px; min-width: 0; font-size: 15px; }
+/* What folds open under a row (a tag's colours) takes a line of its own; shut, it takes no room at all, not even the row's gap. */
+.tag-row > .fold { flex: 1 1 100%; margin-top: -10px; }
 
 .login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .login .card { max-width: 420px; width: 100%; padding: 32px; display: flex; flex-direction: column; gap: 16px; }
@@ -321,6 +385,8 @@ main.narrow { max-width: 860px; }
 .calc .k { font-size: 12px; color: var(--muted); }
 .calc .v { font-family: var(--mono); font-size: 18px; font-weight: 500; }
 .calc .v.warn { color: var(--warn-fg); }
+/* An SDS with its place on the scale beside it; under it, where the tile is too narrow for both. */
+.calc .v.scaled { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .calc > .wide { grid-column: 1 / -1; }
 /* Four figures: four across where each has 150 px, otherwise two and two; never three and one,
    which leaves a grey hole. (The middle value of the clamp is hugely negative on a wide box and
@@ -332,16 +398,22 @@ main.narrow { max-width: 860px; }
 .note { padding: 8px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-fg); font-size: 13px; font-weight: 500; }
 .note.info { background: var(--info-bg); color: var(--info-fg); font-weight: 400; }
 .note.danger { background: var(--danger-bg); color: var(--danger-fg); }
-.med { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.med { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; }
+/* A medicine's boxes, which slide open under its name: the space above them is theirs, so it opens with them. */
+.med-body { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
 .med-head { display: flex; align-items: flex-start; gap: 10px; }
 /* A medicine folded to one line; "Edit" opens it out again. */
 .med.med-sum { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; gap: 2px 10px; padding: 8px 8px 10px 12px; }
 .med-sum .med-no { grid-area: 1 / 1; margin-top: 0; }
 /* The name shares its line with the two buttons; the directions run the full width under it. */
-.med-sum > .grow { display: contents; }
 .med-sum .t { grid-area: 1 / 2; font-weight: 600; overflow-wrap: anywhere; }
-.med-sum .d { grid-column: 2 / -1; font-size: 13px; overflow-wrap: anywhere; }
-.med-sum .btn.small, .med > .btn.small { min-height: 44px; }
+.med-lines { font-size: 13px; overflow-wrap: anywhere; }
+.med-sum .btn.small, .med-body > .btn.small { min-height: 44px; }
+/* The two things that fold in a medicine: its directions, under the name (they fold away while
+   it is being edited, and stay under where the name was), and the boxes that edit it. */
+.med-sum > .fold { grid-column: 1 / -1; }
+.med-sum > .fold.lines { grid-column: 2 / -1; }
+.med:not(.med-sum) > .fold.lines { margin-left: 36px; }
 .med-sum > .btn.small { grid-area: 1 / 3; }
 .med-sum .med-remove { grid-area: 1 / 4; width: 44px; padding: 0; justify-content: center; }
 .med-sum .med-remove span { display: none; }
@@ -361,12 +433,17 @@ main.narrow { max-width: 860px; }
 .suggest { display: flex; flex-wrap: wrap; gap: 6px; }
 .suggest button { min-height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); font-size: 13px; text-align: left; }
 .suggest button:hover { border-color: var(--primary); }
-.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+.tabs { position: relative; display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
 .tabs button { min-height: 44px; padding: 0 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--ink-2); }
 .tabs button[aria-selected='true'] { color: var(--primary); font-weight: 600; border-bottom-color: var(--primary); }
+/* The line under the chosen tab slides to it, the same way as the pill of a segmented control. */
+.tabs[data-glide]::after { content: ''; position: absolute; top: 0; left: 0; width: var(--gw); height: 3px; transform: translate(var(--gx), calc(var(--gy) + var(--gh) - 3px)); background: var(--primary); }
+.tabs[data-glide='on']::after { transition: transform var(--calm) var(--ease), width var(--calm) var(--ease); }
+.tabs[data-glide] button[aria-selected='true'] { border-bottom-color: transparent; }
 .vrow { display: grid; grid-template-columns: 112px 70px 86px 82px 56px 78px minmax(150px, 1fr) 76px; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line-soft); }
 .vrow.head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
 .vtable { min-width: 850px; }
+.vrow.head .rx-svg { font-size: 15px; vertical-align: -0.2em; }
 /* The whole row opens the visit (the date's link is stretched over it) and says so with an
    arrow at its end. The prescription link sits above the row, so it still opens the print screen. */
 .vrow { padding-right: 40px; }
@@ -409,7 +486,12 @@ main.narrow { max-width: 860px; }
 .sheet .vitals > div:last-child { border-right: 0; }
 .sheet .vitals-inline { display: flex; flex-wrap: wrap; gap: 0.1em 1.4em; }
 .sheet .rx { display: flex; gap: 1em; }
-.sheet .rx-mark { font-size: 3em; line-height: 1; color: var(--accent); flex: 0 0 1.05em; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'Arial Unicode MS', serif; }
+/* The mark is drawn (RxMark in components/Icon.tsx), not typed, so it is the same on every device and in every print. */
+.sheet .rx-mark { font-size: 3em; line-height: 1; color: var(--accent); flex: 0 0 1.05em; }
+/* As big as the letter it replaces. Its top is level with the capitals of the first medicine's
+   name, whatever the layout's line spacing (--lh; a capital of the text face starts 0.327em
+   under the top of a line 1.3em high, and the mark's own em is three of the text's). */
+.sheet .rx-mark .rx-svg { display: block; width: 0.565em; height: 0.75em; margin-top: calc((var(--lh, 1.4) - 1.3) / 6 * 1em + 0.109em); }
 .sheet .rx-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.75em; margin: 0; padding: 0; list-style: none; }
 .sheet .rx-list.compact { gap: 0.3em; }
 .sheet .rx-list li { break-inside: avoid; }
@@ -427,8 +509,30 @@ main.narrow { max-width: 860px; }
 .sheet .cols .side .vitals > div { flex-basis: 100%; border-right: 0; border-bottom: 1px solid #c9d2cf; }
 .sheet .cols .side .vitals > div:last-child { border-bottom: 0; }
 .sheet .cols .side .vitals-inline { flex-direction: column; }
-.sheet .preprint { position: absolute; left: 0; right: 0; top: 0; height: var(--mt); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; font-size: 12px; color: #44545b; background: repeating-linear-gradient(135deg, #eceFee 0 10px, #f7f9f8 10px 20px); border-bottom: 1px dashed #8a979c; }
-.sheet.guides::before { content: ''; position: absolute; top: var(--mt); right: var(--mr); bottom: var(--mb); left: var(--ml); border: 1px dashed #b4500b; pointer-events: none; }
+.sheet .preprint, .rx-page > .preprint { position: absolute; left: 0; right: 0; top: 0; height: var(--mt); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; font-size: 12px; color: #44545b; background: repeating-linear-gradient(135deg, #eceFee 0 10px, #f7f9f8 10px 20px); border-bottom: 1px dashed #8a979c; }
+.sheet.guides::before, .rx-page.guides::before { content: ''; position: absolute; top: var(--mt); right: var(--mr); bottom: var(--mb); left: var(--ml); border: 1px dashed #b4500b; pointer-events: none; }
+
+/* The prescription as the pages it prints on (components/RxPages.tsx). Each page is a window
+   onto one column of the sheet, which the browser breaks into columns by the rules it breaks
+   it into pages by. The sheet inside has no paper of its own: the page around it is the paper,
+   and carries that page's margins as --mt, --mr, --mb and --ml. */
+.rx-pages { display: flex; flex-direction: column; gap: 16px; }
+/* "Page 2 of 2" over each page; as big as the words of the screen however far the paper is shrunk to fit. */
+.rx-cap { margin: 0 0 calc(6px / var(--z, 1)) calc(2px / var(--z, 1)); font-size: calc(13px / var(--z, 1)); color: var(--muted); }
+/* The paper's edge is a shadow, not a border, so that the page keeps its true width. */
+.rx-page { position: relative; overflow: hidden; background: #fff; color: #14242b; box-shadow: 0 0 0 1px var(--line); }
+.rx-page.guides::before { z-index: 1; }
+.rx-window { position: absolute; top: var(--mt); left: var(--ml); right: var(--mr); overflow: hidden; }
+.rx-flow { column-count: 1; column-gap: 0; column-fill: auto; }
+.rx-flow > .sheet { width: auto; max-width: none; min-height: var(--inner-h); padding: 0; border: 0; background: none; }
+.rx-flow > .sheet.flow { min-height: 0; }
+.rx-flow .preprint { display: none; }
+/* As in print (below): these are never split between two pages. */
+.rx-flow .sheet .block, .rx-flow .sheet .vitals, .rx-flow .sheet .review { break-inside: avoid; }
+/* Where the print writes "Page 1 of 2": in the foot margin, at the right. */
+.rx-pageno { position: absolute; right: var(--mr); bottom: 0; height: var(--mb); display: flex; align-items: center; font-family: 'IBM Plex Sans', sans-serif; font-size: 8pt; color: #55656c; }
+/* The sheet that actually prints: out of sight until printing. */
+.rx-print { display: none; }
 
 /* The page size and margins are written by the print layout (see pageCss) into a <style>
    element beside the sheet. The margin belongs to the page, not the sheet, so a prescription
@@ -442,6 +546,7 @@ main.narrow { max-width: 860px; }
   .sheet { border: 0; max-width: none; width: auto; padding: 0; min-height: var(--inner-h); }
   .sheet.flow { min-height: 0; }
   .sheet.guides::before { top: 0; right: 0; bottom: 0; left: 0; }
+  .rx-print { display: block; }
   .sheet .block, .sheet .rx-list li, .sheet .vitals, .sheet .review { break-inside: avoid; }
 }
 
@@ -635,8 +740,26 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid var(--line-soft);
 .gc-handover { stroke: #8a979c; stroke-width: 1; stroke-dasharray: 2 3; }
 .gc-line { fill: none; stroke: #b4500b; stroke-width: 2; stroke-linejoin: round; }
 .gc-dot { fill: #b4500b; stroke: #fff; stroke-width: 2; }
-.gc-goal { stroke: var(--primary); stroke-width: 5; stroke-linecap: round; opacity: 0.45; }
-.gc-goal.mid { stroke-width: 2; opacity: 1; }
+/* Soft shading between published lines (chartBands in lib/growth.ts): it adds no line and moves none. */
+.gc-band { fill: rgb(11 93 102 / 0.05); stroke: none; }
+.gc-band.near { fill: rgb(11 93 102 / 0.06); }
+/* The latest measurement stands in a soft ring, so that it is found at once. */
+.gc-halo { fill: rgb(180 80 11 / 0.14); }
+.gc-unit { font-size: 11px; font-weight: 400; fill: #55656c; }
+/* The mid-parental target: a soft band over its range at 18 years, a line across the middle of it. */
+.gc-goal { fill: rgb(11 93 102 / 0.16); stroke: rgb(11 93 102 / 0.45); stroke-width: 1; }
+.gc-goal.mid { fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round; }
+/* The chart draws itself when the screen opens, and again each time another measure is chosen
+   (GrowthChart sets .draw for a second each time): the published lines and their shading fade in, the child's own line is drawn from
+   the first visit to the latest, and each measurement appears as the line reaches it. Where
+   less motion is asked for, everything is simply there. (The gap in the dash is twice the
+   line, so that no speck of the next dash shows at the far end before the line gets there.) */
+@keyframes gc-draw { from { stroke-dashoffset: 1; } }
+@keyframes gc-pop { from { opacity: 0; transform: scale(0.3); } }
+.gc.draw .gc-ref { animation: fade 240ms var(--ease) both; }
+.gc.draw .gc-line { stroke-dasharray: 1 2; animation: gc-draw var(--once) var(--ease) 120ms both; }
+.gc.draw .gc-dot, .gc.draw .gc-halo { transform-box: fill-box; transform-origin: center; animation: gc-pop var(--calm) var(--ease) both; }
+.gc.draw .gc-label.now { animation: fade var(--calm) var(--ease) 560ms both; }
 .gc-label.goal { fill: var(--primary-dark); font-size: 12px; }
 /* One sheet over the whole drawing takes the pointer and finds the nearest measurement, so
    visits that sit close together can still be told apart; the circles are for the keyboard. */
@@ -646,6 +769,7 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid var(--line-soft);
 .gc-hit:focus-visible { stroke: var(--primary); stroke-width: 2; }
 .gc-label { fill: #14242b; font-size: 13px; font-weight: 600; paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
 .gc-tip { position: absolute; transform: translate(-50%, calc(-100% - 12px)); padding: 6px 10px; border-radius: 6px; background: #14242b; color: #fff; font-size: 13px; white-space: nowrap; pointer-events: none; z-index: 2; }
+.gc-tip .u { color: inherit; opacity: 0.8; }
 
 /* Follow-up tiles on the patient list */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
@@ -670,8 +794,24 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid var(--line-soft);
 .pl-card { display: flex; flex-direction: column; gap: 12px; }
 .pl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .pl-side { position: sticky; top: 12px; align-self: flex-start; max-height: calc(100vh - 24px); overflow: auto; }
-.pl-preview { border: 1px solid var(--line); border-radius: 8px; background: #dfe4e2; padding: 10px; overflow: hidden; }
+/* The preview is a window onto the pages, as a browser's print preview is. Beside the form the
+   panel is no taller than the window, so where the pages need more room than it has they
+   scroll inside this box, and the buttons under it stay where they are. (Left to itself the
+   box shrank and cut the pages off, with no way to reach the rest.) Room for its scrollbar is
+   kept at both sides whether there is one or not: the pages are sized by the width of the
+   box, and a scrollbar that came and went would change that width, and with it the height of
+   the pages, back and forth without end. The scrollbar is darker than the app's others, to
+   show on the grey. */
+.pl-preview { flex: 0 1 auto; min-height: 200px; border: 1px solid var(--line); border-radius: 8px; background: #dfe4e2; padding: 14px 10px; overflow: hidden auto; scrollbar-gutter: stable both-edges; scrollbar-width: thin; scrollbar-color: var(--line-heavy) transparent; }
+@supports not (scrollbar-gutter: stable) { .pl-preview { overflow-y: scroll; } }
+.pl-preview::-webkit-scrollbar, .pl-preview::-webkit-scrollbar-corner { background: transparent; }
+.pl-preview::-webkit-scrollbar-thumb { background: var(--line-heavy); border-color: #dfe4e2; }
+.pl-preview:focus-visible { outline-offset: -2px; }
 .pl-preview .sheet { max-width: none; box-shadow: 0 1px 4px rgb(0 0 0 / 0.18); }
+.pl-preview .rx-page { box-shadow: 0 1px 4px rgb(0 0 0 / 0.18); }
+/* The page is the paper and has the shadow; the sheet flowing inside it has none (its own
+   would show as a line under the last thing on the last page). */
+.pl-preview .rx-flow > .sheet { box-shadow: none; }
 .pl-sections { list-style: none; margin: 0; padding: 0; }
 .pl-sections li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 0; border-top: 1px solid var(--line-soft); }
 .pl-sections li.off .t { color: var(--muted); font-weight: 400; }
@@ -696,6 +836,7 @@ table.preview td { padding: 8px 12px; border-bottom: 1px solid var(--line-soft);
   .topbar { flex-wrap: nowrap; }
   .topnav { flex: 1 0 auto; flex-wrap: nowrap; }
 }
+@media (min-width: 1181px) { .topnav .ico { display: block; } }
 /* Patient search on a tablet or phone: the header has no room for the box beside the menu, so
    it is a button there, and the box opens under the header. */
 @media (max-width: 1020px) {
@@ -759,7 +900,8 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
 .fit-zoom .sheet { max-width: none; }
 @media screen { .fit-zoom { zoom: var(--z, 1); } }
 @media print { .fit, .fit-zoom { display: block; width: auto !important; } }
-.pl-preview.fit { justify-content: flex-start; }
+/* Not stretched to the height of the box: the pages keep their own height, and the box scrolls. */
+.pl-preview.fit { justify-content: flex-start; align-items: flex-start; }
 
 @media (max-width: 700px) {
   .wide-only { display: none; }
@@ -796,11 +938,19 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
   .rspark:empty { display: none; }
   .rhist { padding-left: 14px; padding-right: 14px; }
 
-  /* Rows of chips and tabs scroll sideways instead of stacking five deep. */
-  .chip-scroll, .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-  .chip-scroll::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
-  .chip-scroll > *, .tabs > * { flex: 0 0 auto; white-space: nowrap; }
-  .chip-scroll { margin-right: -14px; padding-right: 14px; flex-basis: 100%; }
+  /* On a touch screen the Settings tabs are one row that is swiped sideways, and the row fades
+     at whichever end has more to come (data-more, from components/Glide.tsx). With a mouse
+     there is nothing to swipe with: in a narrow window the tabs wrap onto more rows instead,
+     as they do in a wider one, so that no tab is ever out of reach. */
+  @media (pointer: coarse) {
+    .chip-scroll, .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .chip-scroll::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
+    .chip-scroll > *, .tabs > * { flex: 0 0 auto; white-space: nowrap; }
+    .chip-scroll { margin-right: -14px; padding-right: 14px; flex-basis: 100%; }
+    .tabs[data-more='right'] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+    .tabs[data-more='left'] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
+    .tabs[data-more='both'] { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+  }
   /* Condition filter: its own full-width row, the list as wide as the button. */
   .cond-label { display: none; }
   .cond-slot { flex-basis: 100%; }
@@ -944,18 +1094,38 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
   .vbar { gap: 8px; }
   .vbar .whose { font-size: 13px; }
   .cal { animation-name: rise; }
+  .cal.leaving { animation-name: sink; }
   .vbar .save { flex: 1 1 0; min-width: 0; gap: 8px; }
   .vbar .save .btn { flex: 1 1 auto; min-width: 0; padding: 0 10px; }
   .vbar .del .btn { padding: 0 12px; }
   .vbar .del.asking { flex: 1 1 100%; justify-content: flex-end; font-size: 14px; }
   .actions .alert { padding: 8px 12px; font-size: 13px; }
 
-  /* Print layout editor: the preview opens over the form. */
+  /* Print layout editor: the preview is not on the screen until it is asked for, then opens
+     over the form. (`.cols > .side` sets `display` with two classes, so one class here would
+     lose to it; for a long time it did, and the panel was also drawn at the foot of the form.) */
   .pl-mobile-bar { display: flex; }
-  .pl-side { display: none; }
+  .cols > .pl-side { display: none; }
   .cols:has(.pl-side.open) .pl-mobile-bar { display: none; }
-  .pl-side.open { display: flex; position: fixed; inset: 0; height: 100vh; height: 100dvh; z-index: 20; max-height: none; overflow: auto; background: var(--bg); padding: calc(12px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .cols > .pl-side.open { display: flex; position: fixed; inset: 0; height: 100vh; height: 100dvh; z-index: 20; max-height: none; overflow: auto; background: var(--bg); padding: calc(12px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  /* The bar under the form: Cancel, Preview, Save, on one line down to the narrowest phone. */
+  .pl-mobile-bar .row { flex-wrap: nowrap; gap: 10px; }
+  .pl-mobile-bar .btn { min-width: 0; padding: 0 12px; }
+  /* Under the open preview the two ways of saving share the line. */
+  .pl-side.open .row.end .btn { flex: 1 1 auto; }
+  /* A swipe that reaches the last page stops there; it does not go on to move the form underneath. */
+  .pl-side.open .pl-preview { overscroll-behavior: contain; }
   .sheet-wrap { padding: 14px 12px 28px; }
+}
+
+/* Narrower than 360 px (a small phone, or a window squeezed that far) the header's menu takes a
+   row of its own under the name, so that none of its three links is cut off. */
+@media (max-width: 359px) {
+  .topbar { flex-wrap: wrap; }
+  .brand { margin-right: auto; }
+  .brand-text { display: block; }
+  .topnav { order: 3; flex: 1 1 100%; overflow: visible; }
+  .topnav a { flex: 1 1 auto; justify-content: center; }
 }
 
 /* Any touch screen, tablets included: 16px fields, so tapping one never zooms the page. */
@@ -975,7 +1145,11 @@ a, button, input, select, textarea, label, [role='switch'] { touch-action: manip
   .cal { width: 344px; }
 }
 
-/* Less motion, for anyone whose device asks for it: nothing slides, fades or shimmers. */
+/* Less motion. Where the device asks for it nothing slides, fades or shimmers, unless the doctor
+   has chosen "On" under Settings, This device; and nothing does anywhere once "Off" is chosen
+   there. The choice is data-motion on the page (lib/device.ts); lessMotion() in
+   components/hooks.ts says the same to the few things that are moved by script. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition: none !important; animation: none !important; }
+  :root:not([data-motion='on']) *, :root:not([data-motion='on']) *::before, :root:not([data-motion='on']) *::after, :root:not([data-motion='on']) *::backdrop { transition: none !important; animation: none !important; }
 }
+:root[data-motion='off'] *, :root[data-motion='off'] *::before, :root[data-motion='off'] *::after, :root[data-motion='off'] *::backdrop { transition: none !important; animation: none !important; }

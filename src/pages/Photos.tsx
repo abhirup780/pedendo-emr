@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTitle } from '../components/hooks'
+import { softClose, useTitle } from '../components/hooks'
 import type { ChangeEvent } from 'react'
 import { PageSkeleton } from '../components/Skeleton'
 import { Link, useParams } from 'react-router-dom'
@@ -55,6 +55,10 @@ function Viewer({ photos, at, caption, onMove, onClose }: { photos: Photo[]; at:
       className="ph-view"
       aria-label="Photograph, full screen"
       onClose={onClose}
+      onCancel={(e) => {
+        e.preventDefault()
+        softClose(ref.current)
+      }}
       onKeyDown={(e) => {
         if (e.key === 'ArrowLeft' && at > 0) onMove(at - 1)
         if (e.key === 'ArrowRight' && at < last) onMove(at + 1)
@@ -66,7 +70,7 @@ function Viewer({ photos, at, caption, onMove, onClose }: { photos: Photo[]; at:
           <div className="mono" style={{ fontSize: 12.5, opacity: 0.8 }}>{caption(photo)}</div>
         </div>
         {photos.length > 1 && <span className="mono sm">{at + 1} / {photos.length}</span>}
-        <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+        <button type="button" className="icon-btn" aria-label="Close" onClick={() => softClose(ref.current)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
       </div>

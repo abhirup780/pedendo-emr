@@ -252,6 +252,14 @@ export function firstPageInnerHeight(c: PrintConfig): number {
   return Math.max(20, c.paper.height - c.margin.top - c.margin.bottom - 3)
 }
 
+/**
+ * True for paper that carries its own letterhead: the app prints none, and the top of the
+ * first page is left clear for it.
+ */
+export function preprinted(c: PrintConfig): boolean {
+  return !c.sections.find((s) => s.key === 'letterhead')?.show && c.margin.top >= 20
+}
+
 export function describe(c: PrintConfig): string {
   const size = PAPERS.find((p) => Math.abs(p.width - c.paper.width) < 0.6 && Math.abs(p.height - c.paper.height) < 0.6)?.name ?? PAPERS.find((p) => Math.abs(p.height - c.paper.width) < 0.6 && Math.abs(p.width - c.paper.height) < 0.6)?.name.concat(' landscape') ?? `${c.paper.width} × ${c.paper.height} mm`
   const head = c.sections.find((s) => s.key === 'letterhead')?.show ? 'prints letterhead' : 'pre-printed paper'

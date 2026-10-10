@@ -5,10 +5,13 @@ import PrintLayouts from './PrintLayouts'
 import SignInSettings from './SignInSettings'
 import { store } from '../lib/store'
 import { EMPTY_RX } from '../lib/clinical'
-import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../lib/device'
+import { deviceAsksLessMotion, hiddenReminders, hideReminder, IDLE_CHOICES, idleMinutes, MOTION_CHOICES, motionChoice, setIdleMinutes, setMotionChoice } from '../lib/device'
 import { smallImageDataUrl } from '../lib/image'
-import { categoryOrder, STARTER_INVESTIGATIONS, STARTER_PANELS, starterPanelTags } from '../lib/investigations'
+import { categoryOrder, STARTER_CHANGES, STARTER_INVESTIGATIONS, STARTER_PANELS, starterChangesFor, starterPanelTags } from '../lib/investigations'
 import { STARTER_MEDICINES } from '../lib/medicines'
+import Fold from '../components/Fold'
+import Glide from '../components/Glide'
+import { Icon } from '../components/Icon'
 import { RowsSkeleton } from '../components/Skeleton'
 import { Swatches, TagChip } from '../components/Tag'
 import { useTitle } from '../components/hooks'
@@ -120,11 +123,11 @@ function ConditionTags() {
                 Delete
               </button>
             )}
-            {paletteId === c.id && (
-              <div className="palette reveal">
+            <Fold open={paletteId === c.id} gap={10}>
+              <div className="palette">
                 <Swatches value={c.color} label={`Colour of ${c.name}`} onChange={(col) => { setPaletteId(null); void run(() => store.saveCondition({ id: c.id, name: c.name, color: col })) }} />
               </div>
-            )}
+            </Fold>
           </div>
         ))}
 
@@ -326,10 +329,10 @@ function Medicines() {
               <input type="search" aria-label="Find a medicine in your list" placeholder="Find a medicine" value={q} onChange={(e) => setQ(e.target.value)} />
             </label>
           )}
-          {!adding && <button type="button" className="btn small primary" onClick={() => open()}>+ Add a medicine</button>}
+          {!adding && <button type="button" className="btn small primary" onClick={() => open()}><Icon name="plus" size={14} />Add a medicine</button>}
         </div>
-        {adding && (
-          <form ref={form} className="inline-form reveal" onSubmit={submit}>
+        <Fold open={adding}>
+          <form ref={form} className="inline-form" onSubmit={submit}>
             <h3 className="t-title wide">{draft.id ? 'Change this medicine' : 'Add a medicine'}</h3>
             {MED_FIELDS.map((fd) => (
               <label key={fd.key} className={fd.wide ? 'field wide' : 'field'}>
@@ -342,7 +345,7 @@ function Medicines() {
               <button type="submit" className="btn small primary" disabled={!draft.name.trim()}>{draft.id ? 'Save changes' : 'Add to my list'}</button>
             </div>
           </form>
-        )}
+        </Fold>
         {list === null && <RowsSkeleton rows={4} />}
         {list && list.length === 0 && <div className="empty">No medicines yet. Add your own with "Add a medicine", or begin with the starter list and edit it.</div>}
         {list && list.length > 0 && shown.length === 0 && <div className="empty">No medicine in your list matches "{q.trim()}".</div>}
@@ -424,6 +427,8 @@ function Investigations() {
   const [q, setQ] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
   const [error, setError] = useState('')
+  // The offer to follow a change in the starter list, until it is taken or put away on this device.
+  const [newsHidden, setNewsHidden] = useState(() => hiddenReminders().includes(STARTER_CHANGES.id))
 
   async function reload() {
     try {
@@ -460,6 +465,7 @@ function Investigations() {
   const cats = categoryOrder((list ?? []).map((i) => i.category))
   const words = q.trim().toLowerCase()
   const match = (i: Investigation) => !words || i.name.toLowerCase().includes(words)
+  const news = starterChangesFor(list ?? [])
 
   return (
     <>
@@ -490,6 +496,29 @@ function Investigations() {
             </label>
           )}
         </div>
+        {/* The starter list has changed since this list was taken from it. The list is the doctor's own, so it is offered, not done. */}
+        {!newsHidden && (news.add.length > 0 || news.remove.length > 0) && (
+          <div className="starter-news" role="status">
+            <div className="grow">
+              <div className="t">The starter list has changed since you took it.</div>
+              {news.add.length > 0 && <div><span className="muted">New:</span> {news.add.map((i) => i.name).join(' · ')}</div>}
+              {news.remove.length > 0 && <div><span className="muted">Dropped, as it names no genes:</span> {news.remove.map((i) => i.name).join(' · ')}</div>}
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              {news.add.length > 0 && (
+                <button type="button" className="btn small primary" onClick={() => run(async () => { for (const i of news.add) await store.saveInvestigation(i) })}>
+                  {news.add.length === 1 ? 'Add it to my list' : `Add these ${news.add.length} to my list`}
+                </button>
+              )}
+              {news.remove.length > 0 && (
+                <button type="button" className="btn small" onClick={() => run(async () => { for (const i of news.remove) await store.deleteInvestigation(i.id) })}>
+                  Remove {news.remove.length === 1 ? 'it' : 'them'} from my list
+                </button>
+              )}
+              <button type="button" className="btn small quiet" onClick={() => { hideReminder(STARTER_CHANGES.id); setNewsHidden(true) }}>Not now</button>
+            </div>
+          </div>
+        )}
         {/* Adding one is at the top, so it is reached without scrolling past the whole list. */}
         <form className="tag-row" onSubmit={submit}>
           <input type="text" aria-label="New investigation name" placeholder="New investigation" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
@@ -575,6 +604,8 @@ function Investigations() {
 
 function ThisDevice() {
   const [idle, setIdle] = useState(idleMinutes())
+  const [motion, setMotion] = useState(motionChoice())
+  const asksLess = deviceAsksLessMotion()
   return (
     <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
@@ -583,14 +614,33 @@ function ThisDevice() {
       </div>
       <div className="field">
         <span id="idle-label">Sign out automatically when the app has not been touched for</span>
-        <div className="seg" role="group" aria-labelledby="idle-label">
+        <Glide className="seg" role="group" aria-labelledby="idle-label">
           {IDLE_CHOICES.map((n) => (
             <button type="button" key={n} aria-pressed={idle === n} onClick={() => { setIdleMinutes(n); setIdle(n) }}>
               {n === 0 ? 'Never' : `${n} min`}
             </button>
           ))}
-        </div>
+        </Glide>
         <span className="hint">{idle === 0 ? 'Not recommended on a shared or clinic computer.' : 'Unsaved visit notes are kept in the tab and come back after signing in again.'}</span>
+      </div>
+      <div className="field">
+        <span id="motion-label">Movement: lists and windows that slide open, the growth chart drawing itself</span>
+        <Glide className="seg" role="group" aria-labelledby="motion-label">
+          {MOTION_CHOICES.map((m) => (
+            <button type="button" key={m.key} aria-pressed={motion === m.key} onClick={() => { setMotionChoice(m.key); setMotion(m.key) }}>
+              {m.label}
+            </button>
+          ))}
+        </Glide>
+        <span className="hint">
+          {motion === 'on'
+            ? 'Things move, briefly, whatever this device asks.'
+            : motion === 'off'
+              ? 'Nothing slides, fades or draws itself.'
+              : asksLess
+                ? 'Automatic follows this device, and this device asks for less movement (on Windows that is "Animation effects" switched off), so nothing moves here. Choose On to see it all the same.'
+                : 'Automatic follows this device, which allows movement. A device that asks for less gets none.'}
+        </span>
       </div>
     </section>
   )
@@ -616,13 +666,13 @@ export default function Settings() {
   return (
     <main className="page">
       <h1>Settings</h1>
-      <div className="tabs" role="tablist">
+      <Glide className="tabs" role="tablist">
         {TABS.map((t) => (
           <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
         ))}
-      </div>
+      </Glide>
       {TABS.find((t) => t.key === tab)?.el}
       {/* Required by the drawings' licence; shown here only, on every Settings tab. */}
       <p className="muted" style={{ fontSize: 12.5, margin: '4px 2px 0' }}>

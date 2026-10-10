@@ -289,12 +289,14 @@ the single source of truth — commit and push finished work.
   (`min-width: 701px` and `max-width: 1020px`), a phone (`max-width: 700px`), and
   `@media (pointer: coarse)` for any touch screen: 16px form fields (smaller text makes iPhones
   and iPads zoom the page when a field is tapped) and 44 px controls. See "Polish round".
-- On a phone: the header is one row; the patient list and visit history turn from table rows
-  into cards by CSS grid areas (cell order in the markup matters: check `nth-child` rules
-  before adding a column); chip rows and tabs scroll sideways; `.actions` bars stick to the
+- On a phone: the header is one row (two under 360 px, see "Second pages and narrow windows");
+  the patient list and visit history turn from table rows into cards by CSS grid areas (cell
+  order in the markup matters: check `nth-child` rules before adding a column); on a touch
+  screen the Settings tabs scroll sideways, with a mouse they wrap; `.actions` bars stick to the
   foot of long forms (the visit screen's bar, `.vbar`, sticks on every screen size: delete on
-  the left, the two save buttons on the right, short labels on a phone); the investigation browse window fills the screen; the print layout editor's preview
-  opens as a full-screen panel.
+  the left, the two save buttons on the right, short labels on a phone); the investigation browse window fills the screen; the print layout editor has a bar of
+  its own under the form (Cancel, Preview, Save layout) and its preview opens over the form as
+  a full-screen panel (see "Second pages and narrow windows").
 - `components/FitSheet.tsx` shrinks a prescription sheet as a whole to fit the screen (CSS
   `zoom`), so the phone preview is the true layout; `@media print` cancels the shrink. A PDF
   printed from a phone-sized window was pixel-identical to one from a desktop window.
@@ -334,8 +336,8 @@ the single source of truth — commit and push finished work.
   added without a dose opens ready to fill. The Tanner pictures open on a new visit and on a
   staged one, and stay folded on a saved visit that was not staged. "Last visit" is a folded
   card at the top of the left column.
-- The height chart marks the mid-parental target as a bar at 18 years, only on a chart that
-  runs to 18. `components/Skeleton.tsx` stands in for screens and lists while they load.
+- The height chart marks the mid-parental target at 18 years (a soft band over its range),
+  only on a chart that runs to 18. `components/Skeleton.tsx` stands in for screens and lists while they load.
 - `npm run build:preview` sets its variables the Unix way and does not run from a Windows
   prompt; run it from Git Bash.
 
@@ -348,9 +350,9 @@ the single source of truth — commit and push finished work.
   corners are 4, 6, 8, 10, 12 or 14 px, or 999px for a pill. `.sm` is 13px text; use it rather
   than an inline `fontSize`.
 - **Movement** is in one block near the top of `styles.css`: colour, border and shadow ease in
-  over `--quick`, a pressed button dips a pixel, lists and windows that open rise in
-  (`.reveal` for something unfolded). The last rule in the file switches all of it off for
-  `prefers-reduced-motion`. The switch's knob slides with `transform`.
+  over `--quick`, a pressed button dips a pixel, lists and windows that open rise in. The last
+  rules in the file switch all of it off where the device asks for less motion, unless the
+  doctor has chosen otherwise (see the next round). The switch's knob slides with `transform`.
 - **Buttons.** A row has one outlined or filled button at most; the lesser things are
   `.btn.quiet`, and `.btn.quiet.danger` turns red only when pointed at (the confirm step is
   still a red button). `.btn.more` is a button that opens what is under it.
@@ -383,6 +385,127 @@ the single source of truth — commit and push finished work.
 - **Touch.** Anything pressed is at least 44 px on a phone and on any touch screen: one block
   of rules, repeated in the phone and the `pointer: coarse` blocks.
 - An empty list carries the mark, faint, over its words (`.empty::before`).
+
+## Animation and graphics round
+
+- **Whether things move is the doctor's choice, per device**: Settings, This device,
+  "Movement" (Automatic, On, Off; `motionChoice` in `src/lib/device.ts`, put on `<html>` as
+  `data-motion` before the app is drawn). Automatic follows the device. A Windows computer
+  with "Animation effects" switched off asks every site for less motion, and many clinic
+  computers are set that way only to save effort: on those nothing moves until "On" is chosen.
+  Everything the stylesheet moves obeys the two rules at its end; the few things moved by
+  script ask `lessMotion()` in `components/hooks.ts`. The preview build starts as "On", so
+  that the movement can be judged there.
+- **Lengths.** `--quick` (120 ms) and `--calm` (180 ms) as before. `--once` (480 ms) is for
+  the two things that take longer, once each: the growth chart drawing itself, and the wash of
+  colour over a figure that has changed. Nothing counts up, bounces or delays typing.
+- **`Fold`** (`components/Fold.tsx`) is anything that folds away: the staging pictures, the
+  last visit's notes, a test's earlier results, the forms that enter a result or a medicine, a
+  tag's colours. It slides by `grid-template-rows` from 0fr to 1fr, is taken off the page once
+  shut, and what starts open is simply there. Space above it goes in its `gap`, never on the
+  parent, or that space appears all at once. A medicine on the visit has two folds working
+  against each other (its directions fold away as its boxes slide open), so nothing below it
+  jumps when "Edit" or "Done" is pressed.
+- **`Glide`** (`components/Glide.tsx`) wraps every `.seg` and the Settings `.tabs`: it
+  measures the chosen button, and the stylesheet slides the dark pill, or the line under the
+  tab, to it. Before it has measured, the chosen button carries the mark itself. In a row
+  that scrolls sideways it keeps the chosen button in sight.
+- **Going away.** A `<dialog>` is closed with `softClose(dialog)`, not `dialog.close()`, and
+  Escape goes the same way (`onCancel`). The calendar and the condition list stay on the page
+  for 120 ms after they are closed (`usePresence`), with the class `leaving`.
+- **Saying that something was done**: `toast('Visit saved.')` from `src/lib/toast.ts`.
+  `components/Toast.tsx` lives in `Shell`, so the words show at the foot of whichever screen
+  comes next. Used when a visit or a patient is saved or deleted. Not for errors: those stay
+  beside the control they are about.
+- **Calculated figures** on the visit are `Figure` cells (`components/Qty.tsx`): a cell is
+  washed with colour for a moment when its figure changes, never when the screen opens.
+- **Numbers lead, units follow.** `<Qty v={118.7} u="cm" />` writes the unit small and grey,
+  after a space that does not break: tiles, the visit history, results, the chart's label.
+- **SDS marker** (`SdsScale`, same file): a line from −3 to +3 with a dot, beside an SDS that
+  is a tile's main figure. Position only: it must never gain colours or bands that judge.
+- **Icons** are in `components/Icon.tsx`: one set drawn one way (24 by 24, lines 2 wide,
+  round ends), beside a word and never instead of one. In the menu they show from 1181 px up;
+  below that the header has no room. `RxMark`, in the same file, is the prescription mark as
+  a drawing: on the sheet (so it is the same on every device and in every print), in the
+  heading of the visit history and on the phone's save button. In running words the letter ℞
+  is still typed.
+- **Growth chart.** It draws itself when the screen opens, and again each time another
+  measure is chosen (`.gc.draw` for a second each time; the `<svg>` is keyed by the measure,
+  so each drawing starts from nothing): the published lines and their shading fade in, the
+  child's line is drawn from the first visit to the latest, and each measurement appears as
+  the line reaches it (`easeTime`). The owner asked for the drawing on every measure, not
+  only the first. Changing the measure also cross-fades the rest of the screen (`crossFade`:
+  the View Transitions API, a plain change where a browser lacks it). `chartBands` in `src/lib/growth.ts` (unit-tested)
+  says which published lines are shaded between: 3 to 97 and 25 to 75; −2 to +2 and −1 to +1
+  on a WHO chart; 3 to the overweight line on the BMI chart. Shading adds no line and moves
+  none, and the note under the chart names the lines. The mid-parental target is a soft band.
+- **Checking movement.** A browser gives a hidden tab no frames: transitions stand still,
+  view transitions are skipped and a dialog's `close` event waits until the tab is seen. To
+  check a transition without watching it, list `document.getAnimations()` and set each
+  one's `currentTime`.
+
+## Second pages and narrow windows
+
+- **A prescription is shown as the pages it prints on** (`components/RxPages.tsx`), on the
+  print screen, the sample page and the layout editor's preview: when it runs past the foot
+  of a page, the next page is drawn under it, with that page's own top margin, the margin
+  guides and "Page 2 of 2" where the print writes it. The print screen also says how many
+  pages there are. It works by asking the browser to break the same sheet into columns, each
+  as wide and as tall as a page's printable area, and showing one column per page; the first
+  column is made shorter (or longer) than the rest by a block at its head, since only the top
+  margin differs between the first page and the others. The sheet that goes to the printer is
+  a separate `RxSheet` kept out of sight on screen (`.rx-print`), exactly as it was, so
+  nothing about printing changed. Where a browser will not break the sheet into columns
+  (`breaksIntoColumns`) the old single long sheet is shown.
+- **The layout editor's preview is a box that scrolls** (`.pl-preview`), as a browser's print
+  preview does. Beside the form the panel is no taller than the window, so pages that need
+  more room than it has scroll inside the box, and the save buttons under it stay where they
+  are; on a phone the same happens inside the full-screen panel. Before this the box shrank
+  to fit and cut the pages off with no way to reach the rest (a flex item that hides its
+  overflow shrinks without limit), so a second page could not be seen at all. The box keeps
+  room for its scrollbar at both sides at all times (`scrollbar-gutter: stable both-edges`):
+  the pages are sized by the box's width, and a scrollbar that came and went would change
+  that width and make them flicker. The keyboard reaches the box (`FitSheet`'s `label`), and
+  the line over it says how many pages there are. `FitSheet` measures itself before the
+  first painting, so a sheet is never seen at full size for a frame and then shrunk.
+- **To check that a page shows, do not count the pages.** They were all in the document while
+  the second could not be seen. Scroll only what a person can scroll (a box whose overflow is
+  `auto` or `scroll`, and the window; never one that hides its overflow, though a script can
+  move that too) and ask `document.elementFromPoint` what is drawn just inside each page's
+  corners, at several window heights and on a phone.
+- **The layout editor on a phone.** Cancel is in the bar under the form, beside Preview and
+  Save layout, and not in the open preview: there it read as "close the preview" and left
+  the editor instead, losing the changes ("Back to editing" closes the preview; the two ways
+  of saving stay under it). The preview panel is not drawn until it is opened. For a long
+  time it was also drawn at the foot of the form, with a "Back to editing" button that did
+  nothing there: `.cols > .side` sets `display` with two classes, so the rule that hides the
+  panel needs as many (`.cols > .pl-side`). Because the panel is out of the document until
+  then, the preview inside is made anew when it opens (`key`), so that it is measured in the
+  room it really has. The list of layouts and the editor take turns on one page with no
+  change of address, so `PrintLayouts` scrolls to the top when one replaces the other;
+  without that, Cancel or Save from the foot of the form showed the foot of the list.
+- The preview was checked against real prints, and must be again after any change to the
+  sheet or its breaking rules: with Playwright, print a prescription of 14 medicines to PDF
+  (`page.pdf(prefer_css_page_size=True)`) in several layouts (plain A4, a pre-printed pad
+  with a deeper first top margin, A5, two columns, a later top margin deeper than the first,
+  three pages, signature not at the foot) and compare, page by page, which medicines and
+  sections `pdftotext` finds with what each on-screen page shows. They matched in every one.
+  The rules that keep a block whole (`break-inside: avoid`) are written twice in `styles.css`,
+  once for print and once under `.rx-flow`: change both together.
+- **Nothing in a menu may go out of reach in a narrow window.** With a mouse the Settings
+  tabs wrap onto more rows at any width (a row that scrolls sideways has no scrollbar and a
+  mouse cannot swipe it); only on a touch screen (`pointer: coarse`) are they one swiped row,
+  and there the row fades at whichever end has more to come (`data-more`, set by `Glide`).
+  Under 360 px the header's three links take a row of their own under the name.
+- **Starter investigations** changed in October 2026 at the owner's request: whole exome
+  sequencing and nine MLPA tests in, "Targeted gene panel" out (it names no genes; "Clinical
+  exome sequencing" and the named panels stay). A list a doctor has already taken is theirs
+  and is never altered for them: `STARTER_CHANGES` and `starterChangesFor` in
+  `src/lib/investigations.ts` let Settings, Investigations say what is new and what was
+  dropped and offer to add the one and remove the other, until that is done or put away on
+  the device. A later change to the starter list goes in the same way, with a new `id`.
+  The sample data is kept under a numbered key (`pedendo-demo-v12` in `store.demo.ts`): raise
+  the number when the sample data's starting contents change, or the preview keeps the old.
 
 ## Build order
 

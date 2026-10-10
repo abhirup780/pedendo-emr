@@ -50,7 +50,7 @@ export default function TannerPicker({ value, onChange, sex, ageYears }: { value
   const summary = tannerSummary(value, sex)
 
   return (
-    <div className="reveal" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {sex === 'U' && (
         <div className="muted sm">Sex is not yet assigned, so the stages are listed without the boy and girl drawings.</div>
       )}

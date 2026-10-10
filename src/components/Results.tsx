@@ -4,6 +4,10 @@ import { historyPerTest, latestPerTest, numericValue, rankedMatches } from '../l
 import { store } from '../lib/store'
 import type { Investigation, Result, ResultFlag } from '../lib/types'
 import DateField from './DateField'
+import Fold from './Fold'
+import Glide from './Glide'
+import { Icon } from './Icon'
+import { Qty } from './Qty'
 import { RowsSkeleton } from './Skeleton'
 
 const FLAGS: { key: ResultFlag; label: string }[] = [
@@ -133,17 +137,17 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
   return (
     <section className="card">
       <div className="card-head">
-        <h2 className="grow">{mode === 'latest' ? 'Latest results' : 'Investigation results'}</h2>
+        <h2 className="grow ic"><Icon name="results" size={18} />{mode === 'latest' ? 'Latest results' : 'Investigation results'}</h2>
         {!adding && (
-          <button type="button" className="btn small" onClick={() => setAdding(true)}>+ Enter result</button>
+          <button type="button" className="btn small" onClick={() => setAdding(true)}><Icon name="plus" size={14} />Enter result</button>
         )}
       </div>
       {error && <div className="alert" style={{ margin: 12 }}>{error}</div>}
 
-      {adding && (
+      <Fold open={adding}>
         <div
           ref={form}
-          className="result-form reveal"
+          className="result-form"
           role="group"
           aria-label={editId ? 'Correct a result' : 'Enter a result'}
           onKeyDown={(e) => {
@@ -205,18 +209,18 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
           </label>
           <div className="field wide">
             <span id="flag-label">Against the lab's range</span>
-            <div className="seg" role="group" aria-labelledby="flag-label">
+            <Glide className="seg" role="group" aria-labelledby="flag-label">
               {FLAGS.map((fl) => (
                 <button type="button" key={fl.label} aria-pressed={d.flag === fl.key} onClick={() => setD({ ...d, flag: fl.key })} style={{ minWidth: 0 }}>{fl.label}</button>
               ))}
-            </div>
+            </Glide>
           </div>
           <div className="row end wide">
             <button type="button" className="btn small" onClick={closeForm}>{editId ? 'Cancel' : 'Done'}</button>
             <button type="button" className="btn small primary" disabled={busy || !d.test.trim() || !d.value.trim() || dateBad} onClick={() => void submit()}>{editId ? 'Save changes' : 'Save result'}</button>
           </div>
         </div>
-      )}
+      </Fold>
 
       {list === null && <RowsSkeleton rows={3} />}
       {list && list.length === 0 && <div className="empty">No results recorded yet.</div>}
@@ -225,7 +229,7 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
         ? latest.map(({ latest: r, previous }) => (
             <div className="rrow" key={r.id}>
               <div className="rname">{r.test} <Flag flag={r.flag} /></div>
-              <div className={r.flag ? 'mono rval off' : 'mono rval'}>{r.value} {r.unit}</div>
+              <div className={r.flag ? 'mono rval off' : 'mono rval'}><Qty v={r.value} u={r.unit} /></div>
               <div className="muted rdate">
                 {formatDate(r.result_date)}
                 {previous && <span className="rprev"> · was {previous.value} on {formatDate(previous.result_date)}</span>}
@@ -240,19 +244,19 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
               <div className="rgroup" key={key}>
                 <div className="rrow">
                   <div className="rname">{r.test} <Flag flag={r.flag} /></div>
-                  <div className={r.flag ? 'mono rval off' : 'mono rval'}>{r.value} {r.unit}</div>
+                  <div className={r.flag ? 'mono rval off' : 'mono rval'}><Qty v={r.value} u={r.unit} /></div>
                   <Trend results={g.results} />
                   <div className="muted rdate">{formatDate(r.result_date)}</div>
                   <button type="button" className="btn small quiet more" aria-expanded={open} aria-label={`${r.test}: ${open ? 'hide' : 'show'} ${g.results.length === 1 ? 'the result' : `all ${g.results.length} results`}`} onClick={() => toggle(key)}>
                     {g.results.length === 1 ? '1 result' : `${g.results.length} results`}
                   </button>
                 </div>
-                {open && (
-                  <div className="rhist reveal">
+                <Fold open={open}>
+                  <div className="rhist">
                     {g.results.map((x) => (
                       <div className="rrow" key={x.id}>
                         <div className="muted rdate">{formatDate(x.result_date)}</div>
-                        <div className={x.flag ? 'mono rval off' : 'mono rval'}>{x.value} {x.unit} <Flag flag={x.flag} /></div>
+                        <div className={x.flag ? 'mono rval off' : 'mono rval'}><Qty v={x.value} u={x.unit} /> <Flag flag={x.flag} /></div>
                         {confirmId === x.id ? (
                           <div className="row" style={{ gap: 6 }}>
                             <span>Delete this result?</span>
@@ -268,7 +272,7 @@ export default function Results({ patientId, catalog, mode }: { patientId: strin
                       </div>
                     ))}
                   </div>
-                )}
+                </Fold>
               </div>
             )
           })}

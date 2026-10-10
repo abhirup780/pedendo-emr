@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import Glide from '../components/Glide'
+import { Icon } from '../components/Icon'
 import { PageSkeleton } from '../components/Skeleton'
 import { useTitle } from '../components/hooks'
 import { Swatches, TagChip } from '../components/Tag'
 import { formatAge, parseISODate, todayISO } from '../lib/age'
 import { allergyStatus, NO_KNOWN_ALLERGY } from '../lib/allergy'
 import { store } from '../lib/store'
+import { toast } from '../lib/toast'
 import type { Condition, Patient, PatientInput, Sex } from '../lib/types'
 import DateField from '../components/DateField'
 
@@ -206,6 +209,7 @@ export default function PatientForm() {
     }
     try {
       const saved = await store.savePatient(input, id)
+      toast(id ? 'Patient details saved.' : 'Patient added.')
       nav(`/patients/${saved.id}`, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.')
@@ -244,7 +248,7 @@ export default function PatientForm() {
             </label>
             <div className="field s4">
               <span id="sex-label">Sex</span>
-              <div className="seg" role="group" aria-labelledby="sex-label" data-invalid={bad('sex')}>
+              <Glide className="seg" role="group" aria-labelledby="sex-label" data-invalid={bad('sex')}>
                 <button type="button" aria-pressed={f.sex === 'M'} onClick={() => set('sex', 'M')}>
                   Boy
                 </button>
@@ -254,7 +258,7 @@ export default function PatientForm() {
                 <button type="button" aria-pressed={f.sex === 'U'} onClick={() => set('sex', 'U')}>
                   Not yet assigned
                 </button>
-              </div>
+              </Glide>
               {show('sex') ?? (f.sex === 'U' ? <span className="hint">Growth SDS and puberty timing wait for a sex. Change it here once assigned; nothing recorded is lost.</span> : null)}
             </div>
             <label className="field s2">
@@ -300,7 +304,8 @@ export default function PatientForm() {
             })}
             {!adding && (
               <button type="button" className="chip new" onClick={() => { setAdding(true); setTagError('') }}>
-                + New tag
+                <Icon name="plus" size={14} />
+                New tag
               </button>
             )}
           </div>
