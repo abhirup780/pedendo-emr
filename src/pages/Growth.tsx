@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import Glide from '../components/Glide'
 import GrowthChart from '../components/GrowthChart'
-import { useTitle } from '../components/hooks'
+import { Icon } from '../components/Icon'
+import { Qty, SdsScale } from '../components/Qty'
+import { crossFade, useTitle } from '../components/hooks'
 import { PageSkeleton } from '../components/Skeleton'
 import { formatAge, formatDate, midParentalHeight, TARGET_RANGE_CM, targetRange } from '../lib/age'
 import { bmi, heightVelocity } from '../lib/clinical'
-import { bmiBand, chartReference, growthPoints, MEASURES, visitSds } from '../lib/growth'
+import { bmiBand, chartBands, chartReference, growthPoints, MEASURES, visitSds } from '../lib/growth'
 import { noReferenceReason, referenceAt, REFS } from '../lib/growth-reference'
 import type { Measure } from '../lib/growth-reference'
 import { refSex, sexLabel } from '../lib/sex'
@@ -74,6 +77,13 @@ export default function Growth() {
   // On the height chart the target is marked where the child is heading: at 18 years.
   const target = measure === 'height' && mph != null ? { mid: mph, low: mph - TARGET_RANGE_CM, high: mph + TARGET_RANGE_CM } : null
   const targetShown = target != null && reference != null && reference.to >= 18
+  // What is shaded on the chart, said by the names printed beside its lines.
+  const bands = reference ? chartBands(reference.lines) : []
+  const marked = (depth: 'wide' | 'near') => {
+    const b = bands.find((x) => x.depth === depth)
+    return b && reference ? `${reference.lines[b.from].label} and ${reference.lines[b.to].label}` : ''
+  }
+  const shadeNote = marked('wide') ? ` The chart is shaded between the lines marked ${marked('wide')}${marked('near') ? `, and more deeply between ${marked('near')}` : ''}.` : ''
   const rows = measured.map((v) => ({ v, z: visitSds(v, patient.dob, rs ?? 'U') }))
 
   return (
@@ -83,46 +93,47 @@ export default function Growth() {
           <h1 className="sub">Growth · <Link to={`/patients/${id}`}>{patient.name}</Link></h1>
           <div className="muted">{formatAge(patient.dob)} · {sexLabel(patient.sex)} · <span className="mono">MRN {patient.mrn}</span></div>
         </div>
-        <Link to={`/patients/${id}/visits/new`} className="btn primary">+ New visit</Link>
+        <Link to={`/patients/${id}/visits/new`} className="btn primary"><Icon name="plus" />New visit</Link>
       </div>
       {error && <div className="alert">{error}</div>}
 
       <div className="calc cols4" style={{ marginTop: 0 }}>
         <div>
           <div className="k">Latest {lower}</div>
-          <div className="v">{last ? `${last.value} ${info.unit}` : NONE}</div>
+          <div className="v">{last ? <Qty v={last.value} u={info.unit} /> : NONE}</div>
           <div className="k">{last ? `${formatDate(last.date)} · ${formatAge(patient.dob, last.date)}` : 'not recorded'}</div>
         </div>
         <div>
           <div className="k">{info.label} SDS</div>
-          <div className="v">{signed(lastSds)}</div>
+          <div className="v scaled"><span>{signed(lastSds)}</span><SdsScale z={lastSds} /></div>
           <div className="k">{!last ? 'not recorded' : !rs ? 'sex not assigned' : !lastRef || lastSds == null ? noReferenceReason(measure, last.ageDays) : unassigned ? `as a ${rs === 'M' ? 'boy' : 'girl'} · ${REFS[lastRef.ref].short}` : `${REFS[lastRef.ref].short}${lastRef.posture === 'length' ? ' · length' : ''}${band ? ` · ${band}` : ''}`}</div>
         </div>
         <div>
           <div className="k">Height velocity</div>
-          <div className="v">{velocity ? `${velocity.cmPerYear.toFixed(1)} cm/yr` : NONE}</div>
+          <div className="v">{velocity ? <Qty v={velocity.cmPerYear.toFixed(1)} u="cm/yr" /> : NONE}</div>
           <div className="k">{velocity ? `since ${formatDate(velocity.fromDate)}` : 'needs two heights 3 months apart'}</div>
         </div>
         <div>
           <div className="k">Mid-parental height</div>
-          <div className="v">{mph == null ? NONE : `${mph.toFixed(1)} cm`}</div>
+          <div className="v">{mph == null ? NONE : <Qty v={mph.toFixed(1)} u="cm" />}</div>
           <div className="k">{mph == null ? (unassigned ? 'after sex is assigned' : 'add the parents’ heights') : `target ${targetRange(mph)}`}</div>
         </div>
       </div>
 
       <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="row">
-          <div className="seg" role="group" aria-label="Measure">
+          {/* The chart cross-fades to the measure chosen; this control is left out of the fade (.vt-live), so its pill is seen to slide. */}
+          <Glide className="seg vt-live" role="group" aria-label="Measure">
             {MEASURES.map((m) => (
-              <button type="button" key={m.key} aria-pressed={measure === m.key} onClick={() => setMeasure(m.key)}>{m.label}</button>
+              <button type="button" key={m.key} aria-pressed={measure === m.key} onClick={() => crossFade(() => setMeasure(m.key))}>{m.label}</button>
             ))}
-          </div>
+          </Glide>
           {unassigned && (
-            <div className="seg" role="group" aria-label="Compare with the reference for">
-              <button type="button" aria-pressed={compare === null} onClick={() => setCompare(null)}>No reference</button>
-              <button type="button" aria-pressed={compare === 'M'} onClick={() => setCompare('M')}>Boys</button>
-              <button type="button" aria-pressed={compare === 'F'} onClick={() => setCompare('F')}>Girls</button>
-            </div>
+            <Glide className="seg" role="group" aria-label="Compare with the reference for">
+              <button type="button" aria-pressed={compare === null} onClick={() => crossFade(() => setCompare(null))}>No reference</button>
+              <button type="button" aria-pressed={compare === 'M'} onClick={() => crossFade(() => setCompare('M'))}>Boys</button>
+              <button type="button" aria-pressed={compare === 'F'} onClick={() => crossFade(() => setCompare('F'))}>Girls</button>
+            </Glide>
           )}
           <span className="grow" />
           <span className="muted sm">{reference ? `${refNames}${unassigned ? (rs === 'M' ? ' · boys' : ' · girls') : ''}` : 'The child’s own measurements'}</span>
@@ -136,7 +147,8 @@ export default function Growth() {
         {reference && (
           <div className="muted sm">
             {lineNote}
-            {targetShown && ` The bar at 18 years is the mid-parental target, ${targetRange(mph!)}.`}
+            {shadeNote}
+            {targetShown && ` The band at 18 years is the mid-parental target, ${targetRange(mph!)}.`}
             {reference.refs.length > 1 && ' WHO (under 5 years) and IAP (from 5 years) are separate references, so the lines step at 5 years.'}
             {measure === 'height' && points.some((p) => p.age < 2) && ' Under 2 years the WHO standard is for length measured lying down; from 2 years, standing height.'}
             {measure !== 'height' && points.some((p) => p.age < 5) && ` No ${lower} reference is held for under 5 years.`}
@@ -150,7 +162,7 @@ export default function Growth() {
       </section>
 
       <section className="card">
-        <div className="card-head"><h2 className="grow">Measurements</h2><span className="muted">{measured.length} visits</span></div>
+        <div className="card-head"><h2 className="grow ic"><Icon name="ruler" size={18} />Measurements</h2><span className="muted">{measured.length} visits</span></div>
         {measured.length === 0 ? (
           <div className="empty">No measurements yet.</div>
         ) : (

@@ -1,6 +1,6 @@
 /**
- * Small things remembered on this device only: the idle sign-out time, unsaved visit drafts,
- * and one-off notices for the sign-in screen. All reads and writes tolerate a browser that
+ * Small things remembered on this device only: the idle sign-out time, whether things move on
+ * the screen, unsaved visit drafts, and one-off notices for the sign-in screen. All reads and writes tolerate a browser that
  * blocks storage.
  */
 const IDLE_KEY = 'pedendo-idle-minutes'
@@ -22,6 +22,53 @@ export function setIdleMinutes(n: number): void {
   } catch {
     /* keeps the default */
   }
+}
+
+/* ------------------------------------------------------------------ movement */
+
+/**
+ * Whether things slide, fade and draw themselves on this device. 'auto' follows the device,
+ * which may ask for less movement: a Windows computer with "Animation effects" switched off
+ * does, and many clinic computers have it off only to save effort. 'on' and 'off' are the
+ * doctor's own choice, whatever the device says.
+ */
+export type Motion = 'auto' | 'on' | 'off'
+export const MOTION_CHOICES: { key: Motion; label: string }[] = [
+  { key: 'auto', label: 'Automatic' },
+  { key: 'on', label: 'On' },
+  { key: 'off', label: 'Off' },
+]
+const MOTION_KEY = 'pedendo-motion'
+// The shareable preview exists to show the app, movement included, so there it starts as 'on'.
+const DEFAULT_MOTION: Motion = import.meta.env.VITE_PREVIEW ? 'on' : 'auto'
+
+export function motionChoice(): Motion {
+  try {
+    const raw = localStorage.getItem(MOTION_KEY)
+    return raw === 'auto' || raw === 'on' || raw === 'off' ? raw : DEFAULT_MOTION
+  } catch {
+    return DEFAULT_MOTION
+  }
+}
+export function setMotionChoice(m: Motion): void {
+  try {
+    localStorage.setItem(MOTION_KEY, m)
+  } catch {
+    /* holds until the page is closed */
+  }
+  applyMotion(m)
+}
+/**
+ * Tells the stylesheet, and `lessMotion` in components/hooks.ts, the choice: `data-motion` on
+ * the page itself, absent for 'auto'. Called once before the app is drawn.
+ */
+export function applyMotion(m: Motion = motionChoice()): void {
+  if (m === 'auto') delete document.documentElement.dataset.motion
+  else document.documentElement.dataset.motion = m
+}
+/** True where the device itself asks for less movement. */
+export function deviceAsksLessMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 const HIDDEN_KEY = 'pedendo-setup-hidden'

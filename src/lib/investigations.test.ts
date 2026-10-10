@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestMatch, categoryOrder, historyPerTest, latestPerTest, numericValue, panelsForPatient, rankedMatches, STARTER_INVESTIGATIONS, STARTER_PANELS, starterPanelTags } from './investigations'
+import { bestMatch, categoryOrder, historyPerTest, latestPerTest, numericValue, panelsForPatient, rankedMatches, STARTER_CHANGES, STARTER_INVESTIGATIONS, STARTER_PANELS, starterChangesFor, starterPanelTags } from './investigations'
 import { STARTER_CONDITIONS } from './tags'
 
 describe('starter investigations', () => {
@@ -9,6 +9,31 @@ describe('starter investigations', () => {
   })
   it('every panel item exists in the list', () => {
     for (const p of STARTER_PANELS) for (const item of p.items) expect(names, `${p.name}: ${item}`).toContain(item)
+  })
+})
+
+describe('starter changes', () => {
+  const names = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map((i) => i[0]))
+  it('adds only tests that are in the starter list, and drops only tests that are not', () => {
+    for (const n of STARTER_CHANGES.add) expect(names, n).toContain(n)
+    for (const n of STARTER_CHANGES.remove) expect(names, n).not.toContain(n)
+  })
+  it('offers a list the new tests it lacks, with their category and unit', () => {
+    const mine = [{ id: 'a', name: 'TSH' }, { id: 'b', name: ' mlpa for shox ' }]
+    const { add } = starterChangesFor(mine)
+    expect(add.map((i) => i.name)).not.toContain('MLPA for SHOX')
+    expect(add.length).toBe(STARTER_CHANGES.add.length - 1)
+    expect(add.find((i) => i.name === 'Whole exome sequencing')).toEqual({ name: 'Whole exome sequencing', category: 'Genetics', unit: '' })
+  })
+  it('offers to remove a dropped test the list still holds, and gives back the list\'s own row', () => {
+    const row = { id: 'x', name: 'targeted Gene panel ' }
+    expect(starterChangesFor([{ id: 'a', name: 'TSH' }, row]).remove).toEqual([row])
+    expect(starterChangesFor([{ id: 'a', name: 'TSH' }]).remove).toEqual([])
+  })
+  it('offers nothing once everything is taken up, and nothing to an empty list', () => {
+    const upToDate = names.map((name) => ({ name }))
+    expect(starterChangesFor(upToDate)).toEqual({ add: [], remove: [] })
+    expect(starterChangesFor([])).toEqual({ add: [], remove: [] })
   })
 })
 

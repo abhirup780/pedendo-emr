@@ -11,7 +11,7 @@ import { STARTER_CONDITIONS } from './tags'
  * Demo store: sample patients kept in this browser's localStorage.
  * Used only when Supabase settings are missing. Never for real patients.
  */
-const KEY = 'pedendo-demo-v11'
+const KEY = 'pedendo-demo-v12'
 
 interface Db {
   signedIn: boolean

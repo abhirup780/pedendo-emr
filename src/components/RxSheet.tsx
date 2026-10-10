@@ -3,10 +3,11 @@ import { formatAge, formatDate } from '../lib/age'
 import { allergyStatus } from '../lib/allergy'
 import { bmi, rxLine } from '../lib/clinical'
 import { sexLabel } from '../lib/sex'
-import { blocks, firstPageInnerHeight } from '../lib/printlayout'
+import { blocks, firstPageInnerHeight, preprinted } from '../lib/printlayout'
 import type { PrintConfig, SectionKey } from '../lib/printlayout'
 import { tannerSummary } from '../lib/tanner'
 import type { Clinic, Patient, Visit } from '../lib/types'
+import { RxMark } from './Icon'
 
 interface Props {
   config: PrintConfig
@@ -20,6 +21,7 @@ interface Props {
 /**
  * One prescription drawn to a print layout. The same component is the printed page, the
  * on-screen preview and the layout editor's live preview, so what is edited is what prints.
+ * On screen it is shown page by page: `RxPages` draws it into the pages it will print on.
  */
 export default function RxSheet({ config: c, patient: p, visit: v, clinic, guides }: Props) {
   const mm = (n: number) => `${n}mm`
@@ -113,7 +115,7 @@ export default function RxSheet({ config: c, patient: p, visit: v, clinic, guide
     diagnosis: () => (v.assessment ? <div className="pre"><strong>Diagnosis:</strong> {v.assessment}</div> : null),
     rx: () => (
       <div className="rx">
-        {c.rx.symbol && <div className="rx-mark" role="img" aria-label="Prescription">℞</div>}
+        {c.rx.symbol && <div className="rx-mark" role="img" aria-label="Prescription"><RxMark /></div>}
         <ol className={`rx-list ${c.rx.style}`}>
           {v.medicines.map((m, i) =>
             c.rx.style === 'compact' ? (
@@ -179,11 +181,10 @@ export default function RxSheet({ config: c, patient: p, visit: v, clinic, guide
     '--side': mm(c.side_width),
     '--inner-h': mm(firstPageInnerHeight(c)),
   } as CSSProperties
-  const preprinted = !c.sections.find((s) => s.key === 'letterhead')?.show && c.margin.top >= 20
 
   return (
     <article className={`sheet${guides ? ' guides' : ''}${c.signature.at_foot ? '' : ' flow'}`} style={vars}>
-      {preprinted && <div className="preprint no-print" aria-hidden="true">Pre-printed letterhead area · {c.margin.top} mm left clear</div>}
+      {preprinted(c) && <div className="preprint no-print" aria-hidden="true">Pre-printed letterhead area · {c.margin.top} mm left clear</div>}
       {blocks(c).map((blk, i) =>
         blk.kind === 'full' ? (
           section(blk.key)

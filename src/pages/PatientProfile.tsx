@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Icon, RxMark } from '../components/Icon'
+import { Qty } from '../components/Qty'
 import Results from '../components/Results'
 import { PageSkeleton } from '../components/Skeleton'
 import { useTitle } from '../components/hooks'
@@ -14,6 +16,7 @@ import { sexLabel } from '../lib/sex'
 import { photoFiles } from '../lib/photofiles'
 import { store } from '../lib/store'
 import { tannerSummary } from '../lib/tanner'
+import { toast } from '../lib/toast'
 import type { Condition, Investigation, Patient, Visit } from '../lib/types'
 import { NONE } from '../lib/text'
 
@@ -74,6 +77,7 @@ export default function PatientProfile() {
       // The photograph files first: once the records are gone nothing says where they are.
       await photoFiles.remove((await store.listPhotos(id)).map((ph) => ph.file_id))
       await store.deletePatient(id)
+      toast('Patient deleted.')
       nav('/', { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not delete.')
@@ -104,16 +108,20 @@ export default function PatientProfile() {
         </div>
         <div className="phead-actions">
           <Link to={`/patients/${p.id}/edit`} className="btn outline">
+            <Icon name="pencil" />
             Edit
           </Link>
           <Link to={`/patients/${p.id}/growth`} className="btn outline" aria-label="Growth chart">
+            <Icon name="chart" />
             <span>Growth<span className="wide-only"> chart</span></span>
           </Link>
           <Link to={`/patients/${p.id}/photos`} className="btn outline">
+            <Icon name="image" />
             Photos
           </Link>
           <Link to={`/patients/${p.id}/visits/new`} className="btn primary">
-            + New visit
+            <Icon name="plus" />
+            New visit
           </Link>
         </div>
       </section>
@@ -132,12 +140,12 @@ export default function PatientProfile() {
           </div>
           <div>
             <div className="k">Latest height</div>
-            <div className="v">{withHeight ? `${withHeight.height_cm} cm` : NONE}</div>
+            <div className="v">{withHeight ? <Qty v={withHeight.height_cm!} u="cm" /> : NONE}</div>
             <div className="k">{withHeight ? `${heightSds == null ? '' : `SDS ${heightSds < 0 ? '−' : '+'}${Math.abs(heightSds).toFixed(2)} · `}${formatDate(withHeight.visit_date)}` : 'not recorded'}</div>
           </div>
           <div>
             <div className="k">Latest weight</div>
-            <div className="v">{withWeight ? `${withWeight.weight_kg} kg` : NONE}</div>
+            <div className="v">{withWeight ? <Qty v={withWeight.weight_kg!} u="kg" /> : NONE}</div>
             <div className="k">{withWeight ? `${weightBmi == null ? '' : `BMI ${weightBmi} · `}${formatDate(withWeight.visit_date)}` : 'not recorded'}</div>
           </div>
           {lastRx && (
@@ -162,7 +170,7 @@ export default function PatientProfile() {
 
       <section className="card">
         <div className="card-head">
-          <h2 className="grow">Visits</h2>
+          <h2 className="grow ic"><Icon name="calendar" size={18} />Visits</h2>
           <span className="muted">{visits.length === 0 ? 'None yet' : `${visits.length} recorded`}</span>
         </div>
         {visits.length === 0 ? (
@@ -178,7 +186,7 @@ export default function PatientProfile() {
                 <div role="columnheader">BMI</div>
                 <div role="columnheader">Tanner</div>
                 <div role="columnheader">Assessment</div>
-                <div role="columnheader">℞</div>
+                <div role="columnheader"><RxMark label="Prescription" /></div>
               </div>
               {visits.map((v) => (
                 <div className="vrow" key={v.id} role="row">
@@ -189,8 +197,8 @@ export default function PatientProfile() {
                     {draftIds.has(v.id) && <> <span className="pill warn">Unsaved changes</span></>}
                   </div>
                   <div role="cell">{formatAge(p.dob, v.visit_date)}</div>
-                  <div className="mono" role="cell">{v.height_cm == null ? NONE : `${v.height_cm} cm`}</div>
-                  <div className="mono" role="cell">{v.weight_kg == null ? NONE : `${v.weight_kg} kg`}</div>
+                  <div className="mono" role="cell">{v.height_cm == null ? NONE : <Qty v={v.height_cm} u="cm" />}</div>
+                  <div className="mono" role="cell">{v.weight_kg == null ? NONE : <Qty v={v.weight_kg} u="kg" />}</div>
                   <div className="mono" role="cell">{bmi(v.height_cm, v.weight_kg) ?? NONE}</div>
                   <div className="mono clip" role="cell" title={tannerSummary(v.tanner, p.sex)}>{tannerSummary(v.tanner, p.sex).split(' · ')[0] || NONE}</div>
                   <div className="clip" role="cell" title={v.assessment}>{v.assessment || NONE}</div>
@@ -209,7 +217,7 @@ export default function PatientProfile() {
       <Results patientId={p.id} catalog={catalog} mode="all" />
 
       <section className="card pad">
-        <h2 style={{ marginBottom: 12 }}>Patient details</h2>
+        <h2 className="ic" style={{ marginBottom: 12 }}><Icon name="person" size={18} />Patient details</h2>
         <dl className="dl">
           <dt>Parent or guardian</dt>
           <dd>{p.guardian_name ? `${p.guardian_name} (${p.guardian_relation})` : NONE}</dd>

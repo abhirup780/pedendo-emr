@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import FitSheet from '../components/FitSheet'
-import RxSheet from '../components/RxSheet'
+import Glide from '../components/Glide'
+import RxPages from '../components/RxPages'
 import { RowsSkeleton } from '../components/Skeleton'
 import { ACCENTS, describe, normalize, PAPERS, PRESETS, SECTIONS } from '../lib/printlayout'
 import type { PrintConfig, PrintLayout, SectionKey } from '../lib/printlayout'
@@ -37,20 +38,20 @@ function Choice<T extends string>({ label, value, options, onChange }: { label: 
   return (
     <div className="field">
       <span id={id}>{label}</span>
-      <div className="seg" role="group" aria-labelledby={id}>
+      <Glide className="seg" role="group" aria-labelledby={id}>
         {options.map((o) => (
           <button type="button" key={o.value} aria-pressed={value === o.value} onClick={() => onChange(o.value)} style={{ minWidth: 0 }}>{o.label}</button>
         ))}
-      </div>
+      </Glide>
     </div>
   )
 }
 
-/** The live preview: the real sheet, shrunk to fit the panel. */
-function Preview({ config, clinic, guides }: { config: PrintConfig; clinic: Clinic; guides: boolean }) {
+/** The live preview: the real pages, shrunk to the width of the panel. More than the panel has room for scrolls inside it. */
+function Preview({ config, clinic, guides, onPages }: { config: PrintConfig; clinic: Clinic; guides: boolean; onPages: (pages: number) => void }) {
   return (
-    <FitSheet paperWidthMm={config.paper.width} className="pl-preview">
-      <RxSheet config={config} patient={SAMPLE_PATIENT} visit={SAMPLE_VISIT} clinic={sampleClinic(clinic)} guides={guides} />
+    <FitSheet paperWidthMm={config.paper.width} className="pl-preview" label="Preview of the printed pages">
+      <RxPages config={config} patient={SAMPLE_PATIENT} visit={SAMPLE_VISIT} clinic={sampleClinic(clinic)} guides={guides} onPages={onPages} />
     </FitSheet>
   )
 }
@@ -61,6 +62,8 @@ function Editor({ start, clinic, onDone }: { start: Draft; clinic: Clinic; onDon
   const [isDefault, setIsDefault] = useState(start.is_default)
   const [c, setC] = useState<PrintConfig>(start.config)
   const [guides, setGuides] = useState(true)
+  // How many pages the sample runs to in this layout.
+  const [pages, setPages] = useState(1)
   // On a phone the preview opens over the form instead of sitting beside it.
   const [peek, setPeek] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -241,8 +244,10 @@ function Editor({ start, clinic, onDone }: { start: Draft; clinic: Clinic; onDon
         </section>
       </div>
 
+      {/* On a phone: leaving without saving is here with the form, not inside the preview. */}
       <div className="actions pl-mobile-bar">
         <div className="row">
+          <button type="button" className="btn" disabled={busy} onClick={() => onDone(null)}>Cancel</button>
           <button type="button" className="btn" style={{ flex: '1 1 0' }} onClick={() => setPeek(true)}>Preview</button>
           <button type="button" className="btn primary" style={{ flex: '2 1 0' }} disabled={busy} onClick={() => void save(false)}>{busy ? 'Saving…' : 'Save layout'}</button>
         </div>
@@ -254,10 +259,14 @@ function Editor({ start, clinic, onDone }: { start: Draft; clinic: Clinic; onDon
           <button type="button" className="btn small narrow-only" onClick={() => setPeek(false)}>Back to editing</button>
           <Toggle on={guides} onChange={setGuides}>Margin guides</Toggle>
         </div>
-        <div className="muted sm">{describe(shown)} · sample data</div>
-        <Preview config={shown} clinic={clinic} guides={guides} />
+        <div className="muted sm">{describe(shown)}{pages > 1 ? ` · ${pages} pages` : ''} · sample data</div>
+        {/* On a phone the panel is not drawn until it is opened. The preview is made anew then, so
+            that it is measured in the room it really has, and starts at the first page. */}
+        <Preview key={peek ? 'open' : 'shut'} config={shown} clinic={clinic} guides={guides} onPages={setPages} />
+        {/* On a phone Cancel is in the bar under the form: in the open preview it read as "close
+            the preview", and it left the editor instead. "Back to editing" closes the preview. */}
         <div className="row end">
-          <button type="button" className="btn" disabled={busy} onClick={() => onDone(null)}>Cancel</button>
+          <button type="button" className="btn wide-only" disabled={busy} onClick={() => onDone(null)}>Cancel</button>
           <button type="button" className="btn outline" disabled={busy} onClick={() => void save(true)}>Save and print a sample</button>
           <button type="button" className="btn primary" disabled={busy} onClick={() => void save(false)}>{busy ? 'Saving…' : 'Save layout'}</button>
         </div>
@@ -286,6 +295,14 @@ export default function PrintLayouts() {
   useEffect(() => {
     void reload()
   }, [])
+  // The list and the editor take turns on one page. Each is shown from its top, not from
+  // wherever the other had been scrolled to (the foot of a long form, as a rule).
+  const inEditor = editing !== null
+  const settled = useRef(false)
+  useLayoutEffect(() => {
+    if (settled.current) window.scrollTo(0, 0)
+    settled.current = true
+  }, [inEditor])
   async function run(job: () => Promise<unknown>) {
     setError('')
     try {

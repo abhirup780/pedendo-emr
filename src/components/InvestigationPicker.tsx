@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { bestMatch, categoryOrder, panelsForPatient, rankedMatches } from '../lib/investigations'
 import BrowseWindow from './BrowseWindow'
+import { Icon } from './Icon'
 import type { Condition, Investigation, Panel } from '../lib/types'
 
 interface Props {
@@ -67,7 +68,7 @@ export default function InvestigationPicker({ catalog, panels, value, onChange, 
   return (
     <section className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="row">
-        <h2 className="grow">Investigations</h2>
+        <h2 className="grow ic"><Icon name="flask" size={18} />Investigations</h2>
         <span className="muted sm">
           {value.length === 0 ? 'None advised' : `${value.length} advised · printed on the prescription`}
         </span>

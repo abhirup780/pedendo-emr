@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { bmiBand, bmiExact, chartReference, growthPoints, niceAxis, sds, sdsExact, sdsFromLms, valueFromLms, visitSds } from './growth'
-import { iapAt, whoHeightAt } from './growth-reference'
+import { bmiBand, bmiExact, chartBands, chartReference, growthPoints, niceAxis, sds, sdsExact, sdsFromLms, valueFromLms, visitSds } from './growth'
+import { IAP_BMI_LINES, IAP_HEIGHT_WEIGHT_LINES, iapAt, WHO_SD_LINES, whoHeightAt } from './growth-reference'
 
 describe('sdsFromLms', () => {
   it('is 0 at the median and ±1 one S away when L is 1', () => {
@@ -184,5 +184,31 @@ describe('niceAxis', () => {
     const a = niceAxis(121, 121)
     expect(a.min).toBeLessThan(121)
     expect(a.max).toBeGreaterThan(121)
+  })
+})
+
+describe('chartBands', () => {
+  const named = (lines: typeof WHO_SD_LINES) => chartBands(lines).map((b) => `${b.depth}: ${lines[b.from].label} to ${lines[b.to].label}`)
+  it('shades the IAP height and weight chart from 3 to 97, and again from 25 to 75', () => {
+    expect(named(IAP_HEIGHT_WEIGHT_LINES)).toEqual(['wide: 3 to 97', 'near: 25 to 75'])
+  })
+  it('shades a WHO chart from −2 to +2 SD, and again from −1 to +1', () => {
+    expect(named(WHO_SD_LINES)).toEqual(['wide: −2 to +2', 'near: −1 to +1'])
+  })
+  it('shades the BMI chart from the 3rd centile to the overweight line only', () => {
+    expect(named(IAP_BMI_LINES)).toEqual(['wide: 3 to OW'])
+  })
+  it('always runs upwards, and never past the lines it is given', () => {
+    for (const lines of [IAP_HEIGHT_WEIGHT_LINES, WHO_SD_LINES, IAP_BMI_LINES])
+      for (const b of chartBands(lines)) {
+        expect(b.from).toBeGreaterThanOrEqual(0)
+        expect(b.to).toBeGreaterThan(b.from)
+        expect(b.to).toBeLessThan(lines.length)
+      }
+  })
+  it('shades nothing where there are no lines to shade between', () => {
+    expect(chartBands([])).toEqual([])
+    expect(chartBands([{ label: '50', z: 0, kind: 'mid' }])).toEqual([])
+    expect(chartBands([{ label: '3', z: -2, kind: 'edge' }, { label: '50', z: 0, kind: 'mid' }])).toEqual([])
   })
 })

@@ -175,11 +175,20 @@ export const STARTER_INVESTIGATIONS: { category: string; items: [name: string, u
       ['Chromosomal microarray', ''],
       ['FISH for SRY', ''],
       ['Clinical exome sequencing', ''],
-      ['Targeted gene panel', ''],
+      ['Whole exome sequencing', ''],
       ['Methylation study (Prader-Willi / Silver-Russell)', ''],
       ['CYP21A2 gene analysis', ''],
       ['SHOX gene analysis', ''],
       ['MODY gene panel', ''],
+      ['MLPA for SHOX', ''],
+      ['MLPA for CYP21A2', ''],
+      ['MS-MLPA for Prader-Willi (15q11-q13)', ''],
+      ['MS-MLPA for Silver-Russell / Beckwith-Wiedemann (11p15)', ''],
+      ['MS-MLPA for GNAS (pseudohypoparathyroidism)', ''],
+      ['MS-MLPA for 6q24 (neonatal diabetes)', ''],
+      ['MLPA for 22q11.2 deletion', ''],
+      ['MLPA for DSD genes', ''],
+      ['MLPA for MODY genes', ''],
     ],
   },
   {
@@ -204,6 +213,51 @@ export const STARTER_INVESTIGATIONS: { category: string; items: [name: string, u
     ],
   },
 ]
+
+/**
+ * What has changed in the starter list since doctors first took it. A doctor's own list is
+ * never altered behind their back: Settings, Investigations says what is new and what was
+ * dropped, and offers to add the one and remove the other. `id` names that offer when it is
+ * put away on a device; give a later change a new one.
+ *
+ * October 2026, at the owner's request: whole exome sequencing and the MLPA tests most used in
+ * the clinic were added, and "Targeted gene panel" was dropped because it names no genes (the
+ * panels that do, such as the MODY gene panel, stay).
+ */
+export const STARTER_CHANGES: { id: string; add: string[]; remove: string[] } = {
+  id: 'starter-2026-10-genetics',
+  add: [
+    'Whole exome sequencing',
+    'MLPA for SHOX',
+    'MLPA for CYP21A2',
+    'MS-MLPA for Prader-Willi (15q11-q13)',
+    'MS-MLPA for Silver-Russell / Beckwith-Wiedemann (11p15)',
+    'MS-MLPA for GNAS (pseudohypoparathyroidism)',
+    'MS-MLPA for 6q24 (neonatal diabetes)',
+    'MLPA for 22q11.2 deletion',
+    'MLPA for DSD genes',
+    'MLPA for MODY genes',
+  ],
+  remove: ['Targeted gene panel'],
+}
+
+/**
+ * What of a starter change a doctor's list has not taken up yet: the new tests it lacks (with
+ * the category and unit they have in the starter list) and the dropped tests it still holds.
+ * Names are matched whatever their capitals or outer spaces. Nothing is offered to an empty
+ * list: that one is offered the whole starter list instead.
+ */
+export function starterChangesFor<T extends { name: string }>(list: T[], change = STARTER_CHANGES): { add: { name: string; category: string; unit: string }[]; remove: T[] } {
+  if (list.length === 0) return { add: [], remove: [] }
+  const key = (name: string) => name.trim().toLowerCase()
+  const mine = new Set(list.map((i) => key(i.name)))
+  const starter = STARTER_INVESTIGATIONS.flatMap((g) => g.items.map(([name, unit]) => ({ name, category: g.category, unit })))
+  const dropped = new Set(change.remove.map(key))
+  return {
+    add: starter.filter((i) => change.add.some((n) => key(n) === key(i.name)) && !mine.has(key(i.name))),
+    remove: list.filter((i) => dropped.has(key(i.name))),
+  }
+}
 
 const BONE_AGE = 'Bone age X-ray (left hand and wrist)'
 const COELIAC = 'Coeliac screen (tTG-IgA + total IgA)'

@@ -6,7 +6,10 @@ import { store } from '../lib/store'
 import ErrorBoundary from './ErrorBoundary'
 import type { SessionUser } from '../lib/types'
 import { Mark, Wordmark } from './Brand'
+import { softClose } from './hooks'
+import { Icon } from './Icon'
 import QuickFind from './QuickFind'
+import Toast from './Toast'
 
 export function DemoBanner() {
   if (store.mode !== 'demo') return null
@@ -81,13 +84,19 @@ export default function Shell({ user, children }: { user: SessionUser; children:
           <span className="brand-text"><Wordmark /></span>
         </Link>
         <nav className="topnav">
+          {/* The small pictures show only where the header has room for them (see .topnav in styles.css). */}
           <NavLink to="/" end className={() => (inPatients ? 'active' : '')}>
+            <Icon name="patients" />
             Patients
           </NavLink>
           <NavLink to="/registry">
-            Registry<span className="wide-only"> &amp; export</span>
+            <Icon name="registry" />
+            <span>Registry<span className="wide-only"> &amp; export</span></span>
           </NavLink>
-          <NavLink to="/settings" className={() => (inSettings ? 'active' : '')}>Settings</NavLink>
+          <NavLink to="/settings" className={() => (inSettings ? 'active' : '')}>
+            <Icon name="settings" />
+            Settings
+          </NavLink>
         </nav>
         {/* The patient list has its own search box, and the same keys go to it there. */}
         {pathname !== '/' && <QuickFind />}
@@ -102,16 +111,17 @@ export default function Shell({ user, children }: { user: SessionUser; children:
         </div>
       </header>
       {unsaved > 0 && (
-        <dialog ref={ask} className="ask-dialog" aria-labelledby="ask-title" onClose={() => setUnsaved(0)} onClick={(e) => { if (e.target === ask.current) ask.current?.close() }}>
+        <dialog ref={ask} className="ask-dialog" aria-labelledby="ask-title" onClose={() => setUnsaved(0)} onCancel={(e) => { e.preventDefault(); softClose(ask.current) }} onClick={(e) => { if (e.target === ask.current) softClose(ask.current) }}>
           <h2 id="ask-title">Sign out and lose unsaved notes?</h2>
           <p>{unsaved === 1 ? 'One visit has notes' : `${unsaved} visits have notes`} that were typed but not saved. Signing out removes them from this device.</p>
           <div className="row end">
-            <button type="button" className="btn" onClick={() => ask.current?.close()}>Stay signed in</button>
+            <button type="button" className="btn" onClick={() => softClose(ask.current)}>Stay signed in</button>
             <button type="button" className="btn danger" onClick={signOut}>Sign out anyway</button>
           </div>
         </dialog>
       )}
       <ErrorBoundary>{children}</ErrorBoundary>
+      <Toast />
     </>
   )
 }

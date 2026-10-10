@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTitle } from '../components/hooks'
 import { Link, useParams } from 'react-router-dom'
 import FitSheet from '../components/FitSheet'
-import RxSheet from '../components/RxSheet'
+import { Icon } from '../components/Icon'
+import RxPages from '../components/RxPages'
 import { describe, pageCss, rememberLayout, rememberedLayout, STANDARD } from '../lib/printlayout'
 import type { PrintConfig, PrintLayout } from '../lib/printlayout'
 import { SAMPLE_PATIENT, SAMPLE_VISIT, sampleClinic } from '../lib/printsample'
@@ -24,6 +25,8 @@ export default function PrintRx() {
   const [layouts, setLayouts] = useState<PrintLayout[]>([])
   const [chosen, setChosen] = useState<string>(layoutId ?? '')
   const [guides, setGuides] = useState(sample)
+  // How many pages the prescription runs to in the chosen layout.
+  const [pages, setPages] = useState(1)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -63,11 +66,11 @@ export default function PrintRx() {
       <style>{pageCss(config)}</style>
       <div className="sheet-tools no-print">
         {sample ? (
-          <Link to="/settings?tab=print" className="btn">Back to layouts</Link>
+          <Link to="/settings?tab=print" className="btn"><Icon name="back" />Back to layouts</Link>
         ) : (
           <>
-            <Link to={`/patients/${id}`} className="btn">Back to patient</Link>
-            <Link to={`/patients/${id}/visits/${vid}`} className="btn">Edit visit</Link>
+            <Link to={`/patients/${id}`} className="btn"><Icon name="back" />Back to patient</Link>
+            <Link to={`/patients/${id}/visits/${vid}`} className="btn"><Icon name="pencil" />Edit visit</Link>
           </>
         )}
         <label className="sort" style={{ flex: '1 1 220px' }}>
@@ -84,11 +87,11 @@ export default function PrintRx() {
         {PREVIEW ? (
           <span className="muted">Printing is switched off in this preview; it works in the deployed app.</span>
         ) : (
-          <button type="button" className="btn primary" onClick={() => window.print()}>Print</button>
+          <button type="button" className="btn primary" onClick={() => window.print()}><Icon name="printer" />Print</button>
         )}
       </div>
       <div className="sheet-tools no-print muted sm">
-        <span className="grow">{describe(config)}. In the print window choose the same paper size, set margins to "Default" and scale to 100%.</span>
+        <span className="grow">{describe(config)}{pages > 1 ? ` · ${pages} pages` : ''}. In the print window choose the same paper size, set margins to "Default" and scale to 100%.</span>
         {!sample && <Link to="/settings?tab=print" className="tap">Customise layouts</Link>}
       </div>
       {sample && <div className="note no-print" style={{ width: '100%', maxWidth: '210mm' }}>A made-up prescription. Print it on the real pad with "Margin guides" on to see where the text will fall, then adjust the layout's margins.</div>}
@@ -98,7 +101,7 @@ export default function PrintRx() {
         </div>
       )}
       <FitSheet paperWidthMm={config.paper.width}>
-        <RxSheet config={config} patient={p} visit={v} clinic={c} guides={guides} />
+        <RxPages config={config} patient={p} visit={v} clinic={c} guides={guides} onPages={setPages} />
       </FitSheet>
     </main>
   )

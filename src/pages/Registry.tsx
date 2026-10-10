@@ -13,6 +13,7 @@ import type { Backup, Condition } from '../lib/types'
 import ConditionFilter from '../components/ConditionFilter'
 import DateField from '../components/DateField'
 import { useTitle } from '../components/hooks'
+import { Icon } from '../components/Icon'
 
 const PREVIEW = !!import.meta.env.VITE_PREVIEW
 const RANGES = ['All dates', 'This year', 'Last 12 months', 'Custom'] as const
@@ -268,6 +269,7 @@ export default function Registry() {
               {busy && <span className="muted" role="status">{busy}</span>}
               {!data && <button type="button" className="btn" disabled={!!busy} onClick={() => void load()}>Preview rows</button>}
               <button type="button" className="btn primary" disabled={!!busy || picked.length === 0 || rangeBad} onClick={() => void download()}>
+                <Icon name="download" />
                 Download Excel · {picked.length} {picked.length === 1 ? 'sheet' : 'sheets'}
               </button>
             </div>
@@ -302,7 +304,7 @@ export default function Registry() {
                 {backedUp ? `Last backup from this browser: ${formatDate(backedUp)}` : 'No backup downloaded from this browser yet'}
               </span>
               <span className="grow" />
-              <button type="button" className="btn outline" disabled={!!busy} onClick={() => void backup()}>Download full backup</button>
+              <button type="button" className="btn outline" disabled={!!busy} onClick={() => void backup()}><Icon name="download" />Download full backup</button>
             </div>
 
             <div className="row" style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
@@ -310,7 +312,7 @@ export default function Registry() {
                 <div style={{ fontWeight: 600 }}>Photographs</div>
                 <div className="muted">One zip file with a folder for each patient. The photograph store keeps no backups either, and holds 1 GB (about 3,000 photographs).</div>
               </div>
-              <button type="button" className="btn outline" disabled={!!busy} onClick={() => void downloadPhotos()}>Download all photographs</button>
+              <button type="button" className="btn outline" disabled={!!busy} onClick={() => void downloadPhotos()}><Icon name="download" />Download all photographs</button>
             </div>
 
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>

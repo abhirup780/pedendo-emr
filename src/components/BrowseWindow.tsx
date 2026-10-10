@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { softClose } from './hooks'
 
 export interface BrowseGroup {
   /** null is "All". */
@@ -48,13 +49,13 @@ export default function BrowseWindow(props: {
   }, [])
 
   return (
-    <dialog ref={ref} className="inv-dialog" tabIndex={-1} aria-labelledby="browse-title" onClose={props.onClose} onClick={(e) => { if (e.target === ref.current) ref.current?.close() }}>
+    <dialog ref={ref} className="inv-dialog" tabIndex={-1} aria-labelledby="browse-title" onClose={props.onClose} onCancel={(e) => { e.preventDefault(); softClose(ref.current) }} onClick={(e) => { if (e.target === ref.current) softClose(ref.current) }}>
       <div className="inv-head">
         <div className="grow">
           <h2 id="browse-title">{props.title}</h2>
           <div className="muted sm">{props.hint}</div>
         </div>
-        <button type="button" className="icon-btn" aria-label="Close" onClick={() => ref.current?.close()}>
+        <button type="button" className="icon-btn" aria-label="Close" onClick={() => softClose(ref.current)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
       </div>
@@ -93,7 +94,7 @@ export default function BrowseWindow(props: {
         <div className="inv-chosen" aria-live="polite">{props.chosen}</div>
         <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
           {props.onClear && <button type="button" className="btn" onClick={props.onClear}>Clear all</button>}
-          <button type="button" className="btn primary" onClick={() => ref.current?.close()}>Done</button>
+          <button type="button" className="btn primary" onClick={() => softClose(ref.current)}>Done</button>
         </div>
       </div>
     </dialog>
