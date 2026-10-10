@@ -280,6 +280,18 @@ the single source of truth — commit and push finished work.
   them. `--inner-h` keeps a one-page prescription's signature at the foot without a blank page.
 - Layouts live in `print_layouts` (migration 0010), at most one default per account; each
   device also remembers the layout it last printed with (`rememberLayout`), which wins.
+- **The letterhead, doctor left and clinic right.** The two blocks share the row whenever the
+  doctor's name (with the logo) and the clinic's lines fit side by side. The lines under the
+  name, qualifications and registration number, do not count towards that (`.lh-sub` has
+  `contain: inline-size`): they wrap under the name instead. Counting them used to drop the
+  clinic's lines under the doctor's as soon as a logo was added, and on almost any A5
+  letterhead, where they sat at the left with their text set right. When the two really
+  cannot share the row (a long name, a long clinic line) the clinic's lines go below whole and
+  stay at the right margin. Qualifications break between degrees, after the comma
+  (`qualificationParts` in `printlayout.ts`, one inline block to a degree), not inside one.
+  The centred arrangement is untouched. Checked by measuring eleven sets of details (with and
+  without a logo, long names, long clinic lines) on A4, A5, 14 pt type and the centred
+  arrangement, before and after, and by comparing the screen's pages with PDF prints.
 - Check a layout change by printing to PDF with Playwright (`prefer_css_page_size=True`) and
   looking at the pages; wait for `.sheet-wrap .sheet`, not `.sheet` (the editor preview has one).
 

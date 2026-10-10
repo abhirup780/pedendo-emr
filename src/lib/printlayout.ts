@@ -253,6 +253,29 @@ export function firstPageInnerHeight(c: PrintConfig): number {
 }
 
 /**
+ * A doctor's qualifications in the pieces a line may break between: one degree to a piece,
+ * each with the comma (or other mark) that follows it. "MD (Pediatrics), DM (Endocrinology)"
+ * gives "MD (Pediatrics)," and "DM (Endocrinology)", so that a narrow letterhead breaks the
+ * line after the comma and not inside a degree. A mark inside brackets does not divide.
+ */
+export function qualificationParts(text: string): string[] {
+  const parts: string[] = []
+  let depth = 0
+  let from = 0
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (ch === '(' || ch === '[') depth++
+    else if (ch === ')' || ch === ']') depth = Math.max(0, depth - 1)
+    else if (depth === 0 && (ch === ',' || ch === ';' || ch === '|' || ch === '·')) {
+      parts.push(text.slice(from, i + 1).trim())
+      from = i + 1
+    }
+  }
+  parts.push(text.slice(from).trim())
+  return parts.filter(Boolean)
+}
+
+/**
  * True for paper that carries its own letterhead: the app prints none, and the top of the
  * first page is left clear for it.
  */
